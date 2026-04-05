@@ -1,0 +1,244 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  Animated,
+  Easing,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { COLORS } from '../constants/colors';
+import { startRecording, stopRecording, pauseRecording, resumeRecording } from '../services/audioService';
+
+type RecordingState = 'idle' | 'recording' | 'paused';
+
+export default function RecordScreen() {
+  const navigation = useNavigation<any>();
+  const [customerName, setCustomerName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [recordingState, setRecordingState] = useState<RecordingState>('idle');
+  const [elapsed, setElapsed] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
+  const ringAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      pulseLoop.current?.stop();
+    };
+  }, []);
+
+  const startPulse = () => {
+    pulseAnim.setValue(1);
+    pulseLoop.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    pulseLoop.current.start();
+    Animated.timing(ringAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+  };
+
+  const stopPulse = () => {
+    pulseLoop.current?.stop();
+    Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    Animated.timing(ringAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+  };
+
+  const startTimer = () => { intervalRef.current = setInterval(() => setElapsed(p => p + 1), 1000); };
+  const stopTimer = () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
+
+  const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
+  const handleStart = async () => {
+    try {
+      await startRecording();
+      setRecordingState('recording');
+      setElapsed(0);
+      startTimer();
+      startPulse();
+    } catch {
+      Alert.alert('Lỗi', 'Không thể bắt đầu ghi âm. Vui lòng kiểm tra quyền microphone.');
+    }
+  };
+
+  const handlePause = async () => {
+    if (recordingState === 'recording') {
+      try { await pauseRecording(); setRecordingState('paused'); stopTimer(); stopPulse(); } catch { Alert.alert('Lỗi', 'Không thể tạm dừng.'); }
+    } else if (recordingState === 'paused') {
+      try { await resumeRecording(); setRecordingState('recording'); startTimer(); startPulse(); } catch { Alert.alert('Lỗi', 'Không thể tiếp tục.'); }
+    }
+  };
+
+  const handleStop = async () => {
+    try {
+      const result = await stopRecording();
+      setRecordingState('idle'); stopTimer(); stopPulse();
+      const finalElapsed = elapsed; setElapsed(0);
+      Alert.alert('Ghi âm hoàn tất', `Thời gian: ${formatTime(finalElapsed)}`, [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Nhập nội dung', onPress: () => navigation.navigate('ResultScreen', { audioUri: null, manualMode: true, duration: finalElapsed, customerName: customerName || 'Khách hàng', companyName: companyName || '' }) },
+        { text: 'Phân tích tự động', onPress: () => navigation.navigate('ResultScreen', { audioUri: result.uri, duration: finalElapsed, customerName: customerName || 'Khách hàng', companyName: companyName || '' }) },
+      ]);
+    } catch {
+      setRecordingState('idle'); stopTimer(); stopPulse(); setElapsed(0);
+      Alert.alert('Lỗi', 'Đã xảy ra lỗi khi dừng ghi âm.');
+    }
+  };
+
+  const isRecording = recordingState !== 'idle';
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Ghi âm</Text>
+          <Text style={styles.headerSub}>{isRecording ? (customerName || 'Đang ghi âm...') : 'Phiên tư vấn mới'}</Text>
+        </View>
+
+        {/* Input fields — chỉ khi idle */}
+        {!isRecording && (
+          <View style={styles.inputGroup}>
+            <View style={styles.inputWrap}>
+              <Ionicons name="person-outline" size={18} color={COLORS.TEXT_LIGHT} />
+              <TextInput style={styles.input} placeholder="Tên khách hàng" placeholderTextColor={COLORS.TEXT_LIGHT} value={customerName} onChangeText={setCustomerName} />
+            </View>
+            <View style={styles.inputWrap}>
+              <Ionicons name="business-outline" size={18} color={COLORS.TEXT_LIGHT} />
+              <TextInput style={styles.input} placeholder="Tên công ty (không bắt buộc)" placeholderTextColor={COLORS.TEXT_LIGHT} value={companyName} onChangeText={setCompanyName} />
+            </View>
+          </View>
+        )}
+
+        {/* Recording Area */}
+        <View style={styles.centerArea}>
+          <View style={styles.recordArea}>
+            {/* Pulse rings */}
+            <Animated.View style={[styles.ring, styles.ringOuter, { transform: [{ scale: pulseAnim }], opacity: ringAnim }]} />
+            <Animated.View style={[styles.ring, styles.ringMiddle, { transform: [{ scale: pulseAnim }], opacity: Animated.multiply(ringAnim, 0.5) }]} />
+
+            {/* Main button */}
+            {recordingState === 'idle' ? (
+              <TouchableOpacity onPress={handleStart} activeOpacity={0.85}>
+                <LinearGradient colors={[COLORS.PRIMARY, COLORS.GRADIENT_END]} style={styles.mainBtn}>
+                  <Ionicons name="mic" size={48} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={handleStop} activeOpacity={0.85}>
+                <LinearGradient colors={[COLORS.DANGER, '#F97316']} style={styles.mainBtn}>
+                  <Ionicons name="stop" size={40} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {/* Timer */}
+            <Text style={styles.timer}>{formatTime(elapsed)}</Text>
+
+            {/* Status */}
+            <View style={styles.statusRow}>
+              {recordingState === 'recording' && <View style={styles.liveDot} />}
+              <Text style={[styles.statusText,
+                recordingState === 'recording' && { color: COLORS.DANGER },
+                recordingState === 'paused' && { color: COLORS.WARNING },
+              ]}>
+                {recordingState === 'idle' ? 'Nhấn để bắt đầu' : recordingState === 'recording' ? 'Đang ghi âm' : 'Tạm dừng'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Controls */}
+          {isRecording && (
+            <View style={styles.controls}>
+              <TouchableOpacity style={styles.ctrlBtn} onPress={handlePause}>
+                <Ionicons name={recordingState === 'paused' ? 'play' : 'pause'} size={24} color={COLORS.PRIMARY} />
+                <Text style={styles.ctrlText}>{recordingState === 'paused' ? 'Tiếp tục' : 'Tạm dừng'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.ctrlBtn, styles.ctrlStop]} onPress={handleStop}>
+                <Ionicons name="stop-circle" size={24} color={COLORS.DANGER} />
+                <Text style={[styles.ctrlText, { color: COLORS.DANGER }]}>Dừng</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Tips */}
+          {!isRecording && (
+            <View style={styles.tipsCard}>
+              <Text style={styles.tipsTitle}>Hướng dẫn</Text>
+              {['Nhập tên khách hàng trước khi ghi', 'Đặt điện thoại gần nguồn âm thanh', 'Sau khi dừng, AI sẽ phân tích ngay'].map((t, i) => (
+                <View key={i} style={styles.tipRow}>
+                  <View style={styles.tipDot} />
+                  <Text style={styles.tipText}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.BACKGROUND },
+  container: { flex: 1, paddingHorizontal: 20 },
+  header: { paddingTop: 16, paddingBottom: 12 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: COLORS.TEXT },
+  headerSub: { fontSize: 14, color: COLORS.TEXT_LIGHT, marginTop: 2 },
+
+  inputGroup: { gap: 10, marginBottom: 8 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.CARD, borderRadius: 14, borderWidth: 1, borderColor: COLORS.BORDER,
+    paddingHorizontal: 14, height: 52,
+  },
+  input: { flex: 1, fontSize: 15, color: COLORS.TEXT },
+
+  centerArea: { flex: 1, justifyContent: 'center', paddingBottom: 16 },
+  recordArea: { alignItems: 'center', justifyContent: 'center', paddingVertical: 20 },
+
+  ring: { position: 'absolute', borderRadius: 999 },
+  ringOuter: { width: 180, height: 180, backgroundColor: COLORS.DANGER + '15' },
+  ringMiddle: { width: 220, height: 220, backgroundColor: COLORS.DANGER + '08' },
+
+  mainBtn: {
+    width: 120, height: 120, borderRadius: 60,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: COLORS.PRIMARY, shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3, shadowRadius: 16, elevation: 10,
+  },
+
+  timer: { fontSize: 44, fontWeight: '700', color: COLORS.TEXT, marginTop: 24, letterSpacing: 2 },
+
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.DANGER },
+  statusText: { fontSize: 15, color: COLORS.TEXT_LIGHT, fontWeight: '500' },
+
+  controls: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  ctrlBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: COLORS.CARD, borderRadius: 14, paddingVertical: 14,
+    borderWidth: 1, borderColor: COLORS.BORDER,
+  },
+  ctrlStop: { borderColor: COLORS.DANGER_LIGHT, backgroundColor: COLORS.DANGER_LIGHT },
+  ctrlText: { fontSize: 15, fontWeight: '600', color: COLORS.PRIMARY },
+
+  tipsCard: {
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginTop: 16,
+    borderWidth: 1, borderColor: COLORS.BORDER,
+  },
+  tipsTitle: { fontSize: 14, fontWeight: '700', color: COLORS.TEXT, marginBottom: 12 },
+  tipRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  tipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.SUCCESS },
+  tipText: { fontSize: 13, color: COLORS.TEXT_SECONDARY, flex: 1 },
+});

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Coach - Quản lý Kiến thức</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #0F172A; }
+
+    .header { background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 24px 32px; color: #fff; }
+    .header h1 { font-size: 24px; font-weight: 800; }
+    .header p { font-size: 14px; opacity: 0.7; margin-top: 4px; }
+
+    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+
+    .card { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .card h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #4F46E5; }
+
+    .file-list { list-style: none; }
+    .file-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 8px; }
+    .file-name { font-weight: 600; font-size: 14px; }
+    .file-meta { font-size: 12px; color: #94A3B8; }
+    .file-actions { display: flex; gap: 8px; }
+
+    .btn { padding: 8px 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+    .btn-primary { background: #4F46E5; color: #fff; }
+    .btn-primary:hover { background: #3730A3; }
+    .btn-danger { background: #FEE2E2; color: #EF4444; }
+    .btn-danger:hover { background: #EF4444; color: #fff; }
+    .btn-upload { background: #10B981; color: #fff; padding: 12px 24px; font-size: 15px; }
+    .btn-upload:hover { background: #059669; }
+
+    .upload-zone { border: 2px dashed #E2E8F0; border-radius: 16px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-zone:hover { border-color: #4F46E5; background: #F5F3FF; }
+    .upload-zone.dragover { border-color: #4F46E5; background: #EEF2FF; }
+    .upload-zone p { color: #94A3B8; margin-top: 8px; }
+    .upload-zone .icon { font-size: 40px; }
+
+    .status { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: none; }
+    .status.success { display: block; background: #D1FAE5; color: #065F46; }
+    .status.error { display: block; background: #FEE2E2; color: #991B1B; }
+    .status.loading { display: block; background: #EEF2FF; color: #4F46E5; }
+
+    .login-card { max-width: 400px; margin: 80px auto; }
+    .login-card input { width: 100%; padding: 12px 16px; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 14px; margin-bottom: 12px; }
+    .login-card .btn { width: 100%; }
+
+    #app-login, #app-main { display: none; }
+    .empty { text-align: center; padding: 32px; color: #94A3B8; }
+  </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="app-login">
+  <div class="header">
+    <h1>Sales Coach Admin</h1>
+    <p>Quản lý kiến thức THE TRUSTED ADVISOR</p>
+  </div>
+  <div class="container">
+    <div class="card login-card">
+      <h2>Đăng nhập Admin</h2>
+      <input type="password" id="service-key" placeholder="Nhập Service Role Key từ Supabase">
+      <button class="btn btn-primary" onclick="login()" style="width:100%">Đăng nhập</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="app-main">
+  <div class="header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h1>Sales Coach Admin</h1>
+      <p>Quản lý kiến thức THE TRUSTED ADVISOR</p>
+    </div>
+    <button class="btn" onclick="logout()" style="background:rgba(255,255,255,0.2); color:#fff;">Đăng xuất</button>
+  </div>
+  <div class="container">
+    <div id="status" class="status"></div>
+
+    <!-- Upload -->
+    <div class="card">
+      <h2>Upload kiến thức mới</h2>
+      <div class="upload-zone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">📄</div>
+        <p>Kéo thả file .md vào đây hoặc nhấn để chọn file</p>
+        <p style="font-size:12px; margin-top:4px;">Chỉ chấp nhận file Markdown (.md)</p>
+      </div>
+      <input type="file" id="fileInput" accept=".md" multiple style="display:none" onchange="handleFiles(this.files)">
+    </div>
+
+    <!-- File list -->
+    <div class="card">
+      <h2>Kiến thức hiện có</h2>
+      <ul class="file-list" id="fileList">
+        <li class="empty">Đang tải...</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zylhbymktdtmitxsunqv.supabase.co';
+let SERVICE_KEY = '';
+
+// Kiểm tra key đã lưu trong trình duyệt
+const savedKey = localStorage.getItem('salescoach_admin_key');
+if (savedKey) {
+  SERVICE_KEY = savedKey;
+  document.getElementById('app-main').style.display = 'block';
+  setTimeout(loadFiles, 100);
+} else {
+  document.getElementById('app-login').style.display = 'block';
+}
+
+function login() {
+  SERVICE_KEY = document.getElementById('service-key').value.trim();
+  if (!SERVICE_KEY) return;
+  // Lưu key vào trình duyệt để lần sau không cần nhập lại
+  localStorage.setItem('salescoach_admin_key', SERVICE_KEY);
+  document.getElementById('app-login').style.display = 'none';
+  document.getElementById('app-main').style.display = 'block';
+  loadFiles();
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+  if (type !== 'loading') setTimeout(() => el.style.display = 'none', 5000);
+}
+
+async function loadFiles() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/list/knowledge`, {
+      method: 'POST',
+      headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: '', sortBy: { column: 'name', order: 'asc' } })
+    });
+    const files = await res.json();
+    const list = document.getElementById('fileList');
+
+    if (!files.length) {
+      list.innerHTML = '<li class="empty">Chưa có file kiến thức nào</li>';
+      return;
+    }
+
+    list.innerHTML = files.map(f => {
+      const size = f.metadata?.size ? (f.metadata.size / 1024).toFixed(1) + ' KB' : '';
+      const date = f.updated_at ? new Date(f.updated_at).toLocaleDateString('vi-VN') : '';
+      return `<li class="file-item">
+        <div>
+          <div class="file-name">${f.name}</div>
+          <div class="file-meta">${size} — ${date}</div>
+        </div>
+        <div class="file-actions">
+          <button class="btn btn-primary" onclick="downloadFile('${f.name}')">Tải về</button>
+          <button class="btn btn-danger" onclick="deleteFile('${f.name}')">Xóa</button>
+        </div>
+      </li>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('fileList').innerHTML = '<li class="empty">Lỗi tải danh sách: ' + e.message + '</li>';
+  }
+}
+
+async function handleFiles(files) {
+  for (const file of files) {
+    if (!file.name.endsWith('.md')) {
+      showStatus(`${file.name} không phải file .md — bỏ qua`, 'error');
+      continue;
+    }
+    showStatus(`Đang upload ${file.name}...`, 'loading');
+    try {
+      // Tên file an toàn: giữ nguyên nếu ASCII, nếu không thì encode
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/knowledge/${safeName}`, {
+        method: 'POST',
+        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'text/markdown' },
+        body: file
+      });
+
+      if (!res.ok) {
+        // Nếu file đã tồn tại, update thay vì tạo mới
+        const res2 = await fetch(`${SUPABASE_URL}/storage/v1/object/knowledge/${safeName}`, {
+          method: 'PUT',
+          headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'text/markdown' },
+          body: file
+        });
+        if (!res2.ok) throw new Error(await res2.text());
+      }
+
+      showStatus(`Upload thành công: ${safeName}`, 'success');
+    } catch (e) {
+      showStatus(`Lỗi upload ${file.name}: ${e.message}`, 'error');
+    }
+  }
+  loadFiles();
+}
+
+async function deleteFile(name) {
+  if (!confirm(`Xóa "${name}"?`)) return;
+  try {
+    await fetch(`${SUPABASE_URL}/storage/v1/object/knowledge/${name}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+    });
+    showStatus(`Đã xóa: ${name}`, 'success');
+    loadFiles();
+  } catch (e) {
+    showStatus(`Lỗi xóa: ${e.message}`, 'error');
+  }
+}
+
+async function downloadFile(name) {
+  window.open(`${SUPABASE_URL}/storage/v1/object/public/knowledge/${name}`);
+}
+
+function logout() {
+  localStorage.removeItem('salescoach_admin_key');
+  SERVICE_KEY = '';
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('app-login').style.display = 'block';
+  document.getElementById('service-key').value = '';
+}
+
+// Drag & drop
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+</script>
+</body>
+</html>
