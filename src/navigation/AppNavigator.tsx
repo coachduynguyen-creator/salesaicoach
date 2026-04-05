@@ -51,6 +51,7 @@ export type RootStackParamList = {
   AiCoachChat: {
     conversationId: string;
     title: string;
+    customerId?: string;
   };
 };
 

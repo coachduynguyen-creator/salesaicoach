@@ -26,6 +26,8 @@ import {
   ConversationMessage,
   loadConversations,
   updateConversation,
+  loadCustomers,
+  CustomerProfile,
 } from '../services/storageService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -145,8 +147,10 @@ export default function AiCoachScreen() {
 
   const conversationId: string | undefined = route.params?.conversationId;
   const conversationTitle: string | undefined = route.params?.title;
+  const customerId: string | undefined = route.params?.customerId;
 
   const [messages, setMessages] = useState<Message[]>([makeWelcome()]);
+  const [customerContext, setCustomerContext] = useState('');
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -155,6 +159,42 @@ export default function AiCoachScreen() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const streamingMsgId = useRef<string | null>(null);
+
+  // Load customer profile nếu có
+  useEffect(() => {
+    if (!customerId) return;
+    loadCustomers().then(all => {
+      const customer = all.find(c => c.id === customerId);
+      if (!customer) return;
+
+      const parts: string[] = [
+        `\n\n---\nTHÔNG TIN KHÁCH HÀNG ĐANG TƯ VẤN:`,
+        `Tên: ${customer.name}`,
+      ];
+      if (customer.company) parts.push(`Công ty: ${customer.company}`);
+      if (customer.needs) parts.push(`Nhu cầu: ${customer.needs}`);
+      if (customer.budget) parts.push(`Ngân sách: ${customer.budget}`);
+      if (customer.concerns) parts.push(`Lo ngại/phản đối: ${customer.concerns}`);
+      if (customer.stage) parts.push(`Giai đoạn: ${customer.stage}`);
+      if (customer.decisionFactors) parts.push(`Yếu tố quyết định: ${customer.decisionFactors}`);
+      if (customer.personality) parts.push(`Tính cách giao tiếp: ${customer.personality}`);
+      if (customer.nextStep) parts.push(`Bước tiếp theo: ${customer.nextStep}`);
+      if (customer.notes?.length) {
+        parts.push(`\nLỊCH SỬ GHI CHÚ:`);
+        customer.notes.slice(-5).forEach(n => parts.push(`[${n.date}] ${n.content}`));
+      }
+      parts.push(`\nHãy tư vấn dựa trên thông tin khách hàng này. Nếu sales hỏi về khách, trả lời dựa trên dữ liệu trên.`);
+      setCustomerContext(parts.join('\n'));
+
+      // Thay welcome message cho phù hợp
+      setMessages([{
+        id: 'welcome',
+        role: 'assistant',
+        content: `Duy đã xem hồ sơ của **${customer.name}**${customer.company ? ` (${customer.company})` : ''}.\n\n${customer.stage ? `Khách đang ở giai đoạn: **${customer.stage}**.\n` : ''}${customer.needs ? `Nhu cầu chính: ${customer.needs}\n` : ''}${customer.concerns ? `Lo ngại: ${customer.concerns}\n` : ''}\nBạn muốn trao đổi gì về khách này? Duy sẽ tư vấn dựa trên toàn bộ dữ liệu đã có.`,
+        timestamp: new Date(),
+      }]);
+    });
+  }, [customerId]);
 
   // Load tin nhắn cũ khi mở conversation
   useEffect(() => {
@@ -212,7 +252,7 @@ export default function AiCoachScreen() {
 
       const fullText = await streamChatWithCoach(
         history,
-        knowledgeBase + businessContext,
+        knowledgeBase + businessContext + customerContext,
         (textSoFar) => {
           setMessages(prev =>
             prev.map(m => m.id === aiMsgId ? { ...m, content: textSoFar } : m)
