@@ -11,6 +11,7 @@ import { useAlert } from '../contexts/AlertContext';
 import {
   loadCustomers, updateCustomer, loadSessions, calculateLeadScore, autoUpdateEngagement,
   CustomerProfile, Session, DecisionMaker, LeadScoring, EMPTY_SCORING, addConversation,
+  loadCustomerStatuses, CustomerStatus,
 } from '../services/storageService';
 import { scoreCustomerWithAI } from '../services/aiService';
 
@@ -137,6 +138,8 @@ export default function CustomerDetailScreen() {
   const [newFieldKey, setNewFieldKey] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
   const [showDMModal, setShowDMModal] = useState(false);
+  const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [dmName, setDmName] = useState('');
   const [dmRole, setDmRole] = useState('');
   const [dmAttitude, setDmAttitude] = useState('trung lập');
@@ -144,6 +147,7 @@ export default function CustomerDetailScreen() {
   const [isScoring, setIsScoring] = useState(false);
 
   const loadData = useCallback(async () => {
+    loadCustomerStatuses().then(setStatuses);
     const all = await loadCustomers();
     const found = all.find(c => c.id === customerId);
     if (found) {
@@ -278,11 +282,21 @@ export default function CustomerDetailScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.heroName}>{customer.name}</Text>
               {customer.company ? <Text style={styles.heroCompany}>{customer.company}</Text> : null}
-              {customer.stage ? (
-                <View style={[styles.stageBadgeSmall, { backgroundColor: C.PRIMARY + '15' }]}>
-                  <Text style={[styles.stageTextSmall, { color: C.PRIMARY }]}>{customer.stage}</Text>
-                </View>
-              ) : null}
+              {(() => {
+                const currentStatus = statuses.find(s => s.id === customer.statusId);
+                const statusColor = currentStatus?.color || COLORS.TEXT_LIGHT;
+                const statusLabel = currentStatus?.label || customer.stage || 'Chọn trạng thái';
+                return (
+                  <TouchableOpacity
+                    style={[styles.stageBadgeSmall, { backgroundColor: statusColor + '18' }]}
+                    onPress={() => setShowStatusPicker(true)}
+                  >
+                    <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                    <Text style={[styles.stageTextSmall, { color: statusColor }]}>{statusLabel}</Text>
+                    <Ionicons name="chevron-down" size={12} color={statusColor} />
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
           </View>
           {icp.fitLevel ? (
@@ -476,6 +490,38 @@ export default function CustomerDetailScreen() {
         </View>
       </Modal>
 
+      {/* Status Picker Modal */}
+      <Modal visible={showStatusPicker} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '70%' }]}>
+            <Text style={styles.modalTitle}>Trạng thái khách hàng</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {statuses.sort((a, b) => a.order - b.order).map(status => {
+                const isActive = customer.statusId === status.id;
+                return (
+                  <TouchableOpacity
+                    key={status.id}
+                    style={[styles.statusOption, isActive && { backgroundColor: status.color + '15', borderColor: status.color }]}
+                    onPress={async () => {
+                      await updateCustomer(customer.id, { statusId: status.id, stage: status.label });
+                      setCustomer(prev => prev ? { ...prev, statusId: status.id, stage: status.label } : prev);
+                      setShowStatusPicker(false);
+                    }}
+                  >
+                    <View style={[styles.statusDotLarge, { backgroundColor: status.color }]} />
+                    <Text style={[styles.statusOptionText, isActive && { color: status.color, fontWeight: '700' }]}>{status.label}</Text>
+                    {isActive && <Ionicons name="checkmark-circle" size={20} color={status.color} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity style={[styles.modalCancelBtn, { marginTop: 12 }]} onPress={() => setShowStatusPicker(false)}>
+              <Text style={styles.modalCancelText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Add Decision Maker Modal */}
       <Modal visible={showDMModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -539,8 +585,12 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 22, fontWeight: '800' },
   heroName: { fontSize: 18, fontWeight: '800', color: COLORS.TEXT },
   heroCompany: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 1 },
-  stageBadgeSmall: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, marginTop: 4 },
+  stageBadgeSmall: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, marginTop: 4 },
   stageTextSmall: { fontSize: 11, fontWeight: '700' },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusDotLarge: { width: 12, height: 12, borderRadius: 6 },
+  statusOption: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12, marginBottom: 6, borderWidth: 1, borderColor: COLORS.BORDER },
+  statusOptionText: { fontSize: 15, color: COLORS.TEXT, flex: 1 },
   fitBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginTop: 10 },
   fitText: { fontSize: 12, fontWeight: '700' },
   // Actions

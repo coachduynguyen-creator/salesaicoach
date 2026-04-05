@@ -1,13 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, RefreshControl,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, RefreshControl, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
-import { loadCustomers, deleteCustomer, CustomerProfile, loadSessions, addCustomer, updateCustomer } from '../services/storageService';
+import { loadCustomers, deleteCustomer, CustomerProfile, loadSessions, addCustomer, updateCustomer, loadCustomerStatuses, CustomerStatus } from '../services/storageService';
 import { useAlert } from '../contexts/AlertContext';
 
 const STAGE_COLORS: Record<string, string> = {
@@ -33,9 +33,11 @@ export default function CustomerListScreen() {
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
 
   // Sync khách hàng từ sessions cũ vào CRM
   const syncCustomersFromSessions = useCallback(async () => {
+    loadCustomerStatuses().then(setStatuses);
     const [existingCustomers, sessions] = await Promise.all([loadCustomers(), loadSessions()]);
 
     const customerNames = new Set(existingCustomers.map(c => c.name.toLowerCase().trim()));
@@ -133,9 +135,13 @@ export default function CustomerListScreen() {
   };
 
   const renderCustomer = ({ item }: { item: CustomerProfile }) => {
-    const stageColor = getStageColor(item.stage || '');
+    // Ưu tiên statusId, fallback sang stage text cũ
+    const statusObj = statuses.find(s => s.id === item.statusId);
+    const stageColor = statusObj?.color || getStageColor(item.stage || '');
+    const stageLabel = statusObj?.label || item.stage || '';
     const noteCount = item.notes?.length || 0;
     const sessionCount = item.sessionIds?.length || 0;
+    const score = item.leadScore || 0;
 
     return (
       <TouchableOpacity
@@ -157,19 +163,21 @@ export default function CustomerListScreen() {
           ) : null}
 
           <View style={styles.metaRow}>
-            {item.stage ? (
+            {stageLabel ? (
               <View style={[styles.stageBadge, { backgroundColor: stageColor + '18' }]}>
-                <Text style={[styles.stageText, { color: stageColor }]}>{item.stage}</Text>
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: stageColor, marginRight: 4 }} />
+                <Text style={[styles.stageText, { color: stageColor }]}>{stageLabel}</Text>
               </View>
             ) : null}
+            {score > 0 && (
+              <Text style={[styles.metaText, { fontWeight: '700', color: score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#EF4444' }]}>
+                {score}đ
+              </Text>
+            )}
             <Text style={styles.metaText}>
-              {sessionCount} cuộc gọi{noteCount > 0 ? ` · ${noteCount} ghi chú` : ''}
+              {sessionCount} cuộc gọi
             </Text>
           </View>
-
-          {item.needs ? (
-            <Text style={styles.needsText} numberOfLines={1}>Nhu cầu: {item.needs}</Text>
-          ) : null}
         </View>
 
         <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_LIGHT} />
@@ -202,19 +210,20 @@ export default function CustomerListScreen() {
       </View>
 
       {/* Stage Summary */}
-      {customers.length > 0 && (
-        <View style={[styles.stageStrip, { backgroundColor: C.PRIMARY }]}>
-          {Object.entries(STAGE_COLORS).map(([stage, color]) => {
-            const count = customers.filter(c => (c.stage || '').toLowerCase().includes(stage)).length;
+      {customers.length > 0 && statuses.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 8 }}>
+          {statuses.sort((a, b) => a.order - b.order).map(status => {
+            const count = customers.filter(c => c.statusId === status.id).length;
             if (count === 0) return null;
             return (
-              <View key={stage} style={styles.stageStripItem}>
-                <Text style={styles.stageStripValue}>{count}</Text>
-                <Text style={styles.stageStripLabel}>{stage}</Text>
+              <View key={status.id} style={[styles.statusChip, { backgroundColor: status.color + '18' }]}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: status.color }} />
+                <Text style={[styles.statusChipText, { color: status.color }]}>{status.label}</Text>
+                <Text style={[styles.statusChipCount, { color: status.color }]}>{count}</Text>
               </View>
             );
           }).filter(Boolean)}
-        </View>
+        </ScrollView>
       )}
 
       <FlatList
@@ -252,13 +261,12 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.BORDER,
   },
   searchInput: { flex: 1, fontSize: 14, color: COLORS.TEXT },
-  stageStrip: {
-    flexDirection: 'row', marginHorizontal: 16, borderRadius: 12,
-    paddingVertical: 12, marginBottom: 8, justifyContent: 'space-around',
+  statusChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
   },
-  stageStripItem: { alignItems: 'center' },
-  stageStripValue: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  stageStripLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2, textTransform: 'capitalize' },
+  statusChipText: { fontSize: 12, fontWeight: '600' },
+  statusChipCount: { fontSize: 12, fontWeight: '800' },
   listContent: { paddingHorizontal: 16, paddingBottom: 30 },
   customerCard: {
     backgroundColor: COLORS.CARD, borderRadius: 14, padding: 14,
@@ -275,7 +283,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 15, fontWeight: '700', color: COLORS.TEXT },
   company: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginTop: 1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  stageBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  stageBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   stageText: { fontSize: 10, fontWeight: '700' },
   metaText: { fontSize: 11, color: COLORS.TEXT_LIGHT },
   needsText: { fontSize: 11, color: COLORS.TEXT_SECONDARY, marginTop: 3, fontStyle: 'italic' },

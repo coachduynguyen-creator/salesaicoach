@@ -14,7 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { useTheme, THEME_OPTIONS } from '../contexts/ThemeContext';
-import { loadSessions, Session } from '../services/storageService';
+import { loadSessions, Session, loadCustomerStatuses, saveCustomerStatuses, CustomerStatus, DEFAULT_STATUSES } from '../services/storageService';
 import { useAlert } from '../contexts/AlertContext';
 
 const USER_NAME_KEY = '@salescoach_user_name';
@@ -45,10 +45,17 @@ export default function ProfileScreen() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('');
+  // Status management
+  const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
+  const [showStatusManager, setShowStatusManager] = useState(false);
+  const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
+  const [statusLabel, setStatusLabel] = useState('');
+  const [statusColor, setStatusColor] = useState('#3B82F6');
 
   useFocusEffect(
     useCallback(() => {
       loadSessions().then(setSessions);
+      loadCustomerStatuses().then(setStatuses);
       AsyncStorage.getItem(USER_NAME_KEY).then(v => setUserName(v || ''));
       AsyncStorage.getItem(USER_ROLE_KEY).then(v => setUserRole(v || ''));
     }, [])
@@ -206,6 +213,62 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Status Management */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="flag-outline" size={18} color={C.PRIMARY} />
+            <Text style={styles.sectionTitle}>Trạng thái khách hàng</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Quản lý các trạng thái trong CRM. Kéo để sắp xếp thứ tự.
+          </Text>
+
+          {statuses.sort((a, b) => a.order - b.order).map((s, idx) => (
+            <View key={s.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: idx < statuses.length - 1 ? 1 : 0, borderBottomColor: COLORS.BORDER }}>
+              <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: s.color, marginRight: 10 }} />
+              <Text style={{ flex: 1, fontSize: 14, color: COLORS.TEXT, fontWeight: '500' }}>{s.label}</Text>
+              <TouchableOpacity onPress={() => {
+                setEditingStatusId(s.id);
+                setStatusLabel(s.label);
+                setStatusColor(s.color);
+                setShowStatusManager(true);
+              }} style={{ padding: 6 }}>
+                <Ionicons name="create-outline" size={16} color={COLORS.TEXT_LIGHT} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => {
+                const updated = statuses.filter(x => x.id !== s.id);
+                setStatuses(updated);
+                saveCustomerStatuses(updated);
+              }} style={{ padding: 6 }}>
+                <Ionicons name="trash-outline" size={16} color={COLORS.DANGER} />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: C.PRIMARY, marginTop: 12 }]}
+            onPress={() => {
+              setEditingStatusId(null);
+              setStatusLabel('');
+              setStatusColor('#3B82F6');
+              setShowStatusManager(true);
+            }}
+          >
+            <Ionicons name="add-circle-outline" size={18} color="#fff" />
+            <Text style={styles.saveButtonText}>Thêm trạng thái</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ marginTop: 8, alignItems: 'center', paddingVertical: 8 }}
+            onPress={() => {
+              setStatuses(DEFAULT_STATUSES);
+              saveCustomerStatuses(DEFAULT_STATUSES);
+            }}
+          >
+            <Text style={{ fontSize: 12, color: COLORS.TEXT_LIGHT }}>Khôi phục mặc định</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* App Settings — chỉ giữ tính năng hoạt động */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
@@ -230,6 +293,60 @@ export default function ProfileScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Status Edit Modal */}
+      <Modal visible={showStatusManager} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{editingStatusId ? 'Sửa trạng thái' : 'Thêm trạng thái'}</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Tên trạng thái (VD: Đang demo, Chờ phê duyệt...)"
+              placeholderTextColor={COLORS.TEXT_LIGHT}
+              value={statusLabel}
+              onChangeText={setStatusLabel}
+              autoFocus
+            />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.TEXT_SECONDARY, marginBottom: 8 }}>Màu sắc:</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+              {['#9F7AEA', '#3B82F6', '#10B981', '#F59E0B', '#F97316', '#EF4444', '#8B5CF6', '#EC4899', '#6B7280', '#059669'].map(color => (
+                <TouchableOpacity key={color} onPress={() => setStatusColor(color)}
+                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color, alignItems: 'center', justifyContent: 'center', borderWidth: statusColor === color ? 3 : 0, borderColor: '#fff', shadowColor: statusColor === color ? color : 'transparent', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 4, elevation: statusColor === color ? 4 : 0 }}>
+                  {statusColor === color && <Ionicons name="checkmark" size={18} color="#fff" />}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowStatusManager(false)}>
+                <Text style={styles.modalCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, { backgroundColor: C.PRIMARY }]}
+                onPress={() => {
+                  if (!statusLabel.trim()) return;
+                  let updated: CustomerStatus[];
+                  if (editingStatusId) {
+                    updated = statuses.map(s => s.id === editingStatusId ? { ...s, label: statusLabel.trim(), color: statusColor } : s);
+                  } else {
+                    const newStatus: CustomerStatus = {
+                      id: Date.now().toString(),
+                      label: statusLabel.trim(),
+                      color: statusColor,
+                      order: statuses.length,
+                    };
+                    updated = [...statuses, newStatus];
+                  }
+                  setStatuses(updated);
+                  saveCustomerStatuses(updated);
+                  setShowStatusManager(false);
+                }}
+              >
+                <Text style={styles.modalSaveText}>{editingStatusId ? 'Lưu' : 'Thêm'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Name Modal */}
       <Modal visible={showNameModal} transparent animationType="fade">

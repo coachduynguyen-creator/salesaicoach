@@ -10,6 +10,38 @@ const KEYS = {
   LESSON_PROGRESS: '@salescoach_lesson_progress',
   TEAM_MEMBERS: '@salescoach_team_members',
   CUSTOMERS: '@salescoach_customers',
+  CUSTOMER_STATUSES: '@salescoach_customer_statuses',
+};
+
+// ─── Customer Status (tùy chỉnh được) ──────────────────────────────────────
+
+export interface CustomerStatus {
+  id: string;
+  label: string;
+  color: string;
+  order: number;
+}
+
+export const DEFAULT_STATUSES: CustomerStatus[] = [
+  { id: 'new', label: 'Mới tiếp cận', color: '#9F7AEA', order: 0 },
+  { id: 'callback', label: 'Bận — gọi lại', color: '#F59E0B', order: 1 },
+  { id: 'interested', label: 'Đang tìm hiểu', color: '#3B82F6', order: 2 },
+  { id: 'comparing', label: 'Đang so sánh', color: '#F97316', order: 3 },
+  { id: 'negotiating', label: 'Đang thương lượng', color: '#8B5CF6', order: 4 },
+  { id: 'closing', label: 'Sắp chốt', color: '#10B981', order: 5 },
+  { id: 'won', label: 'Đã chốt', color: '#059669', order: 6 },
+  { id: 'lost', label: 'Mất deal', color: '#EF4444', order: 7 },
+  { id: 'nurturing', label: 'Chăm sóc dài hạn', color: '#6B7280', order: 8 },
+];
+
+export const loadCustomerStatuses = async (): Promise<CustomerStatus[]> => {
+  const raw = await AsyncStorage.getItem(KEYS.CUSTOMER_STATUSES);
+  if (!raw) return DEFAULT_STATUSES;
+  try { return JSON.parse(raw) as CustomerStatus[]; } catch { return DEFAULT_STATUSES; }
+};
+
+export const saveCustomerStatuses = async (statuses: CustomerStatus[]): Promise<void> => {
+  await AsyncStorage.setItem(KEYS.CUSTOMER_STATUSES, JSON.stringify(statuses));
 };
 
 // ─── Business Profile ─────────────────────────────────────────────────────────
@@ -356,7 +388,8 @@ export interface CustomerProfile {
   needs: string;
   budget: string;
   concerns: string;
-  stage: string;             // Giai đoạn: mới tiếp cận / đang tìm hiểu / đang so sánh / sắp chốt / đã chốt
+  stage: string;             // Giai đoạn text (legacy / AI-generated)
+  statusId: string;          // ID trạng thái CRM (tùy chỉnh được)
   decisionFactors: string;
   personality: string;
   nextStep: string;
