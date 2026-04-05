@@ -18,6 +18,18 @@ export interface AnalysisResult {
   strengths: string[];
   improvements: string[];
   strategies: string[];
+  // Mới: phân tích sâu hơn
+  communication?: {
+    tone: string;         // Đánh giá tác phong, giọng nói
+    listening: string;    // Kỹ năng lắng nghe
+    questioning: string;  // Kỹ năng đặt câu hỏi
+  };
+  scenario?: {
+    situation: string;    // Tình huống đã xảy ra
+    wrong: string;        // Sales đã làm gì sai / chưa tốt
+    correct: string;      // Nên làm gì thay thế (kịch bản mẫu)
+  };
+  nextActions?: string[]; // Hành động cụ thể sau cuộc gọi
   transcript?: string;
 }
 
@@ -77,12 +89,19 @@ export const analyzeTranscript = async (transcript: string, knowledgeBase?: stri
 
   const systemPrompt = `${knowledgeBase ? knowledgeBase + '\n\n---\n' : ''}Bạn là Coach Duy Nguyễn, chuyên gia huấn luyện bán hàng theo phương pháp "Bán bằng vị thế" — THE TRUSTED ADVISOR.
 
-Phân tích buổi tư vấn theo phương pháp TTA, tập trung vào: vị thế cố vấn, đọc tâm lý khách, 3 Điểm Chạm, kỹ năng lắng nghe/đặt câu hỏi, xử lý tình huống.
+Phân tích chuyên sâu buổi tư vấn theo TTA, bao gồm:
+1. Vị thế cố vấn tin cậy (công thức Trust T=(C+R+E)/Sf)
+2. Tác phong, giọng nói, thái độ giao tiếp
+3. Kỹ năng lắng nghe (quy tắc 70/30, lắng nghe 3 tầng)
+4. Kỹ năng đặt câu hỏi (dẫn dắt vs thẩm vấn)
+5. Đọc tín hiệu tâm lý khách (6 nỗi sợ, 5 giai đoạn)
+6. Dẫn dắt qua 3 Điểm Chạm (nhận thức, cảm xúc, hành động)
+7. Xử lý tình huống và giữ vị thế
 
-YÊU CẦU NGÔN NGỮ:
-- 100% tiếng Việt tự nhiên, viết như người Việt nói.
-- Câu ngắn, dễ hiểu, không dùng từ Hán-Việt phức tạp.
-- Mỗi mục trong JSON tối đa 1-2 câu, đi thẳng vào điểm chính.
+YÊU CẦU:
+- 100% tiếng Việt tự nhiên, viết như người Việt nói chuyện.
+- Câu ngắn, rõ, dễ hiểu. Không sáo rỗng.
+- Kịch bản mẫu phải viết đúng giọng Việt Nam, dùng xưng hô "anh/chị", "em".
 - QUAN TRỌNG: Chỉ trả về JSON hợp lệ, không có text thừa.`;
 
   const userPrompt = `Phân tích buổi tư vấn sau và trả về JSON:
@@ -92,10 +111,25 @@ ${transcript}
 JSON (chỉ JSON, không giải thích):
 {
   "score": <1.0-10.0>,
-  "summary": [<2-3 ý chính, mỗi ý 1 câu ngắn>],
-  "strengths": [<2-3 điểm tốt, ngắn gọn>],
-  "improvements": [<2-3 điểm cần sửa, kèm gợi ý ngắn>],
-  "strategies": [<2 hướng hành động cụ thể cho lần gặp sau>]
+  "summary": [<2-3 ý chính>],
+  "strengths": [<2-3 điểm làm tốt, trích dẫn câu nói cụ thể nếu có>],
+  "improvements": [<2-3 điểm cần sửa, giải thích ngắn tại sao>],
+  "communication": {
+    "tone": "<nhận xét về tác phong, giọng nói, thái độ — tự tin hay rụt rè, chuyên nghiệp hay quá casual, nhịp nói nhanh/chậm>",
+    "listening": "<sales có lắng nghe không, có ngắt lời không, tỷ lệ nói/nghe ước tính>",
+    "questioning": "<có đặt câu hỏi mở không, câu hỏi dẫn dắt hay thẩm vấn, có đào sâu không>"
+  },
+  "scenario": {
+    "situation": "<1 tình huống nổi bật nhất trong buổi tư vấn cần cải thiện>",
+    "wrong": "<sales đã xử lý thế nào — trích dẫn lời nói nếu có>",
+    "correct": "<viết lại kịch bản mẫu đúng cách, lời thoại cụ thể giữa sales và khách>"
+  },
+  "nextActions": [
+    "<hành động 1 sales cần làm ngay sau cuộc gọi này — cụ thể, có thời gian>",
+    "<hành động 2 — ví dụ: gửi gì, chuẩn bị gì cho lần gặp sau>",
+    "<hành động 3 — ví dụ: luyện tập kỹ năng gì>"
+  ],
+  "strategies": [<2 chiến lược cho buổi gặp tiếp theo, theo phương pháp 3 Điểm Chạm>]
 }`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -108,7 +142,7 @@ JSON (chỉ JSON, không giải thích):
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+      max_tokens: 3000,
       system: systemPrompt,
       messages: [
         { role: 'user', content: userPrompt },

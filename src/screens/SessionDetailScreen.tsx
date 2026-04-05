@@ -138,10 +138,60 @@ export default function SessionDetailScreen() {
 
         <SectionCard emoji="📋" title="Tóm tắt" items={analysis.summary}
           backgroundColor={COLORS.CARD} accentColor={COLORS.PRIMARY} />
+
+        {/* Communication Skills */}
+        {analysis.communication && (
+          <View style={[styles.sectionCard, { backgroundColor: '#F5F3FF' }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEmoji}>🎙️</Text>
+              <Text style={[styles.sectionTitle, { color: '#7C3AED' }]}>Tác phong & Giao tiếp</Text>
+            </View>
+            <View style={{ paddingVertical: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.TEXT_SECONDARY, marginBottom: 4 }}>Giọng nói & thái độ</Text>
+              <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 20 }}>{analysis.communication.tone}</Text>
+            </View>
+            <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.06)' }} />
+            <View style={{ paddingVertical: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.TEXT_SECONDARY, marginBottom: 4 }}>Kỹ năng lắng nghe</Text>
+              <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 20 }}>{analysis.communication.listening}</Text>
+            </View>
+            <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.06)' }} />
+            <View style={{ paddingVertical: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.TEXT_SECONDARY, marginBottom: 4 }}>Kỹ năng đặt câu hỏi</Text>
+              <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 20 }}>{analysis.communication.questioning}</Text>
+            </View>
+          </View>
+        )}
+
         <SectionCard emoji="💪" title="Điểm mạnh" items={analysis.strengths}
           backgroundColor="#F0FFF4" accentColor={COLORS.SUCCESS} />
         <SectionCard emoji="⚠️" title="Cần cải thiện" items={analysis.improvements}
           backgroundColor="#FFFAF0" accentColor={COLORS.WARNING} />
+
+        {/* Scenario */}
+        {analysis.scenario && (
+          <View style={[styles.sectionCard, { backgroundColor: '#FFF5F5' }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEmoji}>🎬</Text>
+              <Text style={[styles.sectionTitle, { color: '#E53E3E' }]}>Kịch bản cải thiện</Text>
+            </View>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.TEXT_SECONDARY, marginBottom: 4, marginTop: 4 }}>Tình huống:</Text>
+            <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 21, marginBottom: 8 }}>{analysis.scenario.situation}</Text>
+            <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.06)' }} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.DANGER, marginBottom: 4, marginTop: 8 }}>Sales đã làm:</Text>
+            <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 21, marginBottom: 8 }}>{analysis.scenario.wrong}</Text>
+            <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.06)' }} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.SUCCESS, marginBottom: 4, marginTop: 8 }}>Nên làm thay:</Text>
+            <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 21, fontStyle: 'italic' }}>{analysis.scenario.correct}</Text>
+          </View>
+        )}
+
+        {/* Next Actions */}
+        {analysis.nextActions && analysis.nextActions.length > 0 && (
+          <SectionCard emoji="✅" title="Việc cần làm ngay" items={analysis.nextActions}
+            backgroundColor="#F0FFF4" accentColor="#2B6CB0" />
+        )}
+
         <SectionCard emoji="🎯" title="Chiến lược lần sau" items={analysis.strategies}
           backgroundColor="#EBF8FF" accentColor={COLORS.PRIMARY} />
 

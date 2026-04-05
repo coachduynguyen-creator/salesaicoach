@@ -297,6 +297,30 @@ export default function ResultScreen() {
           accentColor={C.PRIMARY}
         />
 
+        {/* Communication Skills */}
+        {result.communication && (
+          <View style={[styles.sectionCard, { backgroundColor: '#F5F3FF' }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEmoji}>🎙️</Text>
+              <Text style={[styles.sectionTitle, { color: '#7C3AED' }]}>Tác phong & Giao tiếp</Text>
+            </View>
+            <View style={styles.commRow}>
+              <Text style={styles.commLabel}>Giọng nói & thái độ</Text>
+              <Text style={styles.commValue}>{result.communication.tone}</Text>
+            </View>
+            <View style={styles.commDivider} />
+            <View style={styles.commRow}>
+              <Text style={styles.commLabel}>Kỹ năng lắng nghe</Text>
+              <Text style={styles.commValue}>{result.communication.listening}</Text>
+            </View>
+            <View style={styles.commDivider} />
+            <View style={styles.commRow}>
+              <Text style={styles.commLabel}>Kỹ năng đặt câu hỏi</Text>
+              <Text style={styles.commValue}>{result.communication.questioning}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Strengths */}
         <SectionCard
           emoji="💪"
@@ -314,6 +338,35 @@ export default function ResultScreen() {
           backgroundColor="#FFFAF0"
           accentColor={COLORS.WARNING}
         />
+
+        {/* Scenario - Kịch bản mẫu */}
+        {result.scenario && (
+          <View style={[styles.sectionCard, { backgroundColor: '#FFF5F5' }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEmoji}>🎬</Text>
+              <Text style={[styles.sectionTitle, { color: '#E53E3E' }]}>Kịch bản cải thiện</Text>
+            </View>
+            <Text style={styles.scenarioLabel}>Tình huống:</Text>
+            <Text style={styles.scenarioText}>{result.scenario.situation}</Text>
+            <View style={styles.commDivider} />
+            <Text style={[styles.scenarioLabel, { color: COLORS.DANGER }]}>Sales đã làm:</Text>
+            <Text style={styles.scenarioText}>{result.scenario.wrong}</Text>
+            <View style={styles.commDivider} />
+            <Text style={[styles.scenarioLabel, { color: COLORS.SUCCESS }]}>Nên làm thay:</Text>
+            <Text style={[styles.scenarioText, { fontStyle: 'italic' }]}>{result.scenario.correct}</Text>
+          </View>
+        )}
+
+        {/* Next Actions */}
+        {result.nextActions && result.nextActions.length > 0 && (
+          <SectionCard
+            emoji="✅"
+            title="Việc cần làm ngay"
+            items={result.nextActions}
+            backgroundColor="#F0FFF4"
+            accentColor="#2B6CB0"
+          />
+        )}
 
         {/* Strategies */}
         <SectionCard
@@ -529,6 +582,39 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT,
     flex: 1,
     lineHeight: 20,
+  },
+  commRow: {
+    paddingVertical: 10,
+  },
+  commLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  commValue: {
+    fontSize: 13,
+    color: COLORS.TEXT,
+    lineHeight: 20,
+  },
+  commDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+  },
+  scenarioLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  scenarioText: {
+    fontSize: 13,
+    color: COLORS.TEXT,
+    lineHeight: 21,
+    marginBottom: 4,
   },
   saveButton: {
     backgroundColor: COLORS.PRIMARY,
