@@ -155,38 +155,43 @@ export default function ConversationListScreen() {
             />
 
             {/* Customer picker */}
-            {customers.length > 0 && (
-              <>
-                <Text style={styles.pickerLabel}>Chọn khách hàng để AI có sẵn dữ liệu:</Text>
-                <FlatList
-                  data={[{ id: null, name: 'Không chọn — hỏi chung', company: '' } as any, ...customers]}
-                  keyExtractor={item => item.id || 'none'}
-                  style={{ maxHeight: 200 }}
-                  renderItem={({ item }) => {
-                    const isSelected = item.id === selectedCustomerId;
-                    return (
-                      <TouchableOpacity
-                        style={[styles.customerOption, isSelected && { backgroundColor: C.PRIMARY + '12', borderColor: C.PRIMARY }]}
-                        onPress={() => setSelectedCustomerId(item.id)}
-                      >
-                        <View style={[styles.customerAvatar, { backgroundColor: item.id ? C.PRIMARY + '14' : COLORS.SURFACE }]}>
-                          <Ionicons
-                            name={item.id ? 'person' : 'globe-outline'}
-                            size={16}
-                            color={item.id ? C.PRIMARY : COLORS.TEXT_LIGHT}
-                          />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.customerName, isSelected && { color: C.PRIMARY }]}>{item.name}</Text>
-                          {item.company ? <Text style={styles.customerCompany}>{item.company}</Text> : null}
-                          {item.stage ? <Text style={styles.customerStage}>{item.stage}</Text> : null}
-                        </View>
-                        {isSelected && <Ionicons name="checkmark-circle" size={20} color={C.PRIMARY} />}
-                      </TouchableOpacity>
-                    );
-                  }}
-                />
-              </>
+            <Text style={styles.pickerLabel}>Chọn khách hàng để AI có sẵn dữ liệu:</Text>
+            {customers.length > 0 ? (
+              <FlatList
+                data={[{ id: null, name: 'Không chọn — hỏi chung', company: '', stage: '' } as any, ...customers]}
+                keyExtractor={item => item.id || 'none'}
+                style={{ maxHeight: 220 }}
+                renderItem={({ item }) => {
+                  const isSelected = item.id === selectedCustomerId;
+                  return (
+                    <TouchableOpacity
+                      style={[styles.customerOption, isSelected && { backgroundColor: C.PRIMARY + '12', borderColor: C.PRIMARY }]}
+                      onPress={() => setSelectedCustomerId(item.id)}
+                    >
+                      <View style={[styles.customerAvatar, { backgroundColor: item.id ? C.PRIMARY + '14' : COLORS.SURFACE }]}>
+                        <Ionicons
+                          name={item.id ? 'person' : 'globe-outline'}
+                          size={16}
+                          color={item.id ? C.PRIMARY : COLORS.TEXT_LIGHT}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.customerName, isSelected && { color: C.PRIMARY }]}>{item.name}</Text>
+                        {item.company ? <Text style={styles.customerCompany}>{item.company}</Text> : null}
+                        {item.stage ? <Text style={styles.customerStage}>{item.stage}</Text> : null}
+                      </View>
+                      {isSelected && <Ionicons name="checkmark-circle" size={20} color={C.PRIMARY} />}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            ) : (
+              <View style={styles.noCustomerHint}>
+                <Ionicons name="information-circle-outline" size={18} color={COLORS.TEXT_LIGHT} />
+                <Text style={styles.noCustomerText}>
+                  Chưa có khách hàng. Ghi âm cuộc gọi và nhập tên khách → AI sẽ tự tạo hồ sơ khách hàng.
+                </Text>
+              </View>
             )}
 
             <View style={styles.modalButtons}>
@@ -263,6 +268,11 @@ const styles = StyleSheet.create({
   customerName: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT },
   customerCompany: { fontSize: 11, color: COLORS.TEXT_LIGHT },
   customerStage: { fontSize: 10, color: COLORS.TEXT_LIGHT, fontStyle: 'italic' },
+  noCustomerHint: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: COLORS.BACKGROUND, borderRadius: 10, padding: 12,
+  },
+  noCustomerText: { flex: 1, fontSize: 13, color: COLORS.TEXT_LIGHT, lineHeight: 19 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 16 },
   modalCancelBtn: {
     flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, borderColor: COLORS.BORDER, alignItems: 'center',
