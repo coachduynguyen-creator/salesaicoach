@@ -316,6 +316,29 @@ export interface ICPProfile {
   fitLevel: string;          // Kim Cương / Vàng / Bạc / Đồng
 }
 
+// Hệ thống chấm điểm tiềm năng — 5 tiêu chí, mỗi tiêu chí 0-20 điểm
+export interface LeadScoringCriteria {
+  score: number;       // 0-20
+  level: string;       // Mô tả mức (VD: "Rất phù hợp", "Chưa rõ"...)
+  detail: string;      // Giải thích ngắn
+}
+
+export interface LeadScoring {
+  productFit: LeadScoringCriteria;      // Sản phẩm phù hợp
+  financialFit: LeadScoringCriteria;    // Tài chính phù hợp
+  decisionMakerAccess: LeadScoringCriteria; // Gặp được người QĐ
+  timeline: LeadScoringCriteria;        // Thời gian ra quyết định
+  engagement: LeadScoringCriteria;      // Số lần tương tác
+}
+
+export const EMPTY_SCORING: LeadScoring = {
+  productFit: { score: 0, level: 'Chưa đánh giá', detail: '' },
+  financialFit: { score: 0, level: 'Chưa đánh giá', detail: '' },
+  decisionMakerAccess: { score: 0, level: 'Chưa đánh giá', detail: '' },
+  timeline: { score: 0, level: 'Chưa đánh giá', detail: '' },
+  engagement: { score: 0, level: 'Chưa đánh giá', detail: '' },
+};
+
 export interface DecisionMaker {
   name: string;
   role: string;              // Vai trò trong quyết định (người quyết định, người ảnh hưởng, người sử dụng)
@@ -340,8 +363,10 @@ export interface CustomerProfile {
   // ICP mở rộng
   icp: Partial<ICPProfile>;
   decisionMakers: DecisionMaker[];
-  leadScore: number;         // 0-100 điểm tiềm năng
-  customFields: Record<string, string>; // Tiêu chí sales tự thêm
+  leadScore: number;         // 0-100 tổng điểm
+  scoring: LeadScoring;      // Chi tiết từng tiêu chí
+  aiRecommendation: string;  // Đề xuất AI dựa trên hồ sơ
+  customFields: Record<string, string>;
   // Metadata
   notes: CustomerNote[];
   sessionIds: string[];
@@ -359,7 +384,7 @@ export const saveCustomers = async (customers: CustomerProfile[]): Promise<void>
   await AsyncStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(customers));
 };
 
-export const addCustomer = async (customer: Omit<CustomerProfile, 'id' | 'createdAt' | 'updatedAt' | 'notes' | 'sessionIds' | 'icp' | 'decisionMakers' | 'leadScore' | 'customFields'> & { icp?: Partial<ICPProfile> }): Promise<CustomerProfile> => {
+export const addCustomer = async (customer: Omit<CustomerProfile, 'id' | 'createdAt' | 'updatedAt' | 'notes' | 'sessionIds' | 'icp' | 'decisionMakers' | 'leadScore' | 'scoring' | 'aiRecommendation' | 'customFields'> & { icp?: Partial<ICPProfile> }): Promise<CustomerProfile> => {
   const customers = await loadCustomers();
   const now = new Date().toISOString();
   const newCustomer: CustomerProfile = {
@@ -368,6 +393,8 @@ export const addCustomer = async (customer: Omit<CustomerProfile, 'id' | 'create
     icp: customer.icp || {},
     decisionMakers: [],
     leadScore: 0,
+    scoring: EMPTY_SCORING,
+    aiRecommendation: '',
     customFields: {},
     notes: [],
     sessionIds: [],
@@ -397,38 +424,18 @@ export const deleteCustomer = async (id: string): Promise<void> => {
   await saveCustomers(customers.filter(c => c.id !== id));
 };
 
-// Tính điểm tiềm năng dựa trên thông tin đã thu thập
+// Tính tổng điểm từ 5 tiêu chí scoring
 export const calculateLeadScore = (customer: CustomerProfile): number => {
-  let score = 0;
-  const max = 100;
+  const s = customer.scoring || EMPTY_SCORING;
+  return s.productFit.score + s.financialFit.score + s.decisionMakerAccess.score + s.timeline.score + s.engagement.score;
+};
 
-  // Core fields (40 điểm)
-  if (customer.needs) score += 8;
-  if (customer.budget) score += 8;
-  if (customer.stage) {
-    const s = customer.stage.toLowerCase();
-    if (s.includes('chốt') || s.includes('đã chốt')) score += 12;
-    else if (s.includes('so sánh')) score += 10;
-    else if (s.includes('tìm hiểu')) score += 6;
-    else score += 3;
-  }
-  if (customer.decisionFactors) score += 6;
-  if (customer.nextStep) score += 6;
-
-  // ICP fields (40 điểm)
-  const icp = customer.icp || {};
-  const icpFields = [
-    icp.painPoints, icp.deepFears, icp.desires, icp.buyingTriggers,
-    icp.investBudget, icp.influencers, icp.functionalJob, icp.awarenessLevel,
-  ];
-  score += icpFields.filter(Boolean).length * 5;
-
-  // Decision makers (10 điểm)
-  if (customer.decisionMakers?.length) score += Math.min(10, customer.decisionMakers.length * 5);
-
-  // Engagement (10 điểm)
-  const sessions = customer.sessionIds?.length || 0;
-  score += Math.min(10, sessions * 3);
-
-  return Math.min(max, score);
+// Tự động tính engagement score từ dữ liệu
+export const autoUpdateEngagement = (customer: CustomerProfile): LeadScoringCriteria => {
+  const count = customer.sessionIds?.length || 0;
+  if (count >= 5) return { score: 20, level: 'Rất tích cực', detail: `${count} cuộc gọi — khách rất quan tâm` };
+  if (count >= 3) return { score: 15, level: 'Tích cực', detail: `${count} cuộc gọi — đang tương tác tốt` };
+  if (count >= 2) return { score: 10, level: 'Trung bình', detail: `${count} cuộc gọi` };
+  if (count >= 1) return { score: 5, level: 'Mới bắt đầu', detail: `${count} cuộc gọi — cần tương tác thêm` };
+  return { score: 0, level: 'Chưa tương tác', detail: 'Chưa có cuộc gọi nào' };
 };

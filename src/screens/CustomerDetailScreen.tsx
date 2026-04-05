@@ -9,9 +9,10 @@ import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
 import { useAlert } from '../contexts/AlertContext';
 import {
-  loadCustomers, updateCustomer, loadSessions, calculateLeadScore,
-  CustomerProfile, Session, DecisionMaker, addConversation,
+  loadCustomers, updateCustomer, loadSessions, calculateLeadScore, autoUpdateEngagement,
+  CustomerProfile, Session, DecisionMaker, LeadScoring, EMPTY_SCORING, addConversation,
 } from '../services/storageService';
+import { scoreCustomerWithAI } from '../services/aiService';
 
 type RouteParams = { CustomerDetail: { customerId: string } };
 
@@ -62,15 +63,42 @@ function EditableField({ label, value, icon, onSave }: {
   );
 }
 
-// ─── Score Badge ─────────────────────────────────────────────────────────────
+// ─── Score Bar (1 tiêu chí) ──────────────────────────────────────────────────
 
-function ScoreBadge({ score }: { score: number }) {
+function ScoreBar({ label, score, maxScore, detail, icon }: {
+  label: string; score: number; maxScore: number; detail: string; icon: string;
+}) {
+  const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
+  const color = pct >= 75 ? '#10B981' : pct >= 50 ? '#F59E0B' : pct >= 25 ? '#F97316' : '#EF4444';
+  return (
+    <View style={styles.scoreBarWrap}>
+      <View style={styles.scoreBarHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name={icon as any} size={14} color={color} />
+          <Text style={styles.scoreBarLabel}>{label}</Text>
+        </View>
+        <Text style={[styles.scoreBarPoints, { color }]}>{score}/{maxScore}</Text>
+      </View>
+      <View style={styles.scoreBarTrack}>
+        <View style={[styles.scoreBarFill, { width: `${pct}%`, backgroundColor: color }]} />
+      </View>
+      {detail ? <Text style={styles.scoreBarDetail}>{detail}</Text> : null}
+    </View>
+  );
+}
+
+// ─── Total Score Badge ──────────────────────────────────────────────────────
+
+function TotalScoreBadge({ score }: { score: number }) {
   const color = score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#EF4444';
   const label = score >= 70 ? 'Tiềm năng cao' : score >= 40 ? 'Trung bình' : 'Cần nurturing';
   return (
-    <View style={[styles.scoreBadge, { backgroundColor: color }]}>
-      <Text style={styles.scoreNumber}>{score}</Text>
-      <Text style={styles.scoreLabel}>{label}</Text>
+    <View style={{ alignItems: 'center' }}>
+      <View style={[styles.totalScoreCircle, { borderColor: color }]}>
+        <Text style={[styles.totalScoreNum, { color }]}>{score}</Text>
+        <Text style={styles.totalScoreMax}>/100</Text>
+      </View>
+      <Text style={[styles.totalScoreLabel, { color }]}>{label}</Text>
     </View>
   );
 }
@@ -113,12 +141,18 @@ export default function CustomerDetailScreen() {
   const [dmRole, setDmRole] = useState('');
   const [dmAttitude, setDmAttitude] = useState('trung lập');
 
+  const [isScoring, setIsScoring] = useState(false);
+
   const loadData = useCallback(async () => {
     const all = await loadCustomers();
     const found = all.find(c => c.id === customerId);
     if (found) {
+      // Auto update engagement score
+      const scoring = { ...(found.scoring || EMPTY_SCORING) };
+      scoring.engagement = autoUpdateEngagement(found);
+      found.scoring = scoring;
       found.leadScore = calculateLeadScore(found);
-      await updateCustomer(found.id, { leadScore: found.leadScore });
+      await updateCustomer(found.id, { scoring, leadScore: found.leadScore });
       setCustomer(found);
       if (found.sessionIds?.length) {
         const allSessions = await loadSessions();
@@ -126,6 +160,37 @@ export default function CustomerDetailScreen() {
       }
     }
   }, [customerId]);
+
+  const runAIScoring = useCallback(async () => {
+    if (!customer) return;
+    setIsScoring(true);
+    const summary = [
+      `Tên: ${customer.name}`, customer.company ? `Công ty: ${customer.company}` : '',
+      customer.needs ? `Nhu cầu: ${customer.needs}` : '', customer.budget ? `Ngân sách: ${customer.budget}` : '',
+      customer.concerns ? `Lo ngại: ${customer.concerns}` : '', customer.stage ? `Giai đoạn: ${customer.stage}` : '',
+      customer.decisionFactors ? `Yếu tố QĐ: ${customer.decisionFactors}` : '',
+      customer.personality ? `Tính cách: ${customer.personality}` : '',
+      customer.nextStep ? `Bước tiếp: ${customer.nextStep}` : '',
+      customer.decisionMakers?.length ? `Người QĐ: ${customer.decisionMakers.map(d => `${d.name} (${d.role}, ${d.attitude})`).join(', ')}` : '',
+      customer.icp?.painPoints ? `Nỗi đau: ${customer.icp.painPoints}` : '',
+      customer.icp?.buyingTriggers ? `Trigger mua: ${customer.icp.buyingTriggers}` : '',
+      `Số cuộc gọi: ${customer.sessionIds?.length || 0}`,
+    ].filter(Boolean).join('\n');
+
+    const result = await scoreCustomerWithAI(summary);
+    if (result) {
+      const scoring = { ...(customer.scoring || EMPTY_SCORING) };
+      scoring.productFit = result.productFit;
+      scoring.financialFit = result.financialFit;
+      scoring.decisionMakerAccess = result.decisionMakerAccess;
+      scoring.timeline = result.timeline;
+      scoring.engagement = autoUpdateEngagement(customer);
+      const leadScore = scoring.productFit.score + scoring.financialFit.score + scoring.decisionMakerAccess.score + scoring.timeline.score + scoring.engagement.score;
+      await updateCustomer(customer.id, { scoring, leadScore, aiRecommendation: result.recommendation });
+      setCustomer(prev => prev ? { ...prev, scoring, leadScore, aiRecommendation: result.recommendation } : prev);
+    }
+    setIsScoring(false);
+  }, [customer]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
@@ -177,6 +242,7 @@ export default function CustomerDetailScreen() {
   if (!customer) return null;
 
   const icp = customer.icp || {};
+  const scoring = customer.scoring || EMPTY_SCORING;
   const fitColor = (icp.fitLevel || '').includes('Kim') ? '#10B981'
     : (icp.fitLevel || '').includes('Vàng') ? '#F59E0B'
     : (icp.fitLevel || '').includes('Bạc') ? '#9CA3AF'
@@ -218,7 +284,6 @@ export default function CustomerDetailScreen() {
                 </View>
               ) : null}
             </View>
-            <ScoreBadge score={customer.leadScore || 0} />
           </View>
           {icp.fitLevel ? (
             <View style={[styles.fitBadge, { backgroundColor: fitColor + '18' }]}>
@@ -240,6 +305,52 @@ export default function CustomerDetailScreen() {
             <Text style={styles.actionBtnText}>Chat AI Coach</Text>
           </TouchableOpacity>
         </View>
+
+        {/* SCORING SECTION */}
+        <View style={styles.scoringCard}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.scoringTitle}>Điểm tiềm năng</Text>
+              <Text style={styles.scoringSubtitle}>5 tiêu chí — mỗi tiêu chí tối đa 20 điểm</Text>
+            </View>
+            <TotalScoreBadge score={customer.leadScore || 0} />
+          </View>
+
+          <View style={{ marginTop: 16, gap: 12 }}>
+            <ScoreBar label="Sản phẩm phù hợp" score={scoring.productFit.score} maxScore={20}
+              detail={scoring.productFit.detail} icon="pricetag-outline" />
+            <ScoreBar label="Tài chính phù hợp" score={scoring.financialFit.score} maxScore={20}
+              detail={scoring.financialFit.detail} icon="wallet-outline" />
+            <ScoreBar label="Gặp người QĐ" score={scoring.decisionMakerAccess.score} maxScore={20}
+              detail={scoring.decisionMakerAccess.detail} icon="shield-checkmark-outline" />
+            <ScoreBar label="Thời gian QĐ" score={scoring.timeline.score} maxScore={20}
+              detail={scoring.timeline.detail} icon="timer-outline" />
+            <ScoreBar label="Số lần tương tác" score={scoring.engagement.score} maxScore={20}
+              detail={scoring.engagement.detail} icon="pulse-outline" />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.aiScoreBtn, { backgroundColor: C.PRIMARY }, isScoring && { opacity: 0.6 }]}
+            onPress={runAIScoring}
+            disabled={isScoring}
+          >
+            <Ionicons name="sparkles" size={16} color="#fff" />
+            <Text style={styles.aiScoreBtnText}>{isScoring ? 'Đang chấm điểm...' : 'AI chấm điểm lại'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* AI RECOMMENDATION */}
+        {customer.aiRecommendation ? (
+          <View style={[styles.section, { borderLeftColor: '#8B5CF6' }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="bulb" size={18} color="#8B5CF6" />
+              <Text style={[styles.sectionTitle, { color: '#8B5CF6' }]}>Đề xuất AI</Text>
+            </View>
+            <View style={styles.sectionBody}>
+              <Text style={{ fontSize: 14, color: COLORS.TEXT, lineHeight: 22 }}>{customer.aiRecommendation}</Text>
+            </View>
+          </View>
+        ) : null}
 
         {/* I. Liên hệ */}
         <ICPSection title="Liên hệ" icon="call-outline" color={C.PRIMARY}>
@@ -405,6 +516,23 @@ const styles = StyleSheet.create({
   topBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: COLORS.BACKGROUND, alignItems: 'center', justifyContent: 'center' },
   topBarTitle: { fontSize: 16, fontWeight: '700', color: COLORS.TEXT, flex: 1, textAlign: 'center' },
   scroll: { padding: 16, paddingBottom: 40 },
+  // Scoring
+  scoringCard: { backgroundColor: COLORS.CARD, borderRadius: 16, padding: 18, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  scoringTitle: { fontSize: 17, fontWeight: '800', color: COLORS.TEXT },
+  scoringSubtitle: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginTop: 2 },
+  scoreBarWrap: { gap: 4 },
+  scoreBarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  scoreBarLabel: { fontSize: 13, fontWeight: '600', color: COLORS.TEXT },
+  scoreBarPoints: { fontSize: 13, fontWeight: '800' },
+  scoreBarTrack: { height: 6, backgroundColor: COLORS.BORDER, borderRadius: 3, overflow: 'hidden' },
+  scoreBarFill: { height: 6, borderRadius: 3 },
+  scoreBarDetail: { fontSize: 11, color: COLORS.TEXT_LIGHT, fontStyle: 'italic' },
+  totalScoreCircle: { width: 64, height: 64, borderRadius: 32, borderWidth: 4, alignItems: 'center', justifyContent: 'center' },
+  totalScoreNum: { fontSize: 20, fontWeight: '800' },
+  totalScoreMax: { fontSize: 10, color: COLORS.TEXT_LIGHT },
+  totalScoreLabel: { fontSize: 11, fontWeight: '700', marginTop: 4 },
+  aiScoreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, paddingVertical: 12, borderRadius: 10 },
+  aiScoreBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   // Hero
   heroCard: { backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
   avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
@@ -413,9 +541,6 @@ const styles = StyleSheet.create({
   heroCompany: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 1 },
   stageBadgeSmall: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, marginTop: 4 },
   stageTextSmall: { fontSize: 11, fontWeight: '700' },
-  scoreBadge: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  scoreNumber: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  scoreLabel: { fontSize: 8, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
   fitBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginTop: 10 },
   fitText: { fontSize: 12, fontWeight: '700' },
   // Actions

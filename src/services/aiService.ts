@@ -532,6 +532,66 @@ export const extractCustomerInfo = async (transcript: string): Promise<Extracted
   }
 };
 
+// ─── Step 4: AI chấm điểm tiềm năng + đề xuất hành động ────────────────────
+
+export interface AIScoreResult {
+  productFit: { score: number; level: string; detail: string };
+  financialFit: { score: number; level: string; detail: string };
+  decisionMakerAccess: { score: number; level: string; detail: string };
+  timeline: { score: number; level: string; detail: string };
+  recommendation: string;
+}
+
+export const scoreCustomerWithAI = async (profileSummary: string): Promise<AIScoreResult | null> => {
+  if (!CLAUDE_API_KEY) return null;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system: `Bạn là chuyên gia đánh giá khách hàng tiềm năng (lead scoring).
+Chấm điểm 4 tiêu chí (0-20 mỗi tiêu chí) dựa trên thông tin hồ sơ khách hàng.
+Mỗi tiêu chí có 4 mức: 0-5 (Chưa rõ), 6-10 (Thấp), 11-15 (Trung bình), 16-20 (Cao).
+Đưa ra đề xuất hành động cụ thể (2-3 câu, tiếng Việt tự nhiên).
+CHỈ trả về JSON.`,
+        messages: [
+          { role: 'user', content: `Hồ sơ khách hàng:\n${profileSummary}\n\nJSON:
+{
+  "productFit":{"score":<0-20>,"level":"<Rất phù hợp/Phù hợp/Chưa rõ/Không phù hợp>","detail":"<1 câu giải thích>"},
+  "financialFit":{"score":<0-20>,"level":"<Đủ ngân sách/Có thể/Hạn chế/Chưa rõ>","detail":"<1 câu>"},
+  "decisionMakerAccess":{"score":<0-20>,"level":"<Đã gặp/Gián tiếp/Chưa gặp/Không rõ>","detail":"<1 câu>"},
+  "timeline":{"score":<0-20>,"level":"<Gấp/1-3 tháng/3-6 tháng/Chưa rõ>","detail":"<1 câu>"},
+  "recommendation":"<2-3 câu: phân tích tổng quan + đề xuất hành động cụ thể tiếp theo>"
+}` },
+          { role: 'assistant', content: '{' },
+        ],
+      }),
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const rawText = '{' + (data.content[0].text as string);
+    const cleaned = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end !== -1) {
+      return JSON.parse(cleaned.slice(start, end + 1)) as AIScoreResult;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 // ─── Full pipeline: audio → transcript → sửa lỗi → analysis ────────────────
 
 export const analyzeRecording = async (audioUri: string, knowledgeBase?: string): Promise<AnalysisResult> => {
