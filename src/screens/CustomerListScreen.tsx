@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
-import { loadCustomers, deleteCustomer, CustomerProfile } from '../services/storageService';
+import { loadCustomers, deleteCustomer, CustomerProfile, loadSessions, addCustomer, updateCustomer } from '../services/storageService';
 
 const STAGE_COLORS: Record<string, string> = {
   'mới tiếp cận': '#9F7AEA',
@@ -31,10 +31,71 @@ export default function CustomerListScreen() {
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [search, setSearch] = useState('');
 
+  // Sync khách hàng từ sessions cũ vào CRM
+  const syncCustomersFromSessions = useCallback(async () => {
+    const [existingCustomers, sessions] = await Promise.all([loadCustomers(), loadSessions()]);
+
+    const customerNames = new Set(existingCustomers.map(c => c.name.toLowerCase().trim()));
+    const toCreate: Record<string, { name: string; company: string; sessionIds: string[]; dates: string[]; scores: number[] }> = {};
+
+    for (const s of sessions) {
+      const name = s.customerName?.trim();
+      if (!name || name === 'Khách hàng' || name === 'Chưa nhập tên') continue;
+      const key = name.toLowerCase();
+      if (customerNames.has(key)) {
+        // Khách đã có — thêm sessionId nếu chưa có
+        const existing = existingCustomers.find(c => c.name.toLowerCase().trim() === key);
+        if (existing && !(existing.sessionIds || []).includes(s.id)) {
+          await updateCustomer(existing.id, {
+            sessionIds: [...(existing.sessionIds || []), s.id],
+          });
+        }
+        continue;
+      }
+      if (!toCreate[key]) {
+        toCreate[key] = { name, company: s.companyName || '', sessionIds: [], dates: [], scores: [] };
+      }
+      toCreate[key].sessionIds.push(s.id);
+      toCreate[key].dates.push(s.date);
+      toCreate[key].scores.push(s.score);
+    }
+
+    for (const data of Object.values(toCreate)) {
+      const avgScore = data.scores.length > 0
+        ? (data.scores.reduce((a, b) => a + b, 0) / data.scores.length).toFixed(1)
+        : '';
+      const newCustomer = await addCustomer({
+        name: data.name,
+        company: data.company,
+        phone: '',
+        email: '',
+        needs: '',
+        budget: '',
+        concerns: '',
+        stage: '',
+        decisionFactors: '',
+        personality: '',
+        nextStep: '',
+      });
+      await updateCustomer(newCustomer.id, {
+        sessionIds: data.sessionIds,
+        notes: data.dates.map((d, i) => ({
+          date: d,
+          content: `Điểm: ${data.scores[i]?.toFixed(1) || '?'}/10`,
+          sessionId: data.sessionIds[i],
+        })),
+      });
+    }
+
+    // Reload
+    const updated = await loadCustomers();
+    setCustomers(updated);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      loadCustomers().then(setCustomers);
-    }, [])
+      syncCustomersFromSessions();
+    }, [syncCustomersFromSessions])
   );
 
   const filtered = search.trim()
