@@ -426,6 +426,7 @@ Giữ nguyên xưng hô, giọng văn, câu cú. Trả về transcript đã sử
 // ─── Step 3: Trích xuất thông tin khách hàng từ transcript (CRM) ────────────
 
 export interface ExtractedCustomerInfo {
+  // Core
   needs: string;
   budget: string;
   concerns: string;
@@ -434,12 +435,37 @@ export interface ExtractedCustomerInfo {
   personality: string;
   nextStep: string;
   callSummary: string;
+  // ICP mở rộng
+  icp: {
+    role?: string;
+    painPoints?: string;
+    deepFears?: string;
+    desires?: string;
+    emotionStyle?: string;
+    decisionStyle?: string;
+    functionalJob?: string;
+    awarenessLevel?: string;
+    influencers?: string;
+    buyingBarriers?: string;
+    buyingTriggers?: string;
+    investBudget?: string;
+    biggestRisk?: string;
+    fitLevel?: string;
+  };
+  decisionMaker?: {
+    name: string;
+    role: string;
+    attitude: string;
+  };
 }
 
+const EMPTY_EXTRACTED: ExtractedCustomerInfo = {
+  needs: '', budget: '', concerns: '', stage: '', decisionFactors: '',
+  personality: '', nextStep: '', callSummary: '', icp: {},
+};
+
 export const extractCustomerInfo = async (transcript: string): Promise<ExtractedCustomerInfo> => {
-  if (!CLAUDE_API_KEY) {
-    return { needs: '', budget: '', concerns: '', stage: '', decisionFactors: '', personality: '', nextStep: '', callSummary: '' };
-  }
+  if (!CLAUDE_API_KEY) return EMPTY_EXTRACTED;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -452,30 +478,57 @@ export const extractCustomerInfo = async (transcript: string): Promise<Extracted
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: `Trích xuất thông tin khách hàng từ transcript cuộc gọi sales.
-100% tiếng Việt, ngắn gọn. Nếu không có thông tin thì để trống "".
-CHỈ trả về JSON, không giải thích.`,
+        max_tokens: 2048,
+        system: `Trích xuất chân dung khách hàng (ICP) từ transcript cuộc gọi sales.
+Điền tất cả thông tin có thể suy ra được. Nếu không có dữ liệu thì để "".
+100% tiếng Việt, ngắn gọn 1-2 câu mỗi field. CHỈ trả về JSON.`,
         messages: [
-          { role: 'user', content: `Từ cuộc gọi sau, trích xuất thông tin khách hàng:\n\n${transcript}\n\nJSON:\n{"needs":"<nhu cầu chính của khách>","budget":"<ngân sách hoặc mức đầu tư khách đề cập>","concerns":"<lo ngại, phản đối, lý do chần chừ>","stage":"<giai đoạn: mới tiếp cận / đang tìm hiểu / đang so sánh / sắp chốt / đã chốt>","decisionFactors":"<yếu tố khách quan tâm nhất khi ra quyết định>","personality":"<phong cách giao tiếp: nóng vội, cẩn thận, thân thiện, hoài nghi...>","nextStep":"<bước tiếp theo đã thống nhất hoặc cần làm>","callSummary":"<tóm tắt 1-2 câu về cuộc gọi này>"}` },
+          { role: 'user', content: `Transcript:\n${transcript}\n\nJSON:
+{
+  "needs":"<nhu cầu chính>",
+  "budget":"<ngân sách đề cập>",
+  "concerns":"<lo ngại, phản đối>",
+  "stage":"<mới tiếp cận / đang tìm hiểu / đang so sánh / sắp chốt / đã chốt>",
+  "decisionFactors":"<yếu tố quyết định>",
+  "personality":"<phong cách: nóng vội, cẩn thận, thân thiện, hoài nghi...>",
+  "nextStep":"<bước tiếp theo>",
+  "callSummary":"<tóm tắt 1-2 câu>",
+  "icp":{
+    "role":"<vai trò/nghề nghiệp>",
+    "painPoints":"<3-5 vấn đề trăn trở>",
+    "deepFears":"<nỗi sợ không nói ra: sợ mất tiền, mất mặt, thất bại...>",
+    "desires":"<ước mơ, khát vọng>",
+    "emotionStyle":"<cảm xúc chủ đạo khi quyết định: lo lắng, hứng khởi, tò mò...>",
+    "decisionStyle":"<cảm xúc trước hay lý trí trước>",
+    "functionalJob":"<điều muốn làm tốt hơn>",
+    "awarenessLevel":"<1-5: 1=chưa biết vấn đề, 5=sẵn sàng mua>",
+    "influencers":"<ai ảnh hưởng: vợ/chồng, sếp, đồng nghiệp...>",
+    "buyingBarriers":"<rào cản: thiếu tiền, thiếu thời gian, thiếu niềm tin...>",
+    "buyingTriggers":"<yếu tố kích hoạt mua>",
+    "investBudget":"<mức sẵn sàng chi>",
+    "biggestRisk":"<rủi ro sợ nhất>",
+    "fitLevel":"<Kim Cương / Vàng / Bạc / Đồng — dựa trên nhu cầu + nguồn lực + mức phù hợp>"
+  },
+  "decisionMaker":{"name":"<tên người QĐ nếu đề cập>","role":"<vai trò>","attitude":"<ủng hộ/trung lập/phản đối>"}
+}` },
           { role: 'assistant', content: '{' },
         ],
       }),
     });
 
-    if (!response.ok) {
-      return { needs: '', budget: '', concerns: '', stage: '', decisionFactors: '', personality: '', nextStep: '', callSummary: '' };
-    }
+    if (!response.ok) return EMPTY_EXTRACTED;
 
     const data = await response.json();
     const rawText = '{' + (data.content[0].text as string);
     const cleaned = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
-    if (start === -1 || end === -1) throw new Error('No JSON');
-    return JSON.parse(cleaned.slice(start, end + 1)) as ExtractedCustomerInfo;
+    if (start !== -1 && end !== -1 && end > start) {
+      return JSON.parse(cleaned.slice(start, end + 1)) as ExtractedCustomerInfo;
+    }
+    return recoverTruncatedJSON(cleaned) as any;
   } catch {
-    return { needs: '', budget: '', concerns: '', stage: '', decisionFactors: '', personality: '', nextStep: '', callSummary: '' };
+    return EMPTY_EXTRACTED;
   }
 };
 

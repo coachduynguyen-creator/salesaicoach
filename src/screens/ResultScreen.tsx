@@ -313,8 +313,16 @@ export default function ResultScreen() {
           const info = await extractCustomerInfo(result.transcript);
           const existing = await findCustomerByName(customerName);
 
+          // Merge ICP data
+          const icpData = info.icp || {};
+          const dmData = info.decisionMaker?.name ? [info.decisionMaker as any] : [];
+
           if (existing) {
-            // Cập nhật khách cũ — merge thông tin mới
+            const mergedIcp = { ...(existing.icp || {}), ...Object.fromEntries(Object.entries(icpData).filter(([_, v]) => v)) };
+            const mergedDMs = [...(existing.decisionMakers || [])];
+            if (dmData.length && !mergedDMs.some(d => d.name === dmData[0].name)) {
+              mergedDMs.push({ ...dmData[0], notes: '' });
+            }
             const updatedNotes = [...(existing.notes || []), {
               date,
               content: info.callSummary || `Điểm: ${result.score}/10`,
@@ -328,28 +336,26 @@ export default function ResultScreen() {
               decisionFactors: info.decisionFactors || existing.decisionFactors,
               personality: info.personality || existing.personality,
               nextStep: info.nextStep || existing.nextStep,
+              icp: mergedIcp,
+              decisionMakers: mergedDMs,
               notes: updatedNotes,
               sessionIds: [...(existing.sessionIds || []), session.id],
             });
           } else {
-            // Tạo khách mới
-            await addCustomer({
+            const newCustomer = await addCustomer({
               name: customerName,
               company: (route.params as any)?.companyName ?? '',
-              phone: '',
-              email: '',
-              needs: info.needs,
-              budget: info.budget,
-              concerns: info.concerns,
-              stage: info.stage,
+              phone: '', email: '',
+              needs: info.needs, budget: info.budget,
+              concerns: info.concerns, stage: info.stage,
               decisionFactors: info.decisionFactors,
-              personality: info.personality,
-              nextStep: info.nextStep,
-            }).then(async (newCustomer) => {
-              await updateCustomer(newCustomer.id, {
-                notes: [{ date, content: info.callSummary || `Điểm: ${result.score}/10`, sessionId: session.id }],
-                sessionIds: [session.id],
-              });
+              personality: info.personality, nextStep: info.nextStep,
+              icp: icpData,
+            });
+            await updateCustomer(newCustomer.id, {
+              decisionMakers: dmData.map((d: any) => ({ ...d, notes: '' })),
+              notes: [{ date, content: info.callSummary || `Điểm: ${result.score}/10`, sessionId: session.id }],
+              sessionIds: [session.id],
             });
           }
         } catch {

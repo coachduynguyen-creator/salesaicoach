@@ -275,22 +275,76 @@ export interface CustomerNote {
   sessionId?: string;
 }
 
+// ICP — Chân dung khách hàng theo 12 tiêu chí
+export interface ICPProfile {
+  // I. Tổng quan
+  role: string;              // Vai trò / nghề nghiệp
+  ageRange: string;          // Độ tuổi / giới tính / khu vực
+  income: string;            // Thu nhập / doanh thu / quy mô
+  experience: string;        // Trình độ / kinh nghiệm
+  techLevel: string;         // Mức sử dụng công nghệ
+  currentSituation: string;  // Tình trạng hiện tại
+
+  // II. Tâm lý
+  painPoints: string;        // Nỗi đau (3-5 vấn đề)
+  deepFears: string;         // Nỗi sợ sâu nhất
+  desires: string;           // Ước mơ / khát vọng
+  limitingBeliefs: string;   // Niềm tin giới hạn
+  emotionStyle: string;      // Cảm xúc chủ đạo khi ra quyết định
+  decisionStyle: string;     // Phong cách ra quyết định
+
+  // III. Jobs To Be Done
+  functionalJob: string;     // Công việc chức năng muốn hoàn thành
+  emotionalJob: string;      // Công việc cảm xúc
+  socialJob: string;         // Công việc xã hội
+  goals: string;             // Mục tiêu ngắn/trung/dài hạn
+
+  // IV. Hành vi mua hàng
+  awarenessLevel: string;    // 1-5 mức nhận thức
+  preferredChannels: string; // Kênh tìm hiểu
+  influencers: string;       // Người ảnh hưởng tới quyết định
+  buyingBarriers: string;    // Rào cản ra quyết định
+  buyingTriggers: string;    // Yếu tố kích hoạt mua
+  proofType: string;         // Loại bằng chứng họ tin
+
+  // V. Nguồn lực & rủi ro
+  investBudget: string;      // Ngân sách đầu tư
+  timeCommit: string;        // Thời gian có thể dành
+  biggestRisk: string;       // Rủi ro sợ nhất
+
+  // VIII. Phân loại
+  fitLevel: string;          // Kim Cương / Vàng / Bạc / Đồng
+}
+
+export interface DecisionMaker {
+  name: string;
+  role: string;              // Vai trò trong quyết định (người quyết định, người ảnh hưởng, người sử dụng)
+  attitude: string;          // Thái độ: ủng hộ / trung lập / phản đối
+  notes: string;             // Ghi chú về người này
+}
+
 export interface CustomerProfile {
   id: string;
   name: string;
   company: string;
   phone: string;
   email: string;
-  // AI-extracted fields
-  needs: string;           // Nhu cầu chính
-  budget: string;          // Ngân sách / mức đầu tư
-  concerns: string;        // Phản đối / lo ngại
-  stage: string;           // Giai đoạn: mới, đang tìm hiểu, so sánh, sắp chốt
-  decisionFactors: string; // Yếu tố quyết định
-  personality: string;     // Tính cách / phong cách giao tiếp
-  nextStep: string;        // Bước tiếp theo đã thống nhất
-  notes: CustomerNote[];   // Lịch sử ghi chú từ mỗi cuộc gọi
-  sessionIds: string[];    // Liên kết với sessions
+  // AI-extracted core fields
+  needs: string;
+  budget: string;
+  concerns: string;
+  stage: string;             // Giai đoạn: mới tiếp cận / đang tìm hiểu / đang so sánh / sắp chốt / đã chốt
+  decisionFactors: string;
+  personality: string;
+  nextStep: string;
+  // ICP mở rộng
+  icp: Partial<ICPProfile>;
+  decisionMakers: DecisionMaker[];
+  leadScore: number;         // 0-100 điểm tiềm năng
+  customFields: Record<string, string>; // Tiêu chí sales tự thêm
+  // Metadata
+  notes: CustomerNote[];
+  sessionIds: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -305,12 +359,16 @@ export const saveCustomers = async (customers: CustomerProfile[]): Promise<void>
   await AsyncStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(customers));
 };
 
-export const addCustomer = async (customer: Omit<CustomerProfile, 'id' | 'createdAt' | 'updatedAt' | 'notes' | 'sessionIds'>): Promise<CustomerProfile> => {
+export const addCustomer = async (customer: Omit<CustomerProfile, 'id' | 'createdAt' | 'updatedAt' | 'notes' | 'sessionIds' | 'icp' | 'decisionMakers' | 'leadScore' | 'customFields'> & { icp?: Partial<ICPProfile> }): Promise<CustomerProfile> => {
   const customers = await loadCustomers();
   const now = new Date().toISOString();
   const newCustomer: CustomerProfile = {
     ...customer,
     id: Date.now().toString(),
+    icp: customer.icp || {},
+    decisionMakers: [],
+    leadScore: 0,
+    customFields: {},
     notes: [],
     sessionIds: [],
     createdAt: now,
@@ -337,4 +395,40 @@ export const findCustomerByName = async (name: string): Promise<CustomerProfile 
 export const deleteCustomer = async (id: string): Promise<void> => {
   const customers = await loadCustomers();
   await saveCustomers(customers.filter(c => c.id !== id));
+};
+
+// Tính điểm tiềm năng dựa trên thông tin đã thu thập
+export const calculateLeadScore = (customer: CustomerProfile): number => {
+  let score = 0;
+  const max = 100;
+
+  // Core fields (40 điểm)
+  if (customer.needs) score += 8;
+  if (customer.budget) score += 8;
+  if (customer.stage) {
+    const s = customer.stage.toLowerCase();
+    if (s.includes('chốt') || s.includes('đã chốt')) score += 12;
+    else if (s.includes('so sánh')) score += 10;
+    else if (s.includes('tìm hiểu')) score += 6;
+    else score += 3;
+  }
+  if (customer.decisionFactors) score += 6;
+  if (customer.nextStep) score += 6;
+
+  // ICP fields (40 điểm)
+  const icp = customer.icp || {};
+  const icpFields = [
+    icp.painPoints, icp.deepFears, icp.desires, icp.buyingTriggers,
+    icp.investBudget, icp.influencers, icp.functionalJob, icp.awarenessLevel,
+  ];
+  score += icpFields.filter(Boolean).length * 5;
+
+  // Decision makers (10 điểm)
+  if (customer.decisionMakers?.length) score += Math.min(10, customer.decisionMakers.length * 5);
+
+  // Engagement (10 điểm)
+  const sessions = customer.sessionIds?.length || 0;
+  score += Math.min(10, sessions * 3);
+
+  return Math.min(max, score);
 };
