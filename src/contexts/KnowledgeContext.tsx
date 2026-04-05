@@ -6,6 +6,7 @@ interface KnowledgeContextType {
   knowledgeBase: string;
   isLoading: boolean;
   isFromCloud: boolean;
+  isStaleCache: boolean;
   reload: () => Promise<void>;
 }
 
@@ -13,6 +14,7 @@ const KnowledgeContext = createContext<KnowledgeContextType>({
   knowledgeBase: SALES_KNOWLEDGE_BASE,
   isLoading: true,
   isFromCloud: false,
+  isStaleCache: false,
   reload: async () => {},
 });
 
@@ -22,17 +24,19 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
   const [knowledgeBase, setKnowledgeBase] = useState(SALES_KNOWLEDGE_BASE);
   const [isLoading, setIsLoading] = useState(true);
   const [isFromCloud, setIsFromCloud] = useState(false);
+  const [isStaleCache, setIsStaleCache] = useState(false);
 
   const load = async () => {
     setIsLoading(true);
+    setIsStaleCache(false);
     try {
-      const cloud = await loadKnowledgeBase();
-      setKnowledgeBase(cloud);
-      setIsFromCloud(true);
-      console.log('Using cloud knowledge base');
+      const { content, source } = await loadKnowledgeBase();
+      setKnowledgeBase(content);
+      setIsFromCloud(source === 'cloud' || source === 'cache');
+      setIsStaleCache(source === 'stale_cache');
     } catch {
-      console.log('Fallback to local knowledge base');
       setIsFromCloud(false);
+      setIsStaleCache(false);
     } finally {
       setIsLoading(false);
     }
@@ -41,7 +45,7 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { load(); }, []);
 
   return (
-    <KnowledgeContext.Provider value={{ knowledgeBase, isLoading, isFromCloud, reload: load }}>
+    <KnowledgeContext.Provider value={{ knowledgeBase, isLoading, isFromCloud, isStaleCache, reload: load }}>
       {children}
     </KnowledgeContext.Provider>
   );

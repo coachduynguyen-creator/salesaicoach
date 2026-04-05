@@ -11,7 +11,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
+import { useColors } from '../contexts/ThemeContext';
 import { loadSessions, Session } from '../services/storageService';
+import { useKnowledge } from '../contexts/KnowledgeContext';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -37,6 +39,13 @@ function getThisWeekCount(sessions: Session[]): number {
   }).length;
 }
 
+function getWinRate(sessions: Session[]): string {
+  const decided = sessions.filter(s => s.outcome === 'won' || s.outcome === 'lost');
+  if (!decided.length) return '—';
+  const won = decided.filter(s => s.outcome === 'won').length;
+  return Math.round((won / decided.length) * 100) + '%';
+}
+
 const TIPS = [
   'Vị thế cố vấn đến từ việc đặt câu hỏi đúng, không phải nói nhiều.',
   'Lắng nghe 70%, nói 30% — khách hàng sẽ tự tìm thấy giải pháp.',
@@ -47,6 +56,8 @@ const TIPS = [
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+  const C = useColors();
+  const { isStaleCache, reload } = useKnowledge();
   const [sessions, setSessions] = useState<Session[]>([]);
   const tip = TIPS[new Date().getDay() % TIPS.length];
 
@@ -62,7 +73,7 @@ export default function HomeScreen() {
 
         {/* Hero Header */}
         <LinearGradient
-          colors={[COLORS.GRADIENT_START, COLORS.GRADIENT_END]}
+          colors={[C.GRADIENT_START, C.GRADIENT_END]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -76,7 +87,7 @@ export default function HomeScreen() {
               style={styles.heroAvatar}
               onPress={() => navigation.navigate('CaiDat')}
             >
-              <Ionicons name="person" size={22} color={COLORS.PRIMARY} />
+              <Ionicons name="person" size={22} color={C.PRIMARY} />
             </TouchableOpacity>
           </View>
 
@@ -96,8 +107,26 @@ export default function HomeScreen() {
               <Text style={styles.statValue}>{getThisWeekCount(sessions)}</Text>
               <Text style={styles.statLabel}>Tuần này</Text>
             </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{getWinRate(sessions)}</Text>
+              <Text style={styles.statLabel}>Tỷ lệ chốt</Text>
+            </View>
           </View>
         </LinearGradient>
+
+        {/* Cảnh báo khi dùng kiến thức cũ */}
+        {isStaleCache && (
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', marginHorizontal: 16, marginTop: 12, padding: 12, borderRadius: 10, gap: 8 }}
+            onPress={reload}
+          >
+            <Ionicons name="warning-outline" size={18} color="#D97706" />
+            <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17 }}>
+              Kiến thức AI đang dùng bản cũ (không có mạng). Nhấn để thử tải lại.
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.actionsRow}>
@@ -119,7 +148,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('AiCoach')}
           >
             <LinearGradient
-              colors={[COLORS.PRIMARY, COLORS.PRIMARY_LIGHT]}
+              colors={[C.PRIMARY, C.PRIMARY_LIGHT]}
               style={styles.actionIcon}
             >
               <Ionicons name="sparkles" size={22} color="#fff" />
@@ -170,7 +199,7 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Gần đây</Text>
           {sessions.length > 0 && (
             <TouchableOpacity onPress={() => navigation.navigate('LichSu')}>
-              <Text style={styles.seeAll}>Xem tất cả</Text>
+              <Text style={[styles.seeAll, { color: C.PRIMARY }]}>Xem tất cả</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -180,8 +209,8 @@ export default function HomeScreen() {
             style={styles.emptyCard}
             onPress={() => navigation.navigate('GhiAm')}
           >
-            <View style={styles.emptyIconWrap}>
-              <Ionicons name="mic-outline" size={32} color={COLORS.PRIMARY_LIGHT} />
+            <View style={[styles.emptyIconWrap, { backgroundColor: C.PRIMARY + '10' }]}>
+              <Ionicons name="mic-outline" size={32} color={C.PRIMARY_LIGHT} />
             </View>
             <Text style={styles.emptyTitle}>Chưa có buổi tư vấn nào</Text>
             <Text style={styles.emptyDesc}>Nhấn để ghi âm buổi đầu tiên</Text>

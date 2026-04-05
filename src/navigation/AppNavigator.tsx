@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 import HomeScreen from '../screens/HomeScreen';
 import RecordScreen from '../screens/RecordScreen';
@@ -12,7 +13,10 @@ import ResultScreen from '../screens/ResultScreen';
 import TrainingCenterScreen from '../screens/TrainingCenterScreen';
 import LessonDetailScreen from '../screens/LessonDetailScreen';
 import AiCoachScreen from '../screens/AiCoachScreen';
+import ConversationListScreen from '../screens/ConversationListScreen';
 import SessionDetailScreen from '../screens/SessionDetailScreen';
+import BusinessProfileScreen from '../screens/BusinessProfileScreen';
+import TeamDashboardScreen from '../screens/TeamDashboardScreen';
 
 export type RootTabParamList = {
   TrangChu: undefined;
@@ -38,17 +42,24 @@ export type RootStackParamList = {
   SessionDetail: {
     session: any;
   };
+  BusinessProfile: undefined;
+  TeamDashboard: undefined;
+  AiCoachChat: {
+    conversationId: string;
+    title: string;
+  };
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 
 function MainTabs() {
+  const { theme } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: COLORS.PRIMARY,
+        tabBarActiveTintColor: theme.colors.PRIMARY,
         tabBarInactiveTintColor: COLORS.TEXT_LIGHT,
         tabBarStyle: {
           backgroundColor: COLORS.CARD,
@@ -72,17 +83,17 @@ function MainTabs() {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
           if (route.name === 'TrangChu') {
-            iconName = focused ? 'home' : 'home-outline';
+            iconName = focused ? 'grid' : 'grid-outline';
           } else if (route.name === 'GhiAm') {
-            iconName = focused ? 'mic' : 'mic-outline';
+            iconName = focused ? 'radio' : 'radio-outline';
           } else if (route.name === 'AiCoach') {
-            iconName = focused ? 'sparkles' : 'sparkles-outline';
+            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'DaoTao') {
-            iconName = focused ? 'book' : 'book-outline';
+            iconName = focused ? 'library' : 'library-outline';
           } else if (route.name === 'LichSu') {
-            iconName = focused ? 'time' : 'time-outline';
+            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
           } else if (route.name === 'CaiDat') {
-            iconName = focused ? 'settings' : 'settings-outline';
+            iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
 
           return <Ionicons name={iconName} size={22} color={color} />;
@@ -101,10 +112,9 @@ function MainTabs() {
       />
       <Tab.Screen
         name="AiCoach"
-        component={AiCoachScreen}
+        component={ConversationListScreen}
         options={{
           tabBarLabel: 'AI Coach',
-          tabBarBadge: undefined,
         }}
       />
       <Tab.Screen
@@ -143,6 +153,21 @@ export default function AppNavigator() {
       <Stack.Screen
         name="SessionDetail"
         component={SessionDetailScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="BusinessProfile"
+        component={BusinessProfileScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="TeamDashboard"
+        component={TeamDashboardScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="AiCoachChat"
+        component={AiCoachScreen}
         options={{ presentation: 'card' }}
       />
     </Stack.Navigator>

@@ -13,12 +13,19 @@ const KNOWLEDGE_FILES = [
   'TTA-TL5.md',
 ];
 
+export type KnowledgeSource = 'cloud' | 'cache' | 'stale_cache';
+
+interface KnowledgeResult {
+  content: string;
+  source: KnowledgeSource;
+}
+
 /**
  * Tải toàn bộ knowledge base từ Supabase Storage
  * Có cache local 24h để không tải lại mỗi lần mở app
  */
-export const loadKnowledgeBase = async (): Promise<string> => {
-  // Kiểm tra cache
+export const loadKnowledgeBase = async (): Promise<KnowledgeResult> => {
+  // Kiểm tra cache còn hạn
   try {
     const cachedTime = await AsyncStorage.getItem(CACHE_TIME_KEY);
     if (cachedTime) {
@@ -26,8 +33,7 @@ export const loadKnowledgeBase = async (): Promise<string> => {
       if (elapsed < CACHE_DURATION) {
         const cached = await AsyncStorage.getItem(CACHE_KEY);
         if (cached) {
-          console.log('Knowledge base loaded from cache');
-          return cached;
+          return { content: cached, source: 'cache' };
         }
       }
     }
@@ -63,14 +69,13 @@ export const loadKnowledgeBase = async (): Promise<string> => {
     await AsyncStorage.setItem(CACHE_KEY, fullKnowledge);
     await AsyncStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
 
-    console.log(`Knowledge base loaded from cloud: ${contents.length} files, ${fullKnowledge.length} chars`);
-    return fullKnowledge;
+    return { content: fullKnowledge, source: 'cloud' };
   } catch (error) {
-    console.warn('Lỗi tải knowledge từ cloud, dùng cache cũ nếu có:', error);
-
-    // Fallback về cache cũ (kể cả hết hạn)
+    // Fallback về cache cũ (hết hạn) — báo cho user biết
     const cached = await AsyncStorage.getItem(CACHE_KEY);
-    if (cached) return cached;
+    if (cached) {
+      return { content: cached, source: 'stale_cache' };
+    }
 
     throw new Error('Không có kiến thức. Kiểm tra kết nối internet.');
   }

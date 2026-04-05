@@ -16,9 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
+import { useColors } from '../contexts/ThemeContext';
 import { analyzeRecording, analyzeTranscript, AnalysisResult } from '../services/aiService';
 import { addSession } from '../services/storageService';
 import { useKnowledge } from '../contexts/KnowledgeContext';
+import { useBusiness } from '../contexts/BusinessContext';
 
 type ResultRouteParams = {
   ResultScreen: {
@@ -89,6 +91,7 @@ const LOADING_STEPS = [
 ] as const;
 
 function LoadingScreen() {
+  const C = useColors();
   const [currentStep, setCurrentStep] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -117,13 +120,13 @@ function LoadingScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.loadingContainer}>
         <View style={styles.loadingIconWrap}>
-          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+          <ActivityIndicator size="large" color={C.PRIMARY} />
         </View>
         <Text style={styles.loadingTitle}>Đang phân tích...</Text>
 
         {/* Progress bar */}
         <View style={styles.progressBarBg}>
-          <Animated.View style={[styles.progressBarFill, { width: progressWidth }]} />
+          <Animated.View style={[styles.progressBarFill, { width: progressWidth, backgroundColor: C.PRIMARY }]} />
         </View>
 
         {/* Steps */}
@@ -133,7 +136,7 @@ function LoadingScreen() {
               <Ionicons
                 name={i < currentStep ? 'checkmark-circle' : i === currentStep ? step.icon : 'ellipse-outline'}
                 size={18}
-                color={i <= currentStep ? COLORS.PRIMARY : COLORS.BORDER}
+                color={i <= currentStep ? C.PRIMARY : COLORS.BORDER}
               />
               <Text style={[styles.stepText, i <= currentStep && styles.stepTextActive]}>
                 {step.label}
@@ -151,6 +154,7 @@ function LoadingScreen() {
 // ─── Manual Input Screen ──────────────────────────────────────────────────────
 
 function ManualInputScreen({ onSubmit }: { onSubmit: (text: string) => void }) {
+  const C = useColors();
   const [text, setText] = useState('');
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -159,7 +163,7 @@ function ManualInputScreen({ onSubmit }: { onSubmit: (text: string) => void }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={{ flex: 1, padding: 20 }}>
-          <Text style={styles.manualTitle}>Nhập nội dung cuộc tư vấn</Text>
+          <Text style={[styles.manualTitle, { color: C.PRIMARY }]}>Nhập nội dung cuộc tư vấn</Text>
           <Text style={styles.manualSub}>
             Tóm tắt hoặc chép lại những gì sales và khách đã nói. AI sẽ phân tích dựa trên nội dung này.
           </Text>
@@ -173,7 +177,7 @@ function ManualInputScreen({ onSubmit }: { onSubmit: (text: string) => void }) {
             textAlignVertical="top"
           />
           <TouchableOpacity
-            style={[styles.manualBtn, !text.trim() && { opacity: 0.4 }]}
+            style={[styles.manualBtn, { backgroundColor: C.PRIMARY }, !text.trim() && { opacity: 0.4 }]}
             onPress={() => onSubmit(text.trim())}
             disabled={!text.trim()}
           >
@@ -189,10 +193,12 @@ function ManualInputScreen({ onSubmit }: { onSubmit: (text: string) => void }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ResultScreen() {
+  const C = useColors();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<ResultRouteParams, 'ResultScreen'>>();
   const { audioUri, manualMode = false, duration = 0, customerName = 'Khách hàng' } = route.params ?? {};
   const { knowledgeBase } = useKnowledge();
+  const { businessContext } = useBusiness();
 
   const [loading, setLoading] = useState(!manualMode);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -201,8 +207,8 @@ export default function ResultScreen() {
     setLoading(true);
     try {
       const analysis = transcript
-        ? await analyzeTranscript(transcript, knowledgeBase)
-        : await analyzeRecording(audioUri ?? '', knowledgeBase);
+        ? await analyzeTranscript(transcript, knowledgeBase + businessContext)
+        : await analyzeRecording(audioUri ?? '', knowledgeBase + businessContext);
       setResult(analysis);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -288,7 +294,7 @@ export default function ResultScreen() {
           title="Tóm tắt"
           items={result.summary}
           backgroundColor={COLORS.CARD}
-          accentColor={COLORS.PRIMARY}
+          accentColor={C.PRIMARY}
         />
 
         {/* Strengths */}
@@ -315,11 +321,11 @@ export default function ResultScreen() {
           title="Chiến lược lần sau"
           items={result.strategies}
           backgroundColor="#EBF8FF"
-          accentColor={COLORS.PRIMARY}
+          accentColor={C.PRIMARY}
         />
 
         {/* Save Button */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY, shadowColor: C.PRIMARY }]} onPress={handleSave}>
           <Ionicons name="save-outline" size={18} color="#FFFFFF" />
           <Text style={styles.saveButtonText}>Lưu kết quả</Text>
         </TouchableOpacity>

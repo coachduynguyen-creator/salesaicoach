@@ -12,13 +12,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
+import { useColors } from '../contexts/ThemeContext';
 import { startRecording, stopRecording, pauseRecording, resumeRecording } from '../services/audioService';
 
 type RecordingState = 'idle' | 'recording' | 'paused';
 
 export default function RecordScreen() {
+  const C = useColors();
   const navigation = useNavigation<any>();
   const [customerName, setCustomerName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -29,10 +32,24 @@ export default function RecordScreen() {
   const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
   const ringAnim = useRef(new Animated.Value(0)).current;
 
+  // Review mode state
+  const [reviewMode, setReviewMode] = useState(false);
+  const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [recordedDuration, setRecordedDuration] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackPosition, setPlaybackPosition] = useState(0);
+  const [playbackDuration, setPlaybackDuration] = useState(0);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       pulseLoop.current?.stop();
+      // Clean up sound on unmount
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
     };
   }, []);
 
@@ -83,19 +100,87 @@ export default function RecordScreen() {
     try {
       const result = await stopRecording();
       setRecordingState('idle'); stopTimer(); stopPulse();
-      const finalElapsed = elapsed; setElapsed(0);
-      Alert.alert('Ghi âm hoàn tất', `Thời gian: ${formatTime(finalElapsed)}`, [
-        { text: 'Huỷ', style: 'cancel' },
-        { text: 'Nhập nội dung', onPress: () => navigation.navigate('ResultScreen', { audioUri: null, manualMode: true, duration: finalElapsed, customerName: customerName || 'Khách hàng', companyName: companyName || '' }) },
-        { text: 'Phân tích tự động', onPress: () => navigation.navigate('ResultScreen', { audioUri: result.uri, duration: finalElapsed, customerName: customerName || 'Khách hàng', companyName: companyName || '' }) },
-      ]);
+      const finalElapsed = elapsed;
+      setRecordedDuration(finalElapsed);
+      setAudioUri(result.uri);
+      setReviewMode(true);
+      setElapsed(0);
     } catch {
       setRecordingState('idle'); stopTimer(); stopPulse(); setElapsed(0);
       Alert.alert('Lỗi', 'Đã xảy ra lỗi khi dừng ghi âm.');
     }
   };
 
+  // --- Playback controls ---
+  const unloadSound = async () => {
+    if (soundRef.current) {
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
+    setIsPlaying(false);
+    setPlaybackPosition(0);
+    setPlaybackDuration(0);
+  };
+
+  const handlePlayPause = async () => {
+    if (!audioUri) return;
+
+    try {
+      if (isPlaying && soundRef.current) {
+        await soundRef.current.pauseAsync();
+        setIsPlaying(false);
+        return;
+      }
+
+      if (soundRef.current) {
+        // Resume from current position
+        await soundRef.current.playAsync();
+        setIsPlaying(true);
+        return;
+      }
+
+      // Create a new Sound and play
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUri },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) return;
+          setPlaybackPosition(status.positionMillis);
+          setPlaybackDuration(status.durationMillis ?? 0);
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            setPlaybackPosition(0);
+            soundRef.current?.setPositionAsync(0);
+          }
+        }
+      );
+      soundRef.current = sound;
+      setIsPlaying(true);
+    } catch {
+      Alert.alert('Lỗi', 'Không thể phát lại bản ghi âm.');
+    }
+  };
+
+  const handleAnalyze = async () => {
+    await unloadSound();
+    navigation.navigate('ResultScreen', {
+      audioUri,
+      duration: recordedDuration,
+      customerName: customerName || 'Khách hàng',
+      companyName: companyName || '',
+    });
+  };
+
+  const handleReRecord = async () => {
+    await unloadSound();
+    setReviewMode(false);
+    setAudioUri(null);
+    setRecordedDuration(0);
+  };
+
   const isRecording = recordingState !== 'idle';
+
+  const formatPlaybackTime = (ms: number) => formatTime(Math.floor(ms / 1000));
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -103,11 +188,13 @@ export default function RecordScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Ghi âm</Text>
-          <Text style={styles.headerSub}>{isRecording ? (customerName || 'Đang ghi âm...') : 'Phiên tư vấn mới'}</Text>
+          <Text style={styles.headerSub}>
+            {reviewMode ? 'Xem lại bản ghi' : isRecording ? (customerName || 'Đang ghi âm...') : 'Phiên tư vấn mới'}
+          </Text>
         </View>
 
-        {/* Input fields — chỉ khi idle */}
-        {!isRecording && (
+        {/* Input fields — chỉ khi idle và không review */}
+        {!isRecording && !reviewMode && (
           <View style={styles.inputGroup}>
             <View style={styles.inputWrap}>
               <Ionicons name="person-outline" size={18} color={COLORS.TEXT_LIGHT} />
@@ -120,70 +207,135 @@ export default function RecordScreen() {
           </View>
         )}
 
-        {/* Recording Area */}
-        <View style={styles.centerArea}>
-          <View style={styles.recordArea}>
-            {/* Pulse rings */}
-            <Animated.View style={[styles.ring, styles.ringOuter, { transform: [{ scale: pulseAnim }], opacity: ringAnim }]} />
-            <Animated.View style={[styles.ring, styles.ringMiddle, { transform: [{ scale: pulseAnim }], opacity: Animated.multiply(ringAnim, 0.5) }]} />
-
-            {/* Main button */}
-            {recordingState === 'idle' ? (
-              <TouchableOpacity onPress={handleStart} activeOpacity={0.85}>
-                <LinearGradient colors={[COLORS.PRIMARY, COLORS.GRADIENT_END]} style={styles.mainBtn}>
-                  <Ionicons name="mic" size={48} color="#fff" />
+        {/* Review Mode */}
+        {reviewMode ? (
+          <View style={styles.centerArea}>
+            <View style={styles.recordArea}>
+              {/* Play/Pause button */}
+              <TouchableOpacity onPress={handlePlayPause} activeOpacity={0.85}>
+                <LinearGradient colors={[C.PRIMARY, C.GRADIENT_END]} style={[styles.mainBtn, { shadowColor: C.PRIMARY }]}>
+                  <Ionicons name={isPlaying ? 'pause' : 'play'} size={48} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity onPress={handleStop} activeOpacity={0.85}>
-                <LinearGradient colors={[COLORS.DANGER, '#F97316']} style={styles.mainBtn}>
-                  <Ionicons name="stop" size={40} color="#fff" />
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
 
-            {/* Timer */}
-            <Text style={styles.timer}>{formatTime(elapsed)}</Text>
-
-            {/* Status */}
-            <View style={styles.statusRow}>
-              {recordingState === 'recording' && <View style={styles.liveDot} />}
-              <Text style={[styles.statusText,
-                recordingState === 'recording' && { color: COLORS.DANGER },
-                recordingState === 'paused' && { color: COLORS.WARNING },
-              ]}>
-                {recordingState === 'idle' ? 'Nhấn để bắt đầu' : recordingState === 'recording' ? 'Đang ghi âm' : 'Tạm dừng'}
+              {/* Playback time */}
+              <Text style={styles.timer}>
+                {formatPlaybackTime(playbackPosition)}
+                <Text style={styles.timerDivider}> / </Text>
+                {playbackDuration > 0 ? formatPlaybackTime(playbackDuration) : formatTime(recordedDuration)}
               </Text>
+
+              {/* Playback progress bar */}
+              <View style={styles.progressBarBg}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      backgroundColor: C.PRIMARY,
+                      width: playbackDuration > 0
+                        ? `${Math.min((playbackPosition / playbackDuration) * 100, 100)}%`
+                        : '0%',
+                    },
+                  ]}
+                />
+              </View>
+
+              {/* Status */}
+              <View style={styles.statusRow}>
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.SUCCESS} />
+                <Text style={[styles.statusText, { color: COLORS.SUCCESS }]}>
+                  Ghi âm hoàn tất — {formatTime(recordedDuration)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Review action buttons */}
+            <View style={styles.reviewActions}>
+              <TouchableOpacity
+                style={[styles.reviewBtn, styles.reviewBtnPrimary, { backgroundColor: C.PRIMARY }]}
+                onPress={handleAnalyze}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="analytics" size={22} color="#fff" />
+                <Text style={styles.reviewBtnTextPrimary}>Phân tích</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.reviewBtn, styles.reviewBtnSecondary]}
+                onPress={handleReRecord}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="refresh" size={22} color={COLORS.DANGER} />
+                <Text style={[styles.reviewBtnTextSecondary, { color: COLORS.DANGER }]}>Ghi lại</Text>
+              </TouchableOpacity>
             </View>
           </View>
+        ) : (
+          /* Recording Area */
+          <View style={styles.centerArea}>
+            <View style={styles.recordArea}>
+              {/* Pulse rings */}
+              <Animated.View style={[styles.ring, styles.ringOuter, { transform: [{ scale: pulseAnim }], opacity: ringAnim }]} />
+              <Animated.View style={[styles.ring, styles.ringMiddle, { transform: [{ scale: pulseAnim }], opacity: Animated.multiply(ringAnim, 0.5) }]} />
 
-          {/* Controls */}
-          {isRecording && (
-            <View style={styles.controls}>
-              <TouchableOpacity style={styles.ctrlBtn} onPress={handlePause}>
-                <Ionicons name={recordingState === 'paused' ? 'play' : 'pause'} size={24} color={COLORS.PRIMARY} />
-                <Text style={styles.ctrlText}>{recordingState === 'paused' ? 'Tiếp tục' : 'Tạm dừng'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.ctrlBtn, styles.ctrlStop]} onPress={handleStop}>
-                <Ionicons name="stop-circle" size={24} color={COLORS.DANGER} />
-                <Text style={[styles.ctrlText, { color: COLORS.DANGER }]}>Dừng</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+              {/* Main button */}
+              {recordingState === 'idle' ? (
+                <TouchableOpacity onPress={handleStart} activeOpacity={0.85}>
+                  <LinearGradient colors={[C.PRIMARY, C.GRADIENT_END]} style={[styles.mainBtn, { shadowColor: C.PRIMARY }]}>
+                    <Ionicons name="mic" size={48} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={handleStop} activeOpacity={0.85}>
+                  <LinearGradient colors={[COLORS.DANGER, '#F97316']} style={styles.mainBtn}>
+                    <Ionicons name="stop" size={40} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
 
-          {/* Tips */}
-          {!isRecording && (
-            <View style={styles.tipsCard}>
-              <Text style={styles.tipsTitle}>Hướng dẫn</Text>
-              {['Nhập tên khách hàng trước khi ghi', 'Đặt điện thoại gần nguồn âm thanh', 'Sau khi dừng, AI sẽ phân tích ngay'].map((t, i) => (
-                <View key={i} style={styles.tipRow}>
-                  <View style={styles.tipDot} />
-                  <Text style={styles.tipText}>{t}</Text>
-                </View>
-              ))}
+              {/* Timer */}
+              <Text style={styles.timer}>{formatTime(elapsed)}</Text>
+
+              {/* Status */}
+              <View style={styles.statusRow}>
+                {recordingState === 'recording' && <View style={styles.liveDot} />}
+                <Text style={[styles.statusText,
+                  recordingState === 'recording' && { color: COLORS.DANGER },
+                  recordingState === 'paused' && { color: COLORS.WARNING },
+                ]}>
+                  {recordingState === 'idle' ? 'Nhấn để bắt đầu' : recordingState === 'recording' ? 'Đang ghi âm' : 'Tạm dừng'}
+                </Text>
+              </View>
             </View>
-          )}
-        </View>
+
+            {/* Controls */}
+            {isRecording && (
+              <View style={styles.controls}>
+                <TouchableOpacity style={styles.ctrlBtn} onPress={handlePause}>
+                  <Ionicons name={recordingState === 'paused' ? 'play' : 'pause'} size={24} color={C.PRIMARY} />
+                  <Text style={[styles.ctrlText, { color: C.PRIMARY }]}>{recordingState === 'paused' ? 'Tiếp tục' : 'Tạm dừng'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.ctrlBtn, styles.ctrlStop]} onPress={handleStop}>
+                  <Ionicons name="stop-circle" size={24} color={COLORS.DANGER} />
+                  <Text style={[styles.ctrlText, { color: COLORS.DANGER }]}>Dừng</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Tips */}
+            {!isRecording && (
+              <View style={styles.tipsCard}>
+                <Text style={styles.tipsTitle}>Hướng dẫn</Text>
+                {['Nhập tên khách hàng trước khi ghi', 'Đặt điện thoại gần nguồn âm thanh', 'Sau khi dừng, bạn có thể nghe lại trước khi phân tích'].map((t, i) => (
+                  <View key={i} style={styles.tipRow}>
+                    <View style={styles.tipDot} />
+                    <Text style={styles.tipText}>{t}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -241,4 +393,29 @@ const styles = StyleSheet.create({
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   tipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.SUCCESS },
   tipText: { fontSize: 13, color: COLORS.TEXT_SECONDARY, flex: 1 },
+
+  // Review mode styles
+  timerDivider: { fontSize: 28, fontWeight: '400', color: COLORS.TEXT_LIGHT },
+
+  progressBarBg: {
+    width: '80%', height: 6, borderRadius: 3,
+    backgroundColor: COLORS.BORDER, marginTop: 16, overflow: 'hidden' as const,
+  },
+  progressBarFill: {
+    height: '100%', borderRadius: 3,
+  },
+
+  reviewActions: { gap: 12, marginTop: 24 },
+  reviewBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const,
+    gap: 10, borderRadius: 14, paddingVertical: 16,
+  },
+  reviewBtnPrimary: {
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6,
+  },
+  reviewBtnTextPrimary: { fontSize: 17, fontWeight: '700' as const, color: '#fff' },
+  reviewBtnSecondary: {
+    backgroundColor: COLORS.CARD, borderWidth: 1, borderColor: COLORS.BORDER,
+  },
+  reviewBtnTextSecondary: { fontSize: 17, fontWeight: '600' as const },
 });

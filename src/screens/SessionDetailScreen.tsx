@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
-import { Session } from '../services/storageService';
+import { useColors } from '../contexts/ThemeContext';
+import { Session, updateSessionOutcome, SessionOutcome } from '../services/storageService';
 
 type RouteParams = { SessionDetail: { session: Session } };
 
@@ -50,9 +51,16 @@ function SectionCard({ emoji, title, items, backgroundColor, accentColor }: {
 export default function SessionDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'SessionDetail'>>();
+  const C = useColors();
   const { session } = route.params;
   const { analysis } = session;
   const scoreColor = getScoreColor(session.score);
+  const [outcome, setOutcome] = useState<SessionOutcome | undefined>(session.outcome);
+
+  const handleOutcome = async (value: SessionOutcome) => {
+    setOutcome(value);
+    await updateSessionOutcome(session.id, value);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -82,6 +90,49 @@ export default function SessionDetailScreen() {
             <View style={styles.heroDivider} />
             <Ionicons name="time-outline" size={13} color={COLORS.TEXT_LIGHT} />
             <Text style={styles.heroMetaText}>{formatTime(session.duration)}</Text>
+          </View>
+        </View>
+
+        {/* Outcome */}
+        <View style={styles.outcomeCard}>
+          <Text style={styles.outcomeTitle}>Kết quả</Text>
+          <View style={styles.outcomeRow}>
+            <TouchableOpacity
+              style={[
+                styles.outcomeBtn,
+                { borderColor: C.SUCCESS },
+                outcome === 'won' && { backgroundColor: C.SUCCESS },
+              ]}
+              onPress={() => handleOutcome('won')}
+            >
+              <Text style={[styles.outcomeBtnText, { color: outcome === 'won' ? '#fff' : C.SUCCESS }]}>
+                Chốt thành công
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.outcomeBtn,
+                { borderColor: C.DANGER },
+                outcome === 'lost' && { backgroundColor: C.DANGER },
+              ]}
+              onPress={() => handleOutcome('lost')}
+            >
+              <Text style={[styles.outcomeBtnText, { color: outcome === 'lost' ? '#fff' : C.DANGER }]}>
+                Không chốt
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.outcomeBtn,
+                { borderColor: C.WARNING },
+                outcome === 'pending' && { backgroundColor: C.WARNING },
+              ]}
+              onPress={() => handleOutcome('pending')}
+            >
+              <Text style={[styles.outcomeBtnText, { color: outcome === 'pending' ? '#fff' : C.WARNING }]}>
+                Đang theo
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -150,4 +201,15 @@ const styles = StyleSheet.create({
   bullet: { width: 6, height: 6, borderRadius: 3, marginTop: 7, marginRight: 10, flexShrink: 0 },
   bulletText: { fontSize: 13, color: COLORS.TEXT, flex: 1, lineHeight: 20 },
   transcriptText: { fontSize: 13, color: COLORS.TEXT, lineHeight: 21 },
+  outcomeCard: {
+    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 16, marginBottom: 12,
+    elevation: 1,
+  },
+  outcomeTitle: { fontSize: 15, fontWeight: '700', color: COLORS.TEXT, marginBottom: 12 },
+  outcomeRow: { flexDirection: 'row', gap: 8 },
+  outcomeBtn: {
+    flex: 1, borderWidth: 1.5, borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center', justifyContent: 'center',
+  },
+  outcomeBtnText: { fontSize: 12, fontWeight: '700' },
 });

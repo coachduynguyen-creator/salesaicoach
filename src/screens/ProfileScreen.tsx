@@ -1,50 +1,87 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Alert,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
-import { saveApiKeys, loadApiKeys } from '../services/storageService';
-import { setApiKeys } from '../services/aiService';
+import { useTheme, THEME_OPTIONS } from '../contexts/ThemeContext';
+import { loadSessions, Session } from '../services/storageService';
+
+const USER_NAME_KEY = '@salescoach_user_name';
+const USER_ROLE_KEY = '@salescoach_user_role';
+
+function getAvgScore(sessions: Session[]): string {
+  if (!sessions.length) return '—';
+  return (sessions.reduce((s, x) => s + x.score, 0) / sessions.length).toFixed(1);
+}
+
+function getThisWeekCount(sessions: Session[]): number {
+  const now = new Date();
+  return sessions.filter(s => {
+    const [d, m, y] = s.date.split('/').map(Number);
+    return (now.getTime() - new Date(y, m - 1, d).getTime()) / 86400000 <= 7;
+  }).length;
+}
 
 export default function ProfileScreen() {
-  const [claudeApiKey, setClaudeApiKey] = useState('');
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
-  const [showClaudeKey, setShowClaudeKey] = useState(false);
-  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const navigation = useNavigation<any>();
+  const { theme, setThemeById } = useTheme();
+  const C = { ...COLORS, PRIMARY: theme.colors.PRIMARY, PRIMARY_LIGHT: theme.colors.PRIMARY_LIGHT, PRIMARY_DARK: theme.colors.PRIMARY_DARK };
 
-  // Load keys từ bộ nhớ khi mở màn hình
-  useEffect(() => {
-    loadApiKeys().then(({ claudeKey, openaiKey }) => {
-      setClaudeApiKey(claudeKey);
-      setOpenaiApiKey(openaiKey);
-      setApiKeys(openaiKey, claudeKey);
-    });
-  }, []);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [userName, setUserName] = useState('');
+  const [userRole, setUserRole] = useState('');
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState('');
 
-  const handleSave = async () => {
-    if (!claudeApiKey.trim() && !openaiApiKey.trim()) {
-      Alert.alert('Chưa nhập key', 'Vui lòng nhập ít nhất một API key.');
-      return;
-    }
-    setIsSaving(true);
-    try {
-      await saveApiKeys({ claudeKey: claudeApiKey.trim(), openaiKey: openaiApiKey.trim() });
-      setApiKeys(openaiApiKey.trim(), claudeApiKey.trim());
-      Alert.alert('✅ Đã lưu', 'API keys đã được lưu. AI phân tích sẵn sàng hoạt động!', [{ text: 'OK' }]);
-    } catch {
-      Alert.alert('Lỗi', 'Không thể lưu cài đặt. Vui lòng thử lại.');
-    } finally {
-      setIsSaving(false);
-    }
+  useFocusEffect(
+    useCallback(() => {
+      loadSessions().then(setSessions);
+      AsyncStorage.getItem(USER_NAME_KEY).then(v => setUserName(v || ''));
+      AsyncStorage.getItem(USER_ROLE_KEY).then(v => setUserRole(v || ''));
+    }, [])
+  );
+
+  const handleSaveProfile = async () => {
+    const name = editName.trim();
+    const role = editRole.trim();
+    if (name) await AsyncStorage.setItem(USER_NAME_KEY, name);
+    if (role) await AsyncStorage.setItem(USER_ROLE_KEY, role);
+    setUserName(name);
+    setUserRole(role);
+    setShowNameModal(false);
+  };
+
+  const handleDeleteAllData = () => {
+    Alert.alert(
+      'Xóa tất cả dữ liệu',
+      'Hành động này sẽ xóa toàn bộ lịch sử ghi âm, hội thoại AI Coach, và cài đặt. Không thể hoàn tác.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa tất cả',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.clear();
+            setSessions([]);
+            setUserName('');
+            setUserRole('');
+            Alert.alert('Đã xóa', 'Tất cả dữ liệu đã được xóa. Khởi động lại app để áp dụng.');
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -53,150 +90,128 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Cài Đặt</Text>
-          <Text style={styles.headerSubtitle}>Quản lý tài khoản và API</Text>
+          <Text style={styles.headerSubtitle}>Quản lý tài khoản</Text>
         </View>
 
         {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={36} color={COLORS.PRIMARY} />
+        <TouchableOpacity
+          style={styles.profileCard}
+          onPress={() => {
+            setEditName(userName);
+            setEditRole(userRole);
+            setShowNameModal(true);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.avatarCircle, { backgroundColor: C.PRIMARY + '12' }]}>
+            <Ionicons name="person" size={36} color={C.PRIMARY} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>Sales Trainer</Text>
-            <Text style={styles.profileRole}>Sales Coach Pro</Text>
+            <Text style={styles.profileName}>
+              {userName || 'Nhấn để nhập tên'}
+            </Text>
+            <Text style={styles.profileRole}>
+              {userRole || 'Nhấn để nhập vai trò'}
+            </Text>
           </View>
-          <TouchableOpacity style={styles.editProfileButton}>
-            <Ionicons name="pencil-outline" size={18} color={COLORS.PRIMARY} />
-          </TouchableOpacity>
-        </View>
+          <Ionicons name="create-outline" size={18} color={COLORS.TEXT_LIGHT} />
+        </TouchableOpacity>
 
-        {/* Stats Strip */}
-        <View style={styles.statsStrip}>
+        {/* Stats Strip — dữ liệu thật */}
+        <View style={[styles.statsStrip, { backgroundColor: C.PRIMARY }]}>
           <View style={styles.stripItem}>
-            <Text style={styles.stripValue}>12</Text>
+            <Text style={styles.stripValue}>{sessions.length}</Text>
             <Text style={styles.stripLabel}>Buổi ghi</Text>
           </View>
           <View style={styles.stripDivider} />
           <View style={styles.stripItem}>
-            <Text style={styles.stripValue}>7.8</Text>
+            <Text style={styles.stripValue}>{getAvgScore(sessions)}</Text>
             <Text style={styles.stripLabel}>Điểm TB</Text>
           </View>
           <View style={styles.stripDivider} />
           <View style={styles.stripItem}>
-            <Text style={styles.stripValue}>3</Text>
+            <Text style={styles.stripValue}>{getThisWeekCount(sessions)}</Text>
             <Text style={styles.stripLabel}>Tuần này</Text>
           </View>
         </View>
 
-        {/* API Settings */}
+        {/* Theme Color Picker */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
-            <Ionicons name="key-outline" size={18} color={COLORS.PRIMARY} />
-            <Text style={styles.sectionTitle}>API Keys</Text>
+            <Ionicons name="color-palette-outline" size={18} color={C.PRIMARY} />
+            <Text style={styles.sectionTitle}>Màu giao diện</Text>
           </View>
           <Text style={styles.sectionDesc}>
-            Nhập API keys để kích hoạt tính năng AI phân tích
+            Chọn màu chủ đạo cho ứng dụng
           </Text>
-
-          {/* Claude API Key */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Claude API Key (Anthropic)</Text>
-            <View style={styles.secretInput}>
-              <Ionicons name="logo-electron" size={16} color={COLORS.TEXT_LIGHT} style={styles.fieldIcon} />
-              <TextInput
-                style={styles.secretField}
-                placeholder="sk-ant-..."
-                placeholderTextColor={COLORS.TEXT_LIGHT}
-                value={claudeApiKey}
-                onChangeText={setClaudeApiKey}
-                secureTextEntry={!showClaudeKey}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity onPress={() => setShowClaudeKey(!showClaudeKey)} style={styles.eyeButton}>
-                <Ionicons
-                  name={showClaudeKey ? 'eye-off-outline' : 'eye-outline'}
-                  size={18}
-                  color={COLORS.TEXT_LIGHT}
-                />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.colorGrid}>
+            {THEME_OPTIONS.map(opt => {
+              const isActive = theme.id === opt.id;
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={styles.colorOption}
+                  onPress={() => setThemeById(opt.id)}
+                >
+                  <View style={[
+                    styles.colorCircle,
+                    { backgroundColor: opt.colors.PRIMARY },
+                    isActive && styles.colorCircleActive,
+                  ]}>
+                    {isActive && (
+                      <Ionicons name="checkmark" size={18} color="#fff" />
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.colorLabel,
+                    isActive && { color: opt.colors.PRIMARY, fontWeight: '700' },
+                  ]}>
+                    {opt.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+        </View>
 
-          {/* OpenAI API Key (Whisper) */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>OpenAI API Key (Whisper – chuyển giọng nói)</Text>
-            <View style={styles.secretInput}>
-              <Ionicons name="mic-circle-outline" size={16} color={COLORS.TEXT_LIGHT} style={styles.fieldIcon} />
-              <TextInput
-                style={styles.secretField}
-                placeholder="sk-..."
-                placeholderTextColor={COLORS.TEXT_LIGHT}
-                value={openaiApiKey}
-                onChangeText={setOpenaiApiKey}
-                secureTextEntry={!showOpenaiKey}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity onPress={() => setShowOpenaiKey(!showOpenaiKey)} style={styles.eyeButton}>
-                <Ionicons
-                  name={showOpenaiKey ? 'eye-off-outline' : 'eye-outline'}
-                  size={18}
-                  color={COLORS.TEXT_LIGHT}
-                />
-              </TouchableOpacity>
-            </View>
+        {/* Business Profile */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="briefcase-outline" size={18} color={C.PRIMARY} />
+            <Text style={styles.sectionTitle}>Thông tin doanh nghiệp</Text>
           </View>
-
-          {/* Status indicator */}
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: claudeApiKey ? COLORS.SUCCESS : COLORS.BORDER }]} />
-            <Text style={styles.statusText}>Claude: {claudeApiKey ? 'Đã kết nối' : 'Chưa có key'}</Text>
-            <View style={[styles.statusDot, { backgroundColor: openaiApiKey ? COLORS.SUCCESS : COLORS.BORDER, marginLeft: 14 }]} />
-            <Text style={styles.statusText}>OpenAI: {openaiApiKey ? 'Đã kết nối' : 'Chưa có key'}</Text>
-          </View>
-
-          {/* Save Button */}
-          <TouchableOpacity style={[styles.saveButton, isSaving && { opacity: 0.7 }]} onPress={handleSave} disabled={isSaving}>
-            <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-            <Text style={styles.saveButtonText}>{isSaving ? 'Đang lưu...' : 'Lưu cài đặt'}</Text>
+          <Text style={styles.sectionDesc}>
+            Nhập thông tin công ty, sản phẩm, khách hàng để AI Coach cá nhân hóa
+          </Text>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY }]} onPress={() => navigation.navigate('BusinessProfile')}>
+            <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.saveButtonText}>Cập nhật thông tin</Text>
           </TouchableOpacity>
         </View>
 
-        {/* App Settings */}
+        {/* Team Management */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
-            <Ionicons name="options-outline" size={18} color={COLORS.PRIMARY} />
+            <Ionicons name="people-outline" size={18} color={C.PRIMARY} />
+            <Text style={styles.sectionTitle}>Quản lý Team</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Theo dõi hiệu suất và quản lý đội ngũ sales của bạn
+          </Text>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY }]} onPress={() => navigation.navigate('TeamDashboard')}>
+            <Ionicons name="people" size={18} color="#FFFFFF" />
+            <Text style={styles.saveButtonText}>Mở Dashboard Team</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* App Settings — chỉ giữ tính năng hoạt động */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="options-outline" size={18} color={C.PRIMARY} />
             <Text style={styles.sectionTitle}>Ứng dụng</Text>
           </View>
 
-          <TouchableOpacity style={styles.settingsRow}>
-            <View style={styles.settingsRowLeft}>
-              <Ionicons name="language-outline" size={18} color={COLORS.TEXT_LIGHT} />
-              <Text style={styles.settingsRowText}>Ngôn ngữ phân tích</Text>
-            </View>
-            <View style={styles.settingsRowRight}>
-              <Text style={styles.settingsRowValue}>Tiếng Việt</Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_LIGHT} />
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.rowDivider} />
-
-          <TouchableOpacity style={styles.settingsRow}>
-            <View style={styles.settingsRowLeft}>
-              <Ionicons name="notifications-outline" size={18} color={COLORS.TEXT_LIGHT} />
-              <Text style={styles.settingsRowText}>Thông báo</Text>
-            </View>
-            <View style={styles.settingsRowRight}>
-              <Text style={styles.settingsRowValue}>Bật</Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_LIGHT} />
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.rowDivider} />
-
-          <TouchableOpacity style={styles.settingsRow}>
+          <TouchableOpacity style={styles.settingsRow} onPress={handleDeleteAllData}>
             <View style={styles.settingsRowLeft}>
               <Ionicons name="trash-outline" size={18} color={COLORS.DANGER} />
               <Text style={[styles.settingsRowText, { color: COLORS.DANGER }]}>Xóa tất cả dữ liệu</Text>
@@ -213,230 +228,137 @@ export default function ProfileScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Edit Name Modal */}
+      <Modal visible={showNameModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Thông tin cá nhân</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Tên của bạn"
+              placeholderTextColor={COLORS.TEXT_LIGHT}
+              value={editName}
+              onChangeText={setEditName}
+              autoFocus
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Vai trò (VD: Sales Manager, Team Lead)"
+              placeholderTextColor={COLORS.TEXT_LIGHT}
+              value={editRole}
+              onChangeText={setEditRole}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowNameModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, { backgroundColor: C.PRIMARY }]}
+                onPress={handleSaveProfile}
+              >
+                <Text style={styles.modalSaveText}>Lưu</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  header: {
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: COLORS.TEXT,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: COLORS.TEXT_LIGHT,
-    marginTop: 2,
-  },
+  safeArea: { flex: 1, backgroundColor: COLORS.BACKGROUND },
+  container: { flex: 1, paddingHorizontal: 16 },
+  header: { paddingTop: 20, paddingBottom: 16 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: COLORS.TEXT },
+  headerSubtitle: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 2 },
   profileCard: {
-    backgroundColor: COLORS.CARD,
-    borderRadius: 14,
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 18,
+    flexDirection: 'row', alignItems: 'center', marginBottom: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07, shadowRadius: 6, elevation: 3,
   },
   avatarCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.PRIMARY + '12',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
+    width: 64, height: 64, borderRadius: 32,
+    alignItems: 'center', justifyContent: 'center', marginRight: 14,
   },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.TEXT,
-  },
-  profileRole: {
-    fontSize: 13,
-    color: COLORS.TEXT_LIGHT,
-    marginTop: 3,
-  },
-  editProfileButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EBF4FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT },
+  profileRole: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 3 },
   statsStrip: {
-    backgroundColor: COLORS.PRIMARY,
-    borderRadius: 16,
-    flexDirection: 'row',
-    paddingVertical: 16,
-    marginBottom: 16,
+    borderRadius: 16, flexDirection: 'row', paddingVertical: 16, marginBottom: 16,
   },
-  stripItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  stripValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  stripLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 3,
-  },
-  stripDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginVertical: 4,
-  },
+  stripItem: { flex: 1, alignItems: 'center' },
+  stripValue: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
+  stripLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 3 },
+  stripDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
   sectionCard: {
-    backgroundColor: COLORS.CARD,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 16, marginBottom: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.TEXT },
+  sectionDesc: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginBottom: 16, lineHeight: 18 },
+  colorGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'flex-start',
+  },
+  colorOption: { alignItems: 'center', width: 64 },
+  colorCircle: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
     marginBottom: 6,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.TEXT,
+  colorCircleActive: {
+    borderWidth: 3, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 4, elevation: 5,
   },
-  sectionDesc: {
-    fontSize: 12,
-    color: COLORS.TEXT_LIGHT,
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  fieldGroup: {
-    marginBottom: 14,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.TEXT,
-    marginBottom: 6,
-  },
-  secretInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.BACKGROUND,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    paddingHorizontal: 12,
-    height: 48,
-  },
-  fieldIcon: {
-    marginRight: 8,
-  },
-  secretField: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.TEXT,
-  },
-  eyeButton: {
-    padding: 4,
-  },
+  colorLabel: { fontSize: 11, color: COLORS.TEXT_SECONDARY, fontWeight: '500', textAlign: 'center' },
   saveButton: {
-    backgroundColor: COLORS.PRIMARY,
-    borderRadius: 12,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 4,
+    borderRadius: 12, paddingVertical: 14, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4,
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  saveButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12,
   },
-  settingsRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  settingsRowText: {
-    fontSize: 14,
-    color: COLORS.TEXT,
-    fontWeight: '500',
-  },
-  settingsRowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  settingsRowValue: {
-    fontSize: 13,
-    color: COLORS.TEXT_LIGHT,
-  },
-  rowDivider: {
-    height: 1,
-    backgroundColor: COLORS.BORDER,
-  },
+  settingsRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  settingsRowText: { fontSize: 14, color: COLORS.TEXT, fontWeight: '500' },
+  settingsRowRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  settingsRowValue: { fontSize: 13, color: COLORS.TEXT_LIGHT },
+  rowDivider: { height: 1, backgroundColor: COLORS.BORDER },
   versionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 4,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 4,
   },
-  versionText: {
-    fontSize: 12,
-    color: COLORS.TEXT_LIGHT,
+  versionText: { fontSize: 12, color: COLORS.TEXT_LIGHT },
+  // Modal styles
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center', alignItems: 'center', padding: 24,
   },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-    flexWrap: 'wrap',
-    gap: 4,
+  modalContent: {
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 24, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT, marginBottom: 16 },
+  modalInput: {
+    backgroundColor: COLORS.BACKGROUND, borderRadius: 10, padding: 14,
+    fontSize: 15, color: COLORS.TEXT, marginBottom: 12,
+    borderWidth: 1, borderColor: COLORS.BORDER,
   },
-  statusText: {
-    fontSize: 12,
-    color: COLORS.TEXT_LIGHT,
-    marginLeft: 4,
+  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  modalCancelBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 10,
+    borderWidth: 1, borderColor: COLORS.BORDER, alignItems: 'center',
   },
+  modalCancelText: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT_LIGHT },
+  modalSaveBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center',
+  },
+  modalSaveText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });

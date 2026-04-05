@@ -6,8 +6,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { KnowledgeProvider } from './src/contexts/KnowledgeContext';
+import { BusinessProvider } from './src/contexts/BusinessContext';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 import { loadApiKeys } from './src/services/storageService';
 import { setApiKeys } from './src/services/aiService';
+import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from './src/config/defaultKeys';
 
 const ONBOARDING_KEY = '@salescoach_onboarding_done';
 
@@ -16,7 +19,10 @@ export default function App() {
 
   useEffect(() => {
     loadApiKeys().then(({ claudeKey, openaiKey }) => {
-      setApiKeys(openaiKey, claudeKey);
+      // Ưu tiên key user đã lưu, fallback sang key nhúng sẵn
+      const finalClaude = claudeKey || DEFAULT_CLAUDE_KEY;
+      const finalOpenai = openaiKey || DEFAULT_OPENAI_KEY;
+      setApiKeys(finalOpenai, finalClaude);
     });
     AsyncStorage.getItem(ONBOARDING_KEY).then(val => {
       setShowOnboarding(val !== 'true');
@@ -41,12 +47,16 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <KnowledgeProvider>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <AppNavigator />
-        </NavigationContainer>
-      </KnowledgeProvider>
+      <ThemeProvider>
+        <KnowledgeProvider>
+          <BusinessProvider>
+            <NavigationContainer>
+              <StatusBar style="dark" />
+              <AppNavigator />
+            </NavigationContainer>
+          </BusinessProvider>
+        </KnowledgeProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

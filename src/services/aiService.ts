@@ -1,12 +1,13 @@
-// ─── Config — điền API key vào đây hoặc lấy từ AsyncStorage ─────────────────
+// ─── Config ─────────────────────────────────────────────────────────────────
 import { Platform } from 'react-native';
+import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from '../config/defaultKeys';
 
-let OPENAI_API_KEY = '';    // Dùng cho Whisper (speech-to-text)
-let CLAUDE_API_KEY = '';    // Dùng cho phân tích coaching
+let OPENAI_API_KEY = DEFAULT_OPENAI_KEY;    // Dùng cho Whisper (speech-to-text)
+let CLAUDE_API_KEY = DEFAULT_CLAUDE_KEY;    // Dùng cho phân tích coaching
 
 export const setApiKeys = (openaiKey: string, claudeKey: string) => {
-  OPENAI_API_KEY = openaiKey;
-  CLAUDE_API_KEY = claudeKey;
+  OPENAI_API_KEY = openaiKey || DEFAULT_OPENAI_KEY;
+  CLAUDE_API_KEY = claudeKey || DEFAULT_CLAUDE_KEY;
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,14 +25,11 @@ export interface AnalysisResult {
 
 export const transcribeAudio = async (audioUri: string): Promise<string> => {
   if (!OPENAI_API_KEY) {
-    console.warn('Chưa có OpenAI API key — dùng transcript mẫu');
-    return MOCK_TRANSCRIPT;
+    throw new Error('Chưa cấu hình OpenAI API key. Vui lòng liên hệ admin.');
   }
 
-  // Web không hỗ trợ upload file âm thanh trực tiếp — dùng mock để test
   if (Platform.OS === 'web') {
-    console.warn('Web không hỗ trợ Whisper upload — dùng transcript mẫu');
-    return MOCK_TRANSCRIPT;
+    throw new Error('Tính năng ghi âm không hỗ trợ trên trình duyệt web. Vui lòng dùng app trên điện thoại.');
   }
 
   if (!audioUri) {
@@ -57,11 +55,13 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
 
   if (!response.ok) {
     if (response.status === 429) {
-      console.warn('Whisper quota hết — dùng transcript mẫu để test');
-      return MOCK_TRANSCRIPT;
+      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
+    }
+    if (response.status === 401) {
+      throw new Error('OpenAI API key không hợp lệ. Vui lòng liên hệ admin.');
     }
     const err = await response.text();
-    throw new Error(`Whisper API lỗi (${response.status}): ${err}`);
+    throw new Error(`Lỗi chuyển giọng nói (${response.status}). Vui lòng thử lại.`);
   }
 
   const data = await response.json();
@@ -72,34 +72,30 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
 
 export const analyzeTranscript = async (transcript: string, knowledgeBase?: string): Promise<AnalysisResult> => {
   if (!CLAUDE_API_KEY) {
-    console.warn('Chưa có Claude API key — dùng kết quả mẫu');
-    return getMockAnalysis();
+    throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
   }
 
   const systemPrompt = `${knowledgeBase ? knowledgeBase + '\n\n---\n' : ''}Bạn là Coach Duy Nguyễn, chuyên gia huấn luyện bán hàng theo phương pháp "Bán bằng vị thế" — THE TRUSTED ADVISOR.
 
-Dựa trên toàn bộ kiến thức TTA ở trên, phân tích buổi tư vấn theo 5 tiêu chí:
-1. Xây dựng vị thế cố vấn tin cậy — Sales có đặt mình ở vị thế cố vấn hay đang "bán hàng"? Có tạo được niềm tin qua Uy tín, Độ tin cậy, Kết nối cảm xúc không? Mức độ tập trung vào bản thân (Sf) có cao không?
-2. Đọc tín hiệu và tâm lý khách — Sales có nhận ra khách đang ở giai đoạn nào trong hành trình ra quyết định? Có đọc được nỗi sợ, thiên lệch nhận thức của khách không?
-3. Dẫn dắt qua 3 Điểm Chạm — Sales có dẫn dắt khách qua các điểm chạm nhận thức, cảm xúc, hành động không? Hay đang cố thuyết phục?
-4. Kỹ năng lắng nghe và đặt câu hỏi — Sales có lắng nghe chiến lược, đặt câu hỏi dẫn dắt, hay đang nói quá nhiều và liệt kê tính năng?
-5. Xử lý tình huống và giữ vị thế — Khi khách từ chối, so sánh đối thủ, hoặc đặt câu hỏi khó, Sales có giữ được vị thế cố vấn không? Có mắc lỗi mất vị thế không?
+Phân tích buổi tư vấn theo phương pháp TTA, tập trung vào: vị thế cố vấn, đọc tâm lý khách, 3 Điểm Chạm, kỹ năng lắng nghe/đặt câu hỏi, xử lý tình huống.
 
-100% tiếng Việt. Không dùng tiếng Anh. Không dùng thuật ngữ tiếng Anh.
-QUAN TRỌNG: Chỉ trả về JSON hợp lệ, không có text thừa bên ngoài.`;
+YÊU CẦU NGÔN NGỮ:
+- 100% tiếng Việt tự nhiên, viết như người Việt nói.
+- Câu ngắn, dễ hiểu, không dùng từ Hán-Việt phức tạp.
+- Mỗi mục trong JSON tối đa 1-2 câu, đi thẳng vào điểm chính.
+- QUAN TRỌNG: Chỉ trả về JSON hợp lệ, không có text thừa.`;
 
-  const userPrompt = `Phân tích buổi tư vấn sau theo phương pháp TTA và trả về JSON:
+  const userPrompt = `Phân tích buổi tư vấn sau và trả về JSON:
 
-NỘI DUNG BUỔI TƯ VẤN:
 ${transcript}
 
-Trả về JSON (chỉ JSON, không giải thích):
+JSON (chỉ JSON, không giải thích):
 {
-  "score": <số thực 1.0-10.0>,
-  "summary": [<3-5 ý chính của buổi tư vấn, bằng tiếng Việt>],
-  "strengths": [<2-4 điểm làm tốt theo tiêu chí TTA, có trích dẫn câu nói cụ thể>],
-  "improvements": [<2-4 điểm cần cải thiện theo TTA, giải thích tại sao và nên làm gì thay thế>],
-  "strategies": [<2-3 hướng hành động cụ thể cho buổi gặp tiếp theo, theo phương pháp 3 Điểm Chạm>]
+  "score": <1.0-10.0>,
+  "summary": [<2-3 ý chính, mỗi ý 1 câu ngắn>],
+  "strengths": [<2-3 điểm tốt, ngắn gọn>],
+  "improvements": [<2-3 điểm cần sửa, kèm gợi ý ngắn>],
+  "strategies": [<2 hướng hành động cụ thể cho lần gặp sau>]
 }`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -122,8 +118,13 @@ Trả về JSON (chỉ JSON, không giải thích):
   });
 
   if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Claude API lỗi: ${err}`);
+    if (response.status === 401) {
+      throw new Error('Claude API key không hợp lệ. Vui lòng liên hệ admin.');
+    }
+    if (response.status === 429) {
+      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
+    }
+    throw new Error('Lỗi phân tích. Vui lòng thử lại.');
   }
 
   const data = await response.json();
@@ -153,53 +154,33 @@ export interface ChatMessage {
   content: string;
 }
 
+const COACH_SYSTEM = (knowledgeBase: string) => `${knowledgeBase}
+
+---
+Bạn là Coach Duy Nguyễn — sáng lập phương pháp "Bán bằng vị thế" / THE TRUSTED ADVISOR. Xưng "Duy", gọi người hỏi "bạn".
+
+NGUYÊN TẮC:
+- Chỉ trả lời dựa trên kiến thức TTA ở trên. Ngoài phạm vi thì nói thẳng và kéo về bán hàng. KHÔNG bịa.
+- Trả lời NGẮN GỌN, đi thẳng vào vấn đề. Tối đa 150-200 từ.
+- Đưa ra định hướng và giải pháp cốt lõi trước. Cuối câu trả lời, hỏi người dùng có cần đi sâu hơn không (ví dụ: kịch bản mẫu, phân tích chi tiết, bước tiếp theo).
+- Chỉ khi người dùng yêu cầu thêm thì mới triển khai chi tiết.
+
+GIỌNG VĂN:
+- Viết như người Việt nói chuyện thật — tự nhiên, gần gũi, dễ hiểu.
+- Câu ngắn, rõ ràng. KHÔNG viết kiểu dịch từ tiếng Anh.
+- KHÔNG dùng từ Hán-Việt phức tạp khi có từ thuần Việt thay thế.
+- Dùng từ ngữ bán hàng thực tế tại Việt Nam.
+- KHÔNG dùng emoji, KHÔNG sáo rỗng.
+
+TRÌNH BÀY: Dùng markdown nhẹ: **in đậm** cho ý chính, xuống dòng cho dễ đọc. Hạn chế dùng heading ##.`;
+
 export const chatWithCoach = async (
   messages: ChatMessage[],
   knowledgeBase: string
 ): Promise<string> => {
   if (!CLAUDE_API_KEY) {
-    // Mock response khi chưa có key
-    return getMockChatResponse(messages[messages.length - 1]?.content ?? '');
+    throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
   }
-
-  const systemPrompt = `${knowledgeBase}
-
----
-BẠN LÀ AI:
-Bạn là Coach Duy Nguyễn — người sáng lập phương pháp "Bán bằng vị thế" và chương trình THE TRUSTED ADVISOR. Xưng "Duy" khi nói về bản thân. Gọi người hỏi là "bạn".
-
-NGUYÊN TẮC QUAN TRỌNG NHẤT:
-Chỉ trả lời dựa trên kiến thức được cung cấp ở trên. Nếu câu hỏi nằm ngoài phạm vi kiến thức đó, hãy nói thẳng "phần này nằm ngoài chuyên môn của Duy" và kéo về chủ đề bán hàng B2B/B2C cao cấp. KHÔNG bịa thông tin, KHÔNG thêm framework hay phương pháp không có trong kiến thức trên.
-
-GIỌNG VĂN:
-Nói chuyện trực tiếp, gần gũi, như đang ngồi cà phê coaching 1-1. Văn nói, câu ngắn, dứt khoát. Hay dùng: "Duy nói thẳng nhé...", "Vấn đề thật sự ở chỗ...", "Cái này quan trọng lắm...", "Bạn thử làm thế này xem..."
-
-100% tiếng Việt — không chen tiếng Anh trừ khi là thuật ngữ chuyên ngành (B2B, telesales, CRM...).
-
-CÁCH TRÌNH BÀY:
-Dùng markdown để format đẹp — app sẽ render thành text có format:
-- Dùng **in đậm** cho ý quan trọng
-- Dùng *in nghiêng* cho lời thoại mẫu hoặc nhấn mạnh nhẹ
-- Dùng ## cho tiêu đề phần lớn, ### cho tiêu đề phụ
-- Dùng > cho trích dẫn hoặc kịch bản mẫu
-- Dùng --- để ngăn cách các phần
-- KHÔNG dùng emoji
-- KHÔNG kết thúc bằng câu sáo rỗng kiểu "Hy vọng hữu ích", "Chúc bạn thành công"
-
-ĐỘ SÂU CÂU TRẢ LỜI:
-Mỗi câu trả lời đủ 4 lớp (trừ câu hỏi đơn giản):
-
-## Phân tích gốc rễ
-Tại sao tình huống này xảy ra, tâm lý khách hàng đằng sau là gì.
-
-## Hướng xử lý cụ thể
-Cách làm cụ thể có thể áp dụng ngay, không lý thuyết chung chung.
-
-## Kịch bản mẫu
-Viết ra lời thoại thật giữa sales và khách — câu nào nên nói, khách phản ứng thế nào, sales đáp lại ra sao.
-
-## Bước tiếp theo
-Sales cần làm gì sau đó, chuẩn bị gì cho lần gặp sau.`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -211,19 +192,113 @@ Sales cần làm gì sau đó, chuẩn bị gì cho lần gặp sau.`;
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 8192,
-      system: systemPrompt,
+      max_tokens: 1024,
+      system: COACH_SYSTEM(knowledgeBase),
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     }),
   });
 
   if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Claude API lỗi: ${err}`);
+    if (response.status === 401) {
+      throw new Error('Claude API key không hợp lệ. Vui lòng liên hệ admin.');
+    }
+    if (response.status === 429) {
+      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
+    }
+    throw new Error('Lỗi phân tích. Vui lòng thử lại.');
   }
 
   const data = await response.json();
   return data.content[0].text as string;
+};
+
+// ─── Streaming Chat — hiện từng chữ real-time ───────────────────────────────
+
+export const streamChatWithCoach = async (
+  messages: ChatMessage[],
+  knowledgeBase: string,
+  onChunk: (textSoFar: string) => void,
+): Promise<string> => {
+  if (!CLAUDE_API_KEY) {
+    throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      stream: true,
+      system: COACH_SYSTEM(knowledgeBase),
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+    }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('Claude API key không hợp lệ. Vui lòng liên hệ admin.');
+    }
+    if (response.status === 429) {
+      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
+    }
+    throw new Error('Lỗi phân tích. Vui lòng thử lại.');
+  }
+
+  // Thử streaming qua ReadableStream
+  const reader = response.body?.getReader();
+  if (!reader) {
+    // Fallback: đọc toàn bộ response nếu không hỗ trợ stream
+    const text = await response.text();
+    let fullText = '';
+    const lines = text.split('\n');
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+          fullText += parsed.delta.text;
+        }
+      } catch {}
+    }
+    onChunk(fullText);
+    return fullText;
+  }
+
+  let fullText = '';
+  let buffer = '';
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+          fullText += parsed.delta.text;
+          onChunk(fullText);
+        }
+      } catch {}
+    }
+  }
+
+  return fullText;
 };
 
 const getMockChatResponse = (userMessage: string): string => {
@@ -234,7 +309,7 @@ const getMockChatResponse = (userMessage: string): string => {
   if (lower.includes('từ chối') || lower.includes('giá cao') || lower.includes('đắt')) {
     return `Khi khách nói "giá cao" — đây là tín hiệu, không phải từ chối.\n\nTheo phương pháp 3 Điểm Chạm, bạn cần quay lại Điểm Chạm nhận thức trước. Đừng giảm giá, đừng giải thích. Hỏi lại: "Anh thấy cao so với điều gì ạ?"\n\nNếu khách so với ngân sách — giúp khách tính giá trị đầu tư. Nếu so với đối thủ — phân tích khác biệt về giá trị, không phải giá cả.\n\nCâu mẫu: "Em hiểu anh đang cân nhắc về chi phí. Nếu giải pháp này giúp anh đạt được [kết quả cụ thể], thì đầu tư này có xứng đáng với anh không?"`;
   }
-  return `Đây là câu trả lời mẫu vì chưa có kết nối tới hệ thống AI.\n\nĐể Coach AI hoạt động thật, bạn cần vào tab Cài Đặt, nhập Claude API Key, rồi nhấn Lưu.\n\nSau đó Duy sẽ trả lời dựa trên toàn bộ kiến thức phương pháp Bán bằng Vị thế.`;
+  return `Hiện tại chưa kết nối được tới hệ thống AI. Vui lòng kiểm tra kết nối mạng rồi thử lại.`;
 };
 
 // ─── Full pipeline: audio → transcript → analysis ────────────────────────────

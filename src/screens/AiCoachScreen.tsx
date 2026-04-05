@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Markdown from 'react-native-markdown-display';
 import { COLORS } from '../constants/colors';
-import { chatWithCoach, ChatMessage } from '../services/aiService';
+import { useColors } from '../contexts/ThemeContext';
+import { streamChatWithCoach, transcribeAudio, ChatMessage } from '../services/aiService';
+import { startRecording, stopRecording } from '../services/audioService';
 import { QUICK_SUGGESTIONS } from '../constants/knowledgeBase';
 import { useKnowledge } from '../contexts/KnowledgeContext';
+import { useBusiness } from '../contexts/BusinessContext';
+import {
+  ConversationMessage,
+  loadConversations,
+  updateConversation,
+} from '../services/storageService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,33 +37,72 @@ interface Message {
   timestamp: Date;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const toStorageMsg = (m: Message): ConversationMessage => ({
+  id: m.id,
+  role: m.role,
+  content: m.content,
+  timestamp: m.timestamp.toISOString(),
+});
+
+const fromStorageMsg = (m: ConversationMessage): Message => ({
+  id: m.id,
+  role: m.role,
+  content: m.content,
+  timestamp: new Date(m.timestamp),
+});
+
 // ─── Bubble Component ─────────────────────────────────────────────────────────
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ message, streaming }: { message: Message; streaming?: boolean }) {
+  const C = useColors();
   const isUser = message.role === 'user';
   const timeStr = message.timestamp.toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
+  // Khi đang streaming và chưa có nội dung, hiện indicator
+  if (streaming && !message.content) {
+    return (
+      <View style={[styles.bubbleRow, styles.bubbleRowAI]}>
+        <View style={[styles.aiAvatar, { backgroundColor: C.PRIMARY }]}>
+          <Ionicons name="chatbubbles" size={14} color="#fff" />
+        </View>
+        <View style={[styles.bubble, styles.bubbleAI, styles.typingBubble]}>
+          <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
+          <Text style={styles.typingText}>Đang suy nghĩ...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : styles.bubbleRowAI]}>
       {!isUser && (
-        <View style={styles.aiAvatar}>
-          <Ionicons name="sparkles" size={14} color="#fff" />
+        <View style={[styles.aiAvatar, { backgroundColor: C.PRIMARY }]}>
+          <Ionicons name="chatbubbles" size={14} color="#fff" />
         </View>
       )}
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAI]}>
+      <View style={[styles.bubble, isUser ? [styles.bubbleUser, { backgroundColor: C.PRIMARY }] : styles.bubbleAI]}>
         {isUser ? (
           <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
             {message.content}
           </Text>
+        ) : streaming ? (
+          <Text style={[styles.bubbleText, styles.bubbleTextAI]}>
+            {message.content}
+            <Text style={{ color: C.PRIMARY }}>{'▍'}</Text>
+          </Text>
         ) : (
           <Markdown style={mdStyles}>{message.content}</Markdown>
         )}
-        <Text style={[styles.bubbleTime, isUser ? styles.bubbleTimeUser : styles.bubbleTimeAI]}>
-          {timeStr}
-        </Text>
+        {!streaming && (
+          <Text style={[styles.bubbleTime, isUser ? styles.bubbleTimeUser : styles.bubbleTimeAI]}>
+            {timeStr}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -63,10 +111,11 @@ function MessageBubble({ message }: { message: Message }) {
 // ─── Typing Indicator ─────────────────────────────────────────────────────────
 
 function TypingIndicator() {
+  const C = useColors();
   return (
     <View style={[styles.bubbleRow, styles.bubbleRowAI]}>
-      <View style={styles.aiAvatar}>
-        <Ionicons name="sparkles" size={14} color="#fff" />
+      <View style={[styles.aiAvatar, { backgroundColor: C.PRIMARY }]}>
+        <Ionicons name="chatbubbles" size={14} color="#fff" />
       </View>
       <View style={[styles.bubble, styles.bubbleAI, styles.typingBubble]}>
         <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
@@ -78,20 +127,53 @@ function TypingIndicator() {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-const WELCOME_MESSAGE: Message = {
+const WELCOME_CONTENT = `Chào bạn!\n\nDuy đây — người xây dựng phương pháp "Bán bằng vị thế" và chương trình THE TRUSTED ADVISOR.\n\nDuy có thể giúp bạn xây dựng vị thế cố vấn tin cậy, dẫn dắt khách hàng cao cấp qua 3 Điểm Chạm, xử lý tình huống khó, viết kịch bản và tin nhắn có thể dùng ngay.\n\nBạn đang quan tâm điều gì nhất? Cứ hỏi thẳng.`;
+
+const makeWelcome = (): Message => ({
   id: 'welcome',
   role: 'assistant',
-  content: `Chào bạn!\n\nDuy đây — người xây dựng phương pháp "Bán bằng vị thế" và chương trình THE TRUSTED ADVISOR.\n\nDuy có thể giúp bạn xây dựng vị thế cố vấn tin cậy, dẫn dắt khách hàng cao cấp qua 3 Điểm Chạm, xử lý tình huống khó, viết kịch bản và tin nhắn có thể dùng ngay.\n\nBạn đang quan tâm điều gì nhất? Cứ hỏi thẳng.`,
+  content: WELCOME_CONTENT,
   timestamp: new Date(),
-};
+});
 
 export default function AiCoachScreen() {
+  const C = useColors();
   const { knowledgeBase } = useKnowledge();
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+  const { businessContext } = useBusiness();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+
+  const conversationId: string | undefined = route.params?.conversationId;
+  const conversationTitle: string | undefined = route.params?.title;
+
+  const [messages, setMessages] = useState<Message[]>([makeWelcome()]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const streamingMsgId = useRef<string | null>(null);
+
+  // Load tin nhắn cũ khi mở conversation
+  useEffect(() => {
+    if (!conversationId) return;
+    loadConversations().then(convs => {
+      const conv = convs.find(c => c.id === conversationId);
+      if (conv && conv.messages.length > 0) {
+        setMessages([makeWelcome(), ...conv.messages.map(fromStorageMsg)]);
+        setShowSuggestions(false);
+      }
+    });
+  }, [conversationId]);
+
+  // Auto-save tin nhắn (bỏ welcome message)
+  const saveMessages = useCallback(async (msgs: Message[]) => {
+    if (!conversationId) return;
+    const toSave = msgs.filter(m => m.id !== 'welcome').map(toStorageMsg);
+    await updateConversation(conversationId, toSave);
+  }, [conversationId]);
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -100,79 +182,118 @@ export default function AiCoachScreen() {
     setInputText('');
     setShowSuggestions(false);
 
-    // Thêm tin nhắn của user
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: trimmed,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMsg]);
-    setIsTyping(true);
 
-    // Scroll xuống dưới
+    const aiMsgId = (Date.now() + 1).toString();
+    const aiMsg: Message = {
+      id: aiMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+    };
+
+    const updatedWithUser = [...messages, userMsg];
+    setMessages([...updatedWithUser, aiMsg]);
+    setIsTyping(true);
+    setIsStreaming(true);
+    streamingMsgId.current = aiMsgId;
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      // Lấy lịch sử chat (bỏ tin chào mừng, chỉ lấy 10 tin gần nhất)
-      const history: ChatMessage[] = messages
+      const history: ChatMessage[] = updatedWithUser
         .filter(m => m.id !== 'welcome')
         .slice(-10)
         .map(m => ({ role: m.role, content: m.content }));
 
-      history.push({ role: 'user', content: trimmed });
+      const fullText = await streamChatWithCoach(
+        history,
+        knowledgeBase + businessContext,
+        (textSoFar) => {
+          setMessages(prev =>
+            prev.map(m => m.id === aiMsgId ? { ...m, content: textSoFar } : m)
+          );
+          flatListRef.current?.scrollToEnd({ animated: false });
+        },
+      );
 
-      const reply = await chatWithCoach(history, knowledgeBase);
-
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: reply,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiMsg]);
+      const finalMessages = updatedWithUser.concat({
+        ...aiMsg,
+        content: fullText,
+      });
+      setMessages(finalMessages);
+      await saveMessages(finalMessages);
     } catch {
-      const errMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Có lỗi xảy ra. Bạn vào tab Cài Đặt kiểm tra lại API key rồi thử lại nhé.',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errMsg]);
+      setMessages(prev =>
+        prev.map(m => m.id === aiMsgId
+          ? { ...m, content: 'Có lỗi xảy ra. Vui lòng kiểm tra kết nối mạng rồi thử lại nhé.' }
+          : m)
+      );
     } finally {
       setIsTyping(false);
+      setIsStreaming(false);
+      streamingMsgId.current = null;
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, knowledgeBase, businessContext, saveMessages]);
 
   const handleSuggestion = (suggestion: string) => {
     sendMessage(suggestion);
   };
 
-  const clearChat = () => {
-    setMessages([WELCOME_MESSAGE]);
-    setShowSuggestions(true);
+  const handleVoice = async () => {
+    if (isRecording) {
+      // Dừng ghi âm → chuyển thành text
+      try {
+        setIsRecording(false);
+        setIsTranscribing(true);
+        const result = await stopRecording();
+        const text = await transcribeAudio(result.uri);
+        setIsTranscribing(false);
+        if (text && text.trim()) {
+          sendMessage(text.trim());
+        }
+      } catch {
+        setIsTranscribing(false);
+      }
+    } else {
+      // Bắt đầu ghi âm
+      try {
+        await startRecording();
+        setIsRecording(true);
+      } catch {
+        // Permission denied hoặc lỗi khác
+      }
+    }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
+        {conversationId && (
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={22} color={COLORS.TEXT} />
+          </TouchableOpacity>
+        )}
         <View style={styles.headerLeft}>
-          <View style={styles.headerAvatar}>
-            <Ionicons name="sparkles" size={20} color="#fff" />
+          <View style={[styles.headerAvatar, { backgroundColor: C.PRIMARY }]}>
+            <Ionicons name="chatbubbles" size={20} color="#fff" />
           </View>
-          <View>
-            <Text style={styles.headerTitle}>AI Sales Coach</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {conversationTitle || 'AI Sales Coach'}
+            </Text>
             <View style={styles.onlineRow}>
               <View style={styles.onlineDot} />
               <Text style={styles.onlineText}>Sẵn sàng hỗ trợ</Text>
             </View>
           </View>
         </View>
-        <TouchableOpacity style={styles.clearBtn} onPress={clearChat}>
-          <Ionicons name="refresh-outline" size={20} color={COLORS.TEXT_LIGHT} />
-        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -185,11 +306,15 @@ export default function AiCoachScreen() {
           ref={flatListRef}
           data={messages}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => <MessageBubble message={item} />}
+          renderItem={({ item }) => (
+            <MessageBubble
+              message={item}
+              streaming={isStreaming && item.id === streamingMsgId.current}
+            />
+          )}
           contentContainerStyle={styles.messageList}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          ListFooterComponent={isTyping ? <TypingIndicator /> : null}
         />
 
         {/* Quick Suggestions */}
@@ -204,34 +329,64 @@ export default function AiCoachScreen() {
               {QUICK_SUGGESTIONS.map((s, i) => (
                 <TouchableOpacity
                   key={i}
-                  style={styles.suggestionChip}
+                  style={[styles.suggestionChip, { backgroundColor: C.PRIMARY + '10', borderColor: C.PRIMARY + '20' }]}
                   onPress={() => handleSuggestion(s)}
                 >
-                  <Text style={styles.suggestionText}>{s}</Text>
+                  <Text style={[styles.suggestionText, { color: C.PRIMARY }]}>{s}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
         )}
 
+        {/* Transcribing indicator */}
+        {isTranscribing && (
+          <View style={styles.transcribingBar}>
+            <ActivityIndicator size="small" color={C.PRIMARY} />
+            <Text style={[styles.transcribingText, { color: C.PRIMARY }]}>Đang chuyển giọng nói...</Text>
+          </View>
+        )}
+
         {/* Input Bar */}
         <View style={styles.inputBar}>
-          <View style={styles.inputWrap}>
-            <TextInput
-              style={styles.input}
-              placeholder="Hỏi AI Coach..."
-              placeholderTextColor={COLORS.TEXT_LIGHT}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={500}
-              returnKeyType="default"
-            />
-          </View>
+          {/* Mic button */}
           <TouchableOpacity
-            style={[styles.sendBtn, (!inputText.trim() || isTyping) && styles.sendBtnDisabled]}
+            style={[
+              styles.micBtn,
+              isRecording && { backgroundColor: COLORS.DANGER },
+              !isRecording && { backgroundColor: C.PRIMARY + '15' },
+            ]}
+            onPress={handleVoice}
+            disabled={isTyping || isStreaming || isTranscribing}
+          >
+            <Ionicons
+              name={isRecording ? 'stop' : 'mic'}
+              size={22}
+              color={isRecording ? '#fff' : C.PRIMARY}
+            />
+          </TouchableOpacity>
+
+          <View style={[styles.inputWrap, isRecording && { borderColor: COLORS.DANGER }]}>
+            {isRecording ? (
+              <Text style={styles.recordingHint}>Đang nghe... Nhấn nút đỏ để dừng</Text>
+            ) : (
+              <TextInput
+                style={styles.input}
+                placeholder="Nhắn tin hoặc nhấn mic để nói..."
+                placeholderTextColor={COLORS.TEXT_LIGHT}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+                returnKeyType="default"
+              />
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.sendBtn, { backgroundColor: C.PRIMARY }, (!inputText.trim() || isTyping || isStreaming || isRecording) && styles.sendBtnDisabled]}
             onPress={() => sendMessage(inputText)}
-            disabled={!inputText.trim() || isTyping}
+            disabled={!inputText.trim() || isTyping || isStreaming || isRecording}
           >
             <Ionicons name="send" size={20} color="#fff" />
           </TouchableOpacity>
@@ -279,14 +434,22 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: COLORS.CARD,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER,
   },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+  },
   headerLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -320,14 +483,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.SUCCESS,
     fontWeight: '500',
-  },
-  clearBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: COLORS.BACKGROUND,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   messageList: {
     padding: 16,
@@ -440,7 +595,7 @@ const styles = StyleSheet.create({
   },
   inputBar: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: COLORS.CARD,
@@ -457,6 +612,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     maxHeight: 120,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   input: {
     fontSize: 15,
@@ -473,5 +630,32 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     backgroundColor: COLORS.BORDER,
+  },
+  micBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  recordingHint: {
+    fontSize: 14,
+    color: COLORS.DANGER,
+    fontWeight: '500' as const,
+    fontStyle: 'italic' as const,
+  },
+  transcribingBar: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: 8,
+    gap: 8,
+    backgroundColor: COLORS.CARD,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
+  },
+  transcribingText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
   },
 });
