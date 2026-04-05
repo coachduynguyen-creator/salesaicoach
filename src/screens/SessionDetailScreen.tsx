@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Dimensions } from 'react-native';
+import { Audio } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -57,9 +58,70 @@ export default function SessionDetailScreen() {
   const scoreColor = getScoreColor(session.score);
   const [outcome, setOutcome] = useState<SessionOutcome | undefined>(session.outcome);
 
+  // Audio player
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+
   const handleOutcome = async (value: SessionOutcome) => {
     setOutcome(value);
     await updateSessionOutcome(session.id, value);
+  };
+
+  useEffect(() => {
+    return () => { soundRef.current?.unloadAsync(); };
+  }, []);
+
+  const handlePlayPause = async () => {
+    if (!session.audioUri) return;
+
+    if (isPlaying && soundRef.current) {
+      await soundRef.current.pauseAsync();
+      setIsPlaying(false);
+      return;
+    }
+
+    if (soundRef.current) {
+      await soundRef.current.playAsync();
+      setIsPlaying(true);
+      return;
+    }
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: session.audioUri },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) return;
+          setPosition(status.positionMillis || 0);
+          setAudioDuration(status.durationMillis || 0);
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            setPosition(0);
+            soundRef.current?.setPositionAsync(0);
+          }
+        },
+      );
+      soundRef.current = sound;
+      setIsPlaying(true);
+    } catch {
+      // Audio file not found or can't play
+    }
+  };
+
+  const handleSeek = async (ratio: number) => {
+    if (!soundRef.current || audioDuration === 0) return;
+    const pos = Math.floor(ratio * audioDuration);
+    await soundRef.current.setPositionAsync(pos);
+    setPosition(pos);
+  };
+
+  const formatMs = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -111,6 +173,47 @@ export default function SessionDetailScreen() {
             <Text style={styles.heroMetaText}>{formatTime(session.duration)}</Text>
           </View>
         </View>
+
+        {/* Audio Player */}
+        {session.audioUri && (
+          <View style={[styles.sectionCard, { backgroundColor: COLORS.CARD }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEmoji}>🎧</Text>
+              <Text style={[styles.sectionTitle, { color: COLORS.TEXT }]}>Nghe lại</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity
+                style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.PRIMARY, alignItems: 'center', justifyContent: 'center' }}
+                onPress={handlePlayPause}
+              >
+                <Ionicons name={isPlaying ? 'pause' : 'play'} size={22} color="#fff" />
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                {/* Seek bar bằng View thuần */}
+                <TouchableOpacity
+                  activeOpacity={1}
+                  style={{ height: 24, justifyContent: 'center' }}
+                  onPress={(e) => {
+                    const { locationX } = e.nativeEvent;
+                    const width = Dimensions.get('window').width - 16 * 2 - 16 * 2 - 44 - 12;
+                    handleSeek(Math.max(0, Math.min(1, locationX / width)));
+                  }}
+                >
+                  <View style={{ height: 4, backgroundColor: COLORS.BORDER, borderRadius: 2 }}>
+                    <View style={{
+                      height: 4, borderRadius: 2, backgroundColor: C.PRIMARY,
+                      width: audioDuration > 0 ? `${(position / audioDuration) * 100}%` : '0%',
+                    }} />
+                  </View>
+                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                  <Text style={{ fontSize: 11, color: COLORS.TEXT_LIGHT }}>{formatMs(position)}</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.TEXT_LIGHT }}>{formatMs(audioDuration)}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Outcome */}
         <View style={styles.outcomeCard}>

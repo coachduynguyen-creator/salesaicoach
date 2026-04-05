@@ -142,7 +142,7 @@ JSON (chỉ JSON, không giải thích):
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 3000,
+      max_tokens: 4096,
       system: systemPrompt,
       messages: [
         { role: 'user', content: userPrompt },
@@ -165,7 +165,6 @@ JSON (chỉ JSON, không giải thích):
   const rawText = '{' + (data.content[0].text as string);
 
   try {
-    // Xoá markdown code block nếu có
     const cleaned = rawText
       .replace(/```(?:json)?\s*/gi, '')
       .replace(/```/g, '')
@@ -173,13 +172,58 @@ JSON (chỉ JSON, không giải thích):
 
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
-    if (start === -1 || end === -1) throw new Error('Không tìm thấy JSON');
 
-    return JSON.parse(cleaned.slice(start, end + 1)) as AnalysisResult;
+    // Thử parse JSON hoàn chỉnh
+    if (start !== -1 && end !== -1 && end > start) {
+      return JSON.parse(cleaned.slice(start, end + 1)) as AnalysisResult;
+    }
+
+    // JSON bị cắt — cố gắng recovery
+    return recoverTruncatedJSON(cleaned);
   } catch (e) {
-    throw new Error(`Parse lỗi: ${e instanceof Error ? e.message : String(e)}\n\nRaw: ${rawText.slice(0, 200)}`);
+    // Nếu parse fail, thử recovery
+    try {
+      return recoverTruncatedJSON(rawText);
+    } catch {
+      throw new Error(`Lỗi phân tích. AI trả về không đủ dữ liệu. Vui lòng thử lại.`);
+    }
   }
 };
+
+// Khôi phục JSON bị cắt ngắn do hết max_tokens
+function recoverTruncatedJSON(text: string): AnalysisResult {
+  let json = text.trim();
+  // Tìm vị trí bắt đầu JSON
+  const start = json.indexOf('{');
+  if (start === -1) throw new Error('No JSON');
+  json = json.slice(start);
+
+  // Đóng mọi ngoặc còn thiếu
+  const openBrackets = (json.match(/\[/g) || []).length;
+  const closeBrackets = (json.match(/\]/g) || []).length;
+  const openBraces = (json.match(/\{/g) || []).length;
+  const closeBraces = (json.match(/\}/g) || []).length;
+
+  // Cắt bỏ value bị dở dang (string không đóng, trailing comma)
+  json = json.replace(/,\s*$/, '');
+  json = json.replace(/,\s*"[^"]*$/, '');
+  json = json.replace(/:\s*"[^"]*$/, ': ""');
+  json = json.replace(/:\s*\[\s*"[^"]*$/, ': []');
+
+  for (let i = 0; i < openBrackets - closeBrackets; i++) json += ']';
+  for (let i = 0; i < openBraces - closeBraces; i++) json += '}';
+
+  const result = JSON.parse(json) as AnalysisResult;
+
+  // Đảm bảo các field bắt buộc tồn tại
+  if (!result.score) result.score = 5;
+  if (!result.summary) result.summary = [];
+  if (!result.strengths) result.strengths = [];
+  if (!result.improvements) result.improvements = [];
+  if (!result.strategies) result.strategies = [];
+
+  return result;
+}
 
 // ─── AI Coach Chat ────────────────────────────────────────────────────────────
 

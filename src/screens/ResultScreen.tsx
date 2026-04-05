@@ -214,7 +214,36 @@ export default function ResultScreen() {
       setResult(analysis);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      Alert.alert('Lỗi phân tích', msg, [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      const buttons: any[] = [{ text: 'Quay lại', onPress: () => navigation.goBack(), style: 'cancel' }];
+      // Cho phép lưu bản ghi dù phân tích lỗi
+      if (audioUri) {
+        buttons.push({
+          text: 'Lưu bản ghi',
+          onPress: async () => {
+            try {
+              const now = new Date();
+              const date = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
+              await addSession({
+                customerName: customerName || 'Chưa nhập tên',
+                companyName: (route.params as any)?.companyName ?? '',
+                date,
+                duration,
+                score: 0,
+                analysis: { score: 0, summary: ['Chưa phân tích — có lỗi khi phân tích, bản ghi đã lưu'], strengths: [], improvements: [], strategies: [] },
+                audioUri,
+              });
+              Alert.alert('Đã lưu', 'Bản ghi đã lưu. Bạn có thể nghe lại và phân tích lại sau.', [
+                { text: 'OK', onPress: () => navigation.goBack() },
+              ]);
+            } catch {
+              navigation.goBack();
+            }
+          },
+        });
+      }
+      // Cho phép thử lại
+      buttons.push({ text: 'Thử lại', onPress: () => runAnalysis(transcript) });
+      Alert.alert('Lỗi phân tích', msg, buttons);
     } finally {
       setLoading(false);
     }
@@ -271,6 +300,7 @@ export default function ResultScreen() {
         duration,
         score: result.score,
         analysis: result,
+        audioUri: audioUri ?? undefined,
       });
 
       // Auto CRM: trích xuất thông tin khách và lưu profile
