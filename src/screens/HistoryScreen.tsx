@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -474,12 +475,19 @@ export default function HistoryScreen() {
   const C = useColors();
   const navigation = useNavigation<any>();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       loadSessions().then(setSessions);
     }, [])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadSessions().then(setSessions);
+    setRefreshing(false);
+  }, []);
 
   const handleDelete = (id: string, name: string) => {
     Alert.alert(
@@ -533,6 +541,7 @@ export default function HistoryScreen() {
             )}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}
           />
         ) : (
           <View style={styles.emptyState}>

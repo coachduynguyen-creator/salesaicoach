@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -59,17 +60,25 @@ export default function HomeScreen() {
   const C = useColors();
   const { isStaleCache, reload } = useKnowledge();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const tip = TIPS[new Date().getDay() % TIPS.length];
 
   useFocusEffect(
     useCallback(() => { loadSessions().then(setSessions); }, [])
   );
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadSessions().then(setSessions);
+    await reload();
+    setRefreshing(false);
+  }, [reload]);
+
   const recent = sessions.slice(0, 3);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}>
 
         {/* Hero Header */}
         <LinearGradient

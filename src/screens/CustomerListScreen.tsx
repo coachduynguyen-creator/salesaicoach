@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, TextInput, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +30,7 @@ export default function CustomerListScreen() {
   const C = useColors();
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // Sync khách hàng từ sessions cũ vào CRM
   const syncCustomersFromSessions = useCallback(async () => {
@@ -97,6 +98,12 @@ export default function CustomerListScreen() {
       syncCustomersFromSessions();
     }, [syncCustomersFromSessions])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await syncCustomersFromSessions();
+    setRefreshing(false);
+  }, [syncCustomersFromSessions]);
 
   const filtered = search.trim()
     ? customers.filter(c =>
@@ -213,6 +220,7 @@ export default function CustomerListScreen() {
         renderItem={renderCustomer}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="people-outline" size={48} color={COLORS.TEXT_LIGHT} />

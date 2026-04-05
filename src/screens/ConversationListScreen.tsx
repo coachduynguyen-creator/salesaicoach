@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,7 @@ export default function ConversationListScreen() {
   const [newTitle, setNewTitle] = useState('');
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -38,6 +40,15 @@ export default function ConversationListScreen() {
       loadCustomers().then(setCustomers);
     }, [])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      loadConversations().then(setConversations),
+      loadCustomers().then(setCustomers),
+    ]);
+    setRefreshing(false);
+  }, []);
 
   const handleCreate = async () => {
     const selected = customers.find(c => c.id === selectedCustomerId);
@@ -137,6 +148,7 @@ export default function ConversationListScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}
         />
       )}
 

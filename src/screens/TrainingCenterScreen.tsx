@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -236,6 +237,7 @@ export default function TrainingCenterScreen() {
   const C = useColors();
   const [activeCategory, setActiveCategory] = useState<Category>('all');
   const [completedIds, setCompletedIds] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<any>();
 
   useFocusEffect(
@@ -243,6 +245,12 @@ export default function TrainingCenterScreen() {
       loadLessonProgress().then(setCompletedIds);
     }, [])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadLessonProgress().then(setCompletedIds);
+    setRefreshing(false);
+  }, []);
 
   const completedCount = completedIds.length;
   const totalCount = LESSONS.length;
@@ -334,6 +342,7 @@ export default function TrainingCenterScreen() {
         renderItem={renderLesson}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}
       />
     </SafeAreaView>
   );
