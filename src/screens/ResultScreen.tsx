@@ -18,8 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
-import { analyzeRecording, analyzeTranscript, AnalysisResult } from '../services/aiService';
-import { addSession } from '../services/storageService';
+import { analyzeRecording, analyzeTranscript, extractCustomerInfo, AnalysisResult } from '../services/aiService';
+import { addSession, findCustomerByName, addCustomer, updateCustomer } from '../services/storageService';
 import { useKnowledge } from '../contexts/KnowledgeContext';
 import { useBusiness } from '../contexts/BusinessContext';
 
@@ -264,7 +264,7 @@ export default function ResultScreen() {
     try {
       const now = new Date();
       const date = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
-      await addSession({
+      const session = await addSession({
         customerName,
         companyName: (route.params as any)?.companyName ?? '',
         date,
@@ -272,7 +272,58 @@ export default function ResultScreen() {
         score: result.score,
         analysis: result,
       });
-      Alert.alert('Đã lưu', 'Kết quả đã được lưu vào lịch sử!', [
+
+      // Auto CRM: trích xuất thông tin khách và lưu profile
+      if (customerName && customerName !== 'Khách hàng' && result.transcript) {
+        try {
+          const info = await extractCustomerInfo(result.transcript);
+          const existing = await findCustomerByName(customerName);
+
+          if (existing) {
+            // Cập nhật khách cũ — merge thông tin mới
+            const updatedNotes = [...(existing.notes || []), {
+              date,
+              content: info.callSummary || `Điểm: ${result.score}/10`,
+              sessionId: session.id,
+            }];
+            await updateCustomer(existing.id, {
+              needs: info.needs || existing.needs,
+              budget: info.budget || existing.budget,
+              concerns: info.concerns || existing.concerns,
+              stage: info.stage || existing.stage,
+              decisionFactors: info.decisionFactors || existing.decisionFactors,
+              personality: info.personality || existing.personality,
+              nextStep: info.nextStep || existing.nextStep,
+              notes: updatedNotes,
+              sessionIds: [...(existing.sessionIds || []), session.id],
+            });
+          } else {
+            // Tạo khách mới
+            await addCustomer({
+              name: customerName,
+              company: (route.params as any)?.companyName ?? '',
+              phone: '',
+              email: '',
+              needs: info.needs,
+              budget: info.budget,
+              concerns: info.concerns,
+              stage: info.stage,
+              decisionFactors: info.decisionFactors,
+              personality: info.personality,
+              nextStep: info.nextStep,
+            }).then(async (newCustomer) => {
+              await updateCustomer(newCustomer.id, {
+                notes: [{ date, content: info.callSummary || `Điểm: ${result.score}/10`, sessionId: session.id }],
+                sessionIds: [session.id],
+              });
+            });
+          }
+        } catch {
+          // CRM extraction fail — không block việc lưu session
+        }
+      }
+
+      Alert.alert('Đã lưu', 'Kết quả và thông tin khách hàng đã được cập nhật!', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch {

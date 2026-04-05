@@ -379,6 +379,62 @@ Giữ nguyên xưng hô, giọng văn, câu cú. Trả về transcript đã sử
   }
 };
 
+// ─── Step 3: Trích xuất thông tin khách hàng từ transcript (CRM) ────────────
+
+export interface ExtractedCustomerInfo {
+  needs: string;
+  budget: string;
+  concerns: string;
+  stage: string;
+  decisionFactors: string;
+  personality: string;
+  nextStep: string;
+  callSummary: string;
+}
+
+export const extractCustomerInfo = async (transcript: string): Promise<ExtractedCustomerInfo> => {
+  if (!CLAUDE_API_KEY) {
+    return { needs: '', budget: '', concerns: '', stage: '', decisionFactors: '', personality: '', nextStep: '', callSummary: '' };
+  }
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: `Trích xuất thông tin khách hàng từ transcript cuộc gọi sales.
+100% tiếng Việt, ngắn gọn. Nếu không có thông tin thì để trống "".
+CHỈ trả về JSON, không giải thích.`,
+        messages: [
+          { role: 'user', content: `Từ cuộc gọi sau, trích xuất thông tin khách hàng:\n\n${transcript}\n\nJSON:\n{"needs":"<nhu cầu chính của khách>","budget":"<ngân sách hoặc mức đầu tư khách đề cập>","concerns":"<lo ngại, phản đối, lý do chần chừ>","stage":"<giai đoạn: mới tiếp cận / đang tìm hiểu / đang so sánh / sắp chốt / đã chốt>","decisionFactors":"<yếu tố khách quan tâm nhất khi ra quyết định>","personality":"<phong cách giao tiếp: nóng vội, cẩn thận, thân thiện, hoài nghi...>","nextStep":"<bước tiếp theo đã thống nhất hoặc cần làm>","callSummary":"<tóm tắt 1-2 câu về cuộc gọi này>"}` },
+          { role: 'assistant', content: '{' },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      return { needs: '', budget: '', concerns: '', stage: '', decisionFactors: '', personality: '', nextStep: '', callSummary: '' };
+    }
+
+    const data = await response.json();
+    const rawText = '{' + (data.content[0].text as string);
+    const cleaned = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('No JSON');
+    return JSON.parse(cleaned.slice(start, end + 1)) as ExtractedCustomerInfo;
+  } catch {
+    return { needs: '', budget: '', concerns: '', stage: '', decisionFactors: '', personality: '', nextStep: '', callSummary: '' };
+  }
+};
+
 // ─── Full pipeline: audio → transcript → sửa lỗi → analysis ────────────────
 
 export const analyzeRecording = async (audioUri: string, knowledgeBase?: string): Promise<AnalysisResult> => {

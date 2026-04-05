@@ -9,6 +9,7 @@ const KEYS = {
   CONVERSATIONS: '@salescoach_conversations',
   LESSON_PROGRESS: '@salescoach_lesson_progress',
   TEAM_MEMBERS: '@salescoach_team_members',
+  CUSTOMERS: '@salescoach_customers',
 };
 
 // ─── Business Profile ─────────────────────────────────────────────────────────
@@ -264,4 +265,76 @@ export const loadApiKeys = async (): Promise<ApiKeys> => {
 // Xóa toàn bộ API keys
 export const clearApiKeys = async (): Promise<void> => {
   await AsyncStorage.multiRemove([KEYS.CLAUDE_API_KEY, KEYS.OPENAI_API_KEY]);
+};
+
+// ─── Customer CRM ──────────────────────────────────────────────────────────
+
+export interface CustomerNote {
+  date: string;
+  content: string;
+  sessionId?: string;
+}
+
+export interface CustomerProfile {
+  id: string;
+  name: string;
+  company: string;
+  phone: string;
+  email: string;
+  // AI-extracted fields
+  needs: string;           // Nhu cầu chính
+  budget: string;          // Ngân sách / mức đầu tư
+  concerns: string;        // Phản đối / lo ngại
+  stage: string;           // Giai đoạn: mới, đang tìm hiểu, so sánh, sắp chốt
+  decisionFactors: string; // Yếu tố quyết định
+  personality: string;     // Tính cách / phong cách giao tiếp
+  nextStep: string;        // Bước tiếp theo đã thống nhất
+  notes: CustomerNote[];   // Lịch sử ghi chú từ mỗi cuộc gọi
+  sessionIds: string[];    // Liên kết với sessions
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const loadCustomers = async (): Promise<CustomerProfile[]> => {
+  const raw = await AsyncStorage.getItem(KEYS.CUSTOMERS);
+  if (!raw) return [];
+  try { return JSON.parse(raw) as CustomerProfile[]; } catch { return []; }
+};
+
+export const saveCustomers = async (customers: CustomerProfile[]): Promise<void> => {
+  await AsyncStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(customers));
+};
+
+export const addCustomer = async (customer: Omit<CustomerProfile, 'id' | 'createdAt' | 'updatedAt' | 'notes' | 'sessionIds'>): Promise<CustomerProfile> => {
+  const customers = await loadCustomers();
+  const now = new Date().toISOString();
+  const newCustomer: CustomerProfile = {
+    ...customer,
+    id: Date.now().toString(),
+    notes: [],
+    sessionIds: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  await saveCustomers([newCustomer, ...customers]);
+  return newCustomer;
+};
+
+export const updateCustomer = async (id: string, updates: Partial<CustomerProfile>): Promise<void> => {
+  const customers = await loadCustomers();
+  const idx = customers.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  customers[idx] = { ...customers[idx], ...updates, updatedAt: new Date().toISOString() };
+  await saveCustomers(customers);
+};
+
+export const findCustomerByName = async (name: string): Promise<CustomerProfile | undefined> => {
+  const customers = await loadCustomers();
+  const lower = name.toLowerCase().trim();
+  return customers.find(c => c.name.toLowerCase().trim() === lower);
+};
+
+export const deleteCustomer = async (id: string): Promise<void> => {
+  const customers = await loadCustomers();
+  await saveCustomers(customers.filter(c => c.id !== id));
 };

@@ -1,0 +1,213 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, TextInput,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { COLORS } from '../constants/colors';
+import { useColors } from '../contexts/ThemeContext';
+import { loadCustomers, deleteCustomer, CustomerProfile } from '../services/storageService';
+
+const STAGE_COLORS: Record<string, string> = {
+  'mới tiếp cận': '#9F7AEA',
+  'đang tìm hiểu': COLORS.WARNING,
+  'đang so sánh': '#ED8936',
+  'sắp chốt': COLORS.PRIMARY,
+  'đã chốt': COLORS.SUCCESS,
+};
+
+function getStageColor(stage: string): string {
+  const lower = stage.toLowerCase();
+  for (const [key, color] of Object.entries(STAGE_COLORS)) {
+    if (lower.includes(key)) return color;
+  }
+  return COLORS.TEXT_LIGHT;
+}
+
+export default function CustomerListScreen() {
+  const navigation = useNavigation<any>();
+  const C = useColors();
+  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+  const [search, setSearch] = useState('');
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCustomers().then(setCustomers);
+    }, [])
+  );
+
+  const filtered = search.trim()
+    ? customers.filter(c =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.company.toLowerCase().includes(search.toLowerCase())
+      )
+    : customers;
+
+  const handleDelete = (customer: CustomerProfile) => {
+    Alert.alert(
+      'Xóa khách hàng',
+      `Xóa "${customer.name}" và toàn bộ ghi chú?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa', style: 'destructive',
+          onPress: async () => {
+            await deleteCustomer(customer.id);
+            setCustomers(prev => prev.filter(c => c.id !== customer.id));
+          },
+        },
+      ],
+    );
+  };
+
+  const renderCustomer = ({ item }: { item: CustomerProfile }) => {
+    const stageColor = getStageColor(item.stage || '');
+    const noteCount = item.notes?.length || 0;
+    const sessionCount = item.sessionIds?.length || 0;
+
+    return (
+      <TouchableOpacity
+        style={styles.customerCard}
+        onPress={() => navigation.navigate('CustomerDetail', { customerId: item.id })}
+        onLongPress={() => handleDelete(item)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.avatar, { backgroundColor: C.PRIMARY + '14' }]}>
+          <Text style={[styles.avatarText, { color: C.PRIMARY }]}>
+            {item.name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          {item.company ? (
+            <Text style={styles.company} numberOfLines={1}>{item.company}</Text>
+          ) : null}
+
+          <View style={styles.metaRow}>
+            {item.stage ? (
+              <View style={[styles.stageBadge, { backgroundColor: stageColor + '18' }]}>
+                <Text style={[styles.stageText, { color: stageColor }]}>{item.stage}</Text>
+              </View>
+            ) : null}
+            <Text style={styles.metaText}>
+              {sessionCount} cuộc gọi{noteCount > 0 ? ` · ${noteCount} ghi chú` : ''}
+            </Text>
+          </View>
+
+          {item.needs ? (
+            <Text style={styles.needsText} numberOfLines={1}>Nhu cầu: {item.needs}</Text>
+          ) : null}
+        </View>
+
+        <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_LIGHT} />
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Khách Hàng</Text>
+        <Text style={styles.headerSub}>{customers.length} khách hàng</Text>
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchWrap}>
+        <Ionicons name="search" size={18} color={COLORS.TEXT_LIGHT} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm theo tên hoặc công ty..."
+          placeholderTextColor={COLORS.TEXT_LIGHT}
+          value={search}
+          onChangeText={setSearch}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')}>
+            <Ionicons name="close-circle" size={18} color={COLORS.TEXT_LIGHT} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Stage Summary */}
+      {customers.length > 0 && (
+        <View style={[styles.stageStrip, { backgroundColor: C.PRIMARY }]}>
+          {Object.entries(STAGE_COLORS).map(([stage, color]) => {
+            const count = customers.filter(c => (c.stage || '').toLowerCase().includes(stage)).length;
+            if (count === 0) return null;
+            return (
+              <View key={stage} style={styles.stageStripItem}>
+                <Text style={styles.stageStripValue}>{count}</Text>
+                <Text style={styles.stageStripLabel}>{stage}</Text>
+              </View>
+            );
+          }).filter(Boolean)}
+        </View>
+      )}
+
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
+        renderItem={renderCustomer}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Ionicons name="people-outline" size={48} color={COLORS.TEXT_LIGHT} />
+            <Text style={styles.emptyTitle}>
+              {search ? 'Không tìm thấy' : 'Chưa có khách hàng'}
+            </Text>
+            <Text style={styles.emptyDesc}>
+              {search ? 'Thử từ khóa khác' : 'Ghi âm cuộc gọi đầu tiên, AI sẽ tự tạo profile khách'}
+            </Text>
+          </View>
+        }
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: COLORS.BACKGROUND },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: COLORS.TEXT },
+  headerSub: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 2 },
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: 16, marginVertical: 10, backgroundColor: COLORS.CARD,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+    borderWidth: 1, borderColor: COLORS.BORDER,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: COLORS.TEXT },
+  stageStrip: {
+    flexDirection: 'row', marginHorizontal: 16, borderRadius: 12,
+    paddingVertical: 12, marginBottom: 8, justifyContent: 'space-around',
+  },
+  stageStripItem: { alignItems: 'center' },
+  stageStripValue: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  stageStripLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2, textTransform: 'capitalize' },
+  listContent: { paddingHorizontal: 16, paddingBottom: 30 },
+  customerCard: {
+    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 14,
+    flexDirection: 'row', alignItems: 'center', marginBottom: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+  },
+  avatar: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  },
+  avatarText: { fontSize: 18, fontWeight: '800' },
+  info: { flex: 1 },
+  name: { fontSize: 15, fontWeight: '700', color: COLORS.TEXT },
+  company: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginTop: 1 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  stageBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  stageText: { fontSize: 10, fontWeight: '700' },
+  metaText: { fontSize: 11, color: COLORS.TEXT_LIGHT },
+  needsText: { fontSize: 11, color: COLORS.TEXT_SECONDARY, marginTop: 3, fontStyle: 'italic' },
+  emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: COLORS.TEXT },
+  emptyDesc: { fontSize: 13, color: COLORS.TEXT_LIGHT, textAlign: 'center', paddingHorizontal: 40 },
+});

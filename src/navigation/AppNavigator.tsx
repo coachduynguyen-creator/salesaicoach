@@ -17,13 +17,15 @@ import ConversationListScreen from '../screens/ConversationListScreen';
 import SessionDetailScreen from '../screens/SessionDetailScreen';
 import BusinessProfileScreen from '../screens/BusinessProfileScreen';
 import TeamDashboardScreen from '../screens/TeamDashboardScreen';
+import CustomerListScreen from '../screens/CustomerListScreen';
+import CustomerDetailScreen from '../screens/CustomerDetailScreen';
 
 export type RootTabParamList = {
   TrangChu: undefined;
   GhiAm: undefined;
+  KhachHang: undefined;
   AiCoach: undefined;
   DaoTao: undefined;
-  LichSu: undefined;
   CaiDat: undefined;
 };
 
@@ -44,6 +46,8 @@ export type RootStackParamList = {
   };
   BusinessProfile: undefined;
   TeamDashboard: undefined;
+  CustomerDetail: { customerId: string };
+  LichSu: undefined;
   AiCoachChat: {
     conversationId: string;
     title: string;
@@ -86,12 +90,12 @@ function MainTabs() {
             iconName = focused ? 'grid' : 'grid-outline';
           } else if (route.name === 'GhiAm') {
             iconName = focused ? 'radio' : 'radio-outline';
+          } else if (route.name === 'KhachHang') {
+            iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'AiCoach') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'DaoTao') {
             iconName = focused ? 'library' : 'library-outline';
-          } else if (route.name === 'LichSu') {
-            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
           } else if (route.name === 'CaiDat') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
@@ -111,21 +115,19 @@ function MainTabs() {
         options={{ tabBarLabel: 'Ghi Âm' }}
       />
       <Tab.Screen
+        name="KhachHang"
+        component={CustomerListScreen}
+        options={{ tabBarLabel: 'Khách Hàng' }}
+      />
+      <Tab.Screen
         name="AiCoach"
         component={ConversationListScreen}
-        options={{
-          tabBarLabel: 'AI Coach',
-        }}
+        options={{ tabBarLabel: 'AI Coach' }}
       />
       <Tab.Screen
         name="DaoTao"
         component={TrainingCenterScreen}
         options={{ tabBarLabel: 'Đào Tạo' }}
-      />
-      <Tab.Screen
-        name="LichSu"
-        component={HistoryScreen}
-        options={{ tabBarLabel: 'Lịch Sử' }}
       />
       <Tab.Screen
         name="CaiDat"
@@ -168,6 +170,16 @@ export default function AppNavigator() {
       <Stack.Screen
         name="AiCoachChat"
         component={AiCoachScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="CustomerDetail"
+        component={CustomerDetailScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="LichSu"
+        component={HistoryScreen}
         options={{ presentation: 'card' }}
       />
     </Stack.Navigator>
