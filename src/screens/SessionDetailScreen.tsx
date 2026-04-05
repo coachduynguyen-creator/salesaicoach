@@ -217,44 +217,39 @@ export default function SessionDetailScreen() {
 
         {/* Outcome */}
         <View style={styles.outcomeCard}>
-          <Text style={styles.outcomeTitle}>Kết quả</Text>
+          <Text style={styles.outcomeTitle}>Kết quả deal</Text>
           <View style={styles.outcomeRow}>
-            <TouchableOpacity
-              style={[
-                styles.outcomeBtn,
-                { borderColor: C.SUCCESS },
-                outcome === 'won' && { backgroundColor: C.SUCCESS },
-              ]}
-              onPress={() => handleOutcome('won')}
-            >
-              <Text style={[styles.outcomeBtnText, { color: outcome === 'won' ? '#fff' : C.SUCCESS }]}>
-                Chốt thành công
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.outcomeBtn,
-                { borderColor: C.DANGER },
-                outcome === 'lost' && { backgroundColor: C.DANGER },
-              ]}
-              onPress={() => handleOutcome('lost')}
-            >
-              <Text style={[styles.outcomeBtnText, { color: outcome === 'lost' ? '#fff' : C.DANGER }]}>
-                Không chốt
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.outcomeBtn,
-                { borderColor: C.WARNING },
-                outcome === 'pending' && { backgroundColor: C.WARNING },
-              ]}
-              onPress={() => handleOutcome('pending')}
-            >
-              <Text style={[styles.outcomeBtnText, { color: outcome === 'pending' ? '#fff' : C.WARNING }]}>
-                Đang theo
-              </Text>
-            </TouchableOpacity>
+            {([
+              { value: 'won' as SessionOutcome, label: 'Chốt', icon: 'checkmark-circle', color: '#10B981', bg: '#ECFDF5' },
+              { value: 'pending' as SessionOutcome, label: 'Đang theo', icon: 'time', color: '#F59E0B', bg: '#FFFBEB' },
+              { value: 'lost' as SessionOutcome, label: 'Mất deal', icon: 'close-circle', color: '#EF4444', bg: '#FEF2F2' },
+            ]).map(opt => {
+              const isActive = outcome === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.outcomeBtn,
+                    { backgroundColor: isActive ? opt.color : opt.bg },
+                    isActive && styles.outcomeBtnActive,
+                  ]}
+                  onPress={() => handleOutcome(opt.value)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={opt.icon as any}
+                    size={22}
+                    color={isActive ? '#fff' : opt.color}
+                  />
+                  <Text style={[
+                    styles.outcomeBtnText,
+                    { color: isActive ? '#fff' : opt.color },
+                  ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -374,14 +369,17 @@ const styles = StyleSheet.create({
   bulletText: { fontSize: 13, color: COLORS.TEXT, flex: 1, lineHeight: 20 },
   transcriptText: { fontSize: 13, color: COLORS.TEXT, lineHeight: 21 },
   outcomeCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 16, marginBottom: 12,
-    elevation: 1,
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
-  outcomeTitle: { fontSize: 15, fontWeight: '700', color: COLORS.TEXT, marginBottom: 12 },
-  outcomeRow: { flexDirection: 'row', gap: 8 },
+  outcomeTitle: { fontSize: 15, fontWeight: '700', color: COLORS.TEXT, marginBottom: 14 },
+  outcomeRow: { flexDirection: 'row', gap: 10 },
   outcomeBtn: {
-    flex: 1, borderWidth: 1.5, borderRadius: 10,
-    paddingVertical: 10, alignItems: 'center', justifyContent: 'center',
+    flex: 1, borderRadius: 14,
+    paddingVertical: 14, alignItems: 'center', justifyContent: 'center', gap: 6,
   },
-  outcomeBtnText: { fontSize: 12, fontWeight: '700' },
+  outcomeBtnActive: {
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4,
+  },
+  outcomeBtnText: { fontSize: 13, fontWeight: '700' },
 });
