@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Alert,
   Platform,
   Modal,
   TextInput,
@@ -17,10 +16,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { loadTeamMembers, addTeamMember, removeTeamMember, TeamMember, loadSessions } from '../services/storageService';
 import { useColors } from '../contexts/ThemeContext';
 import { COLORS } from '../constants/colors';
+import { useAlert } from '../contexts/AlertContext';
 
 export default function TeamDashboardScreen() {
   const navigation = useNavigation<any>();
   const C = useColors();
+  const { showAlert } = useAlert();
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [avgScore, setAvgScore] = useState(0);
@@ -73,10 +74,11 @@ export default function TeamDashboardScreen() {
   };
 
   const handleDeleteMember = (member: TeamMember) => {
-    Alert.alert(
-      'Xóa thành viên',
-      `Bạn có chắc muốn xóa "${member.name}" khỏi team?`,
-      [
+    showAlert({
+      title: 'Xóa thành viên',
+      message: `Bạn có chắc muốn xóa "${member.name}" khỏi team?`,
+      type: 'warning',
+      buttons: [
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Xóa',
@@ -87,7 +89,7 @@ export default function TeamDashboardScreen() {
           },
         },
       ],
-    );
+    });
   };
 
   const formatDate = (iso: string) => {

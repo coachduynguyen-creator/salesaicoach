@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Alert,
   TextInput,
   Modal,
   RefreshControl,
@@ -23,10 +22,12 @@ import {
   loadCustomers,
   CustomerProfile,
 } from '../services/storageService';
+import { useAlert } from '../contexts/AlertContext';
 
 export default function ConversationListScreen() {
   const C = useColors();
   const navigation = useNavigation<any>();
+  const { showAlert } = useAlert();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -65,17 +66,22 @@ export default function ConversationListScreen() {
   };
 
   const handleDelete = (id: string, title: string) => {
-    Alert.alert('Xóa cuộc trò chuyện', `Bạn muốn xóa "${title}"?`, [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteConversation(id);
-          setConversations(prev => prev.filter(c => c.id !== id));
+    showAlert({
+      title: 'Xóa cuộc trò chuyện',
+      message: `Bạn muốn xóa "${title}"?`,
+      type: 'warning',
+      buttons: [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteConversation(id);
+            setConversations(prev => prev.filter(c => c.id !== id));
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   const formatDate = (iso: string) => {

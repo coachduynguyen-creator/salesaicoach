@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, TextInput, RefreshControl,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
 import { loadCustomers, deleteCustomer, CustomerProfile, loadSessions, addCustomer, updateCustomer } from '../services/storageService';
+import { useAlert } from '../contexts/AlertContext';
 
 const STAGE_COLORS: Record<string, string> = {
   'mới tiếp cận': '#9F7AEA',
@@ -28,6 +29,7 @@ function getStageColor(stage: string): string {
 export default function CustomerListScreen() {
   const navigation = useNavigation<any>();
   const C = useColors();
+  const { showAlert } = useAlert();
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -113,10 +115,11 @@ export default function CustomerListScreen() {
     : customers;
 
   const handleDelete = (customer: CustomerProfile) => {
-    Alert.alert(
-      'Xóa khách hàng',
-      `Xóa "${customer.name}" và toàn bộ ghi chú?`,
-      [
+    showAlert({
+      title: 'Xóa khách hàng',
+      message: `Xóa "${customer.name}" và toàn bộ ghi chú?`,
+      type: 'warning',
+      buttons: [
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Xóa', style: 'destructive',
@@ -126,7 +129,7 @@ export default function CustomerListScreen() {
           },
         },
       ],
-    );
+    });
   };
 
   const renderCustomer = ({ item }: { item: CustomerProfile }) => {

@@ -8,6 +8,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import { KnowledgeProvider } from './src/contexts/KnowledgeContext';
 import { BusinessProvider } from './src/contexts/BusinessContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import { AlertProvider } from './src/contexts/AlertContext';
 import { loadApiKeys } from './src/services/storageService';
 import { setApiKeys } from './src/services/aiService';
 import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from './src/config/defaultKeys';
@@ -48,14 +49,16 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <KnowledgeProvider>
-          <BusinessProvider>
-            <NavigationContainer>
-              <StatusBar style="dark" />
-              <AppNavigator />
-            </NavigationContainer>
-          </BusinessProvider>
-        </KnowledgeProvider>
+        <AlertProvider>
+          <KnowledgeProvider>
+            <BusinessProvider>
+              <NavigationContainer>
+                <StatusBar style="dark" />
+                <AppNavigator />
+              </NavigationContainer>
+            </BusinessProvider>
+          </KnowledgeProvider>
+        </AlertProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

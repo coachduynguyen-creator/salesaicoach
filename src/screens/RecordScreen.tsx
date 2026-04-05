@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   Animated,
   Easing,
 } from 'react-native';
@@ -17,12 +16,14 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
 import { startRecording, stopRecording, pauseRecording, resumeRecording } from '../services/audioService';
+import { useAlert } from '../contexts/AlertContext';
 
 type RecordingState = 'idle' | 'recording' | 'paused';
 
 export default function RecordScreen() {
   const C = useColors();
   const navigation = useNavigation<any>();
+  const { showAlert } = useAlert();
   const [customerName, setCustomerName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
@@ -84,15 +85,15 @@ export default function RecordScreen() {
       startTimer();
       startPulse();
     } catch {
-      Alert.alert('Lỗi', 'Không thể bắt đầu ghi âm. Vui lòng kiểm tra quyền microphone.');
+      showAlert({ title: 'Lỗi', message: 'Không thể bắt đầu ghi âm. Vui lòng kiểm tra quyền microphone.', type: 'error' });
     }
   };
 
   const handlePause = async () => {
     if (recordingState === 'recording') {
-      try { await pauseRecording(); setRecordingState('paused'); stopTimer(); stopPulse(); } catch { Alert.alert('Lỗi', 'Không thể tạm dừng.'); }
+      try { await pauseRecording(); setRecordingState('paused'); stopTimer(); stopPulse(); } catch { showAlert({ title: 'Lỗi', message: 'Không thể tạm dừng.', type: 'error' }); }
     } else if (recordingState === 'paused') {
-      try { await resumeRecording(); setRecordingState('recording'); startTimer(); startPulse(); } catch { Alert.alert('Lỗi', 'Không thể tiếp tục.'); }
+      try { await resumeRecording(); setRecordingState('recording'); startTimer(); startPulse(); } catch { showAlert({ title: 'Lỗi', message: 'Không thể tiếp tục.', type: 'error' }); }
     }
   };
 
@@ -107,7 +108,7 @@ export default function RecordScreen() {
       setElapsed(0);
     } catch {
       setRecordingState('idle'); stopTimer(); stopPulse(); setElapsed(0);
-      Alert.alert('Lỗi', 'Đã xảy ra lỗi khi dừng ghi âm.');
+      showAlert({ title: 'Lỗi', message: 'Đã xảy ra lỗi khi dừng ghi âm.', type: 'error' });
     }
   };
 
@@ -157,7 +158,7 @@ export default function RecordScreen() {
       soundRef.current = sound;
       setIsPlaying(true);
     } catch {
-      Alert.alert('Lỗi', 'Không thể phát lại bản ghi âm.');
+      showAlert({ title: 'Lỗi', message: 'Không thể phát lại bản ghi âm.', type: 'error' });
     }
   };
 

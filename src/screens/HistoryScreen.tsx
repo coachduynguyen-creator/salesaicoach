@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
   Dimensions,
   RefreshControl,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
 import { loadSessions, deleteSession, Session } from '../services/storageService';
+import { useAlert } from '../contexts/AlertContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_HORIZONTAL_PADDING = 16;
@@ -474,6 +474,7 @@ function SessionCard({ session, onPress, onDelete }: {
 export default function HistoryScreen() {
   const C = useColors();
   const navigation = useNavigation<any>();
+  const { showAlert } = useAlert();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -490,10 +491,11 @@ export default function HistoryScreen() {
   }, []);
 
   const handleDelete = (id: string, name: string) => {
-    Alert.alert(
-      'Xoá phiên tư vấn',
-      `Xoá phiên với ${name}?`,
-      [
+    showAlert({
+      title: 'Xoá phiên tư vấn',
+      message: `Xoá phiên với ${name}?`,
+      type: 'warning',
+      buttons: [
         { text: 'Huỷ', style: 'cancel' },
         {
           text: 'Xoá',
@@ -503,8 +505,8 @@ export default function HistoryScreen() {
             setSessions(prev => prev.filter(s => s.id !== id));
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const renderListHeader = useCallback(() => {

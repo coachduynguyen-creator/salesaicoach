@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   TextInput,
   Modal,
 } from 'react-native';
@@ -16,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { useTheme, THEME_OPTIONS } from '../contexts/ThemeContext';
 import { loadSessions, Session } from '../services/storageService';
+import { useAlert } from '../contexts/AlertContext';
 
 const USER_NAME_KEY = '@salescoach_user_name';
 const USER_ROLE_KEY = '@salescoach_user_role';
@@ -35,6 +35,7 @@ function getThisWeekCount(sessions: Session[]): number {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
+  const { showAlert } = useAlert();
   const { theme, setThemeById } = useTheme();
   const C = { ...COLORS, PRIMARY: theme.colors.PRIMARY, PRIMARY_LIGHT: theme.colors.PRIMARY_LIGHT, PRIMARY_DARK: theme.colors.PRIMARY_DARK };
 
@@ -64,10 +65,11 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteAllData = () => {
-    Alert.alert(
-      'Xóa tất cả dữ liệu',
-      'Hành động này sẽ xóa toàn bộ lịch sử ghi âm, hội thoại AI Coach, và cài đặt. Không thể hoàn tác.',
-      [
+    showAlert({
+      title: 'Xóa tất cả dữ liệu',
+      message: 'Hành động này sẽ xóa toàn bộ lịch sử ghi âm, hội thoại AI Coach, và cài đặt. Không thể hoàn tác.',
+      type: 'warning',
+      buttons: [
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Xóa tất cả',
@@ -77,11 +79,11 @@ export default function ProfileScreen() {
             setSessions([]);
             setUserName('');
             setUserRole('');
-            Alert.alert('Đã xóa', 'Tất cả dữ liệu đã được xóa. Khởi động lại app để áp dụng.');
+            showAlert({ title: 'Đã xóa', message: 'Tất cả dữ liệu đã được xóa. Khởi động lại app để áp dụng.', type: 'success' });
           },
         },
       ],
-    );
+    });
   };
 
   return (

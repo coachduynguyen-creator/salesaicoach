@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { BusinessProfile, EMPTY_PROFILE, saveBusinessProfile, loadBusinessProfile } from '../services/storageService';
 import { useBusiness } from '../contexts/BusinessContext';
+import { useAlert } from '../contexts/AlertContext';
 
 const FIELDS: { key: keyof BusinessProfile; label: string; placeholder: string; lines: number }[] = [
   {
@@ -71,6 +71,7 @@ const FIELDS: { key: keyof BusinessProfile; label: string; placeholder: string; 
 export default function BusinessProfileScreen() {
   const navigation = useNavigation();
   const { reload: reloadBusiness } = useBusiness();
+  const { showAlert } = useAlert();
   const [profile, setProfile] = useState<BusinessProfile>(EMPTY_PROFILE);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -87,9 +88,9 @@ export default function BusinessProfileScreen() {
     try {
       await saveBusinessProfile(profile);
       await reloadBusiness();
-      Alert.alert('Đã lưu', 'Thông tin doanh nghiệp đã được cập nhật. AI Coach sẽ trả lời cá nhân hóa theo thông tin này.');
+      showAlert({ title: 'Đã lưu', message: 'Thông tin doanh nghiệp đã được cập nhật. AI Coach sẽ trả lời cá nhân hóa theo thông tin này.', type: 'success' });
     } catch {
-      Alert.alert('Lỗi', 'Không thể lưu. Vui lòng thử lại.');
+      showAlert({ title: 'Lỗi', message: 'Không thể lưu. Vui lòng thử lại.', type: 'error' });
     } finally {
       setIsSaving(false);
     }

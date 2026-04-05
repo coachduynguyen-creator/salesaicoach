@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Animated,
   TextInput,
   KeyboardAvoidingView,
@@ -22,6 +21,7 @@ import { analyzeRecording, analyzeTranscript, extractCustomerInfo, AnalysisResul
 import { addSession, findCustomerByName, addCustomer, updateCustomer } from '../services/storageService';
 import { useKnowledge } from '../contexts/KnowledgeContext';
 import { useBusiness } from '../contexts/BusinessContext';
+import { useAlert } from '../contexts/AlertContext';
 
 type ResultRouteParams = {
   ResultScreen: {
@@ -201,6 +201,7 @@ export default function ResultScreen() {
   const { audioUri, manualMode = false, duration = 0, customerName = 'Khách hàng' } = route.params ?? {};
   const { knowledgeBase } = useKnowledge();
   const { businessContext } = useBusiness();
+  const { showAlert } = useAlert();
 
   const [loading, setLoading] = useState(!manualMode);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -232,9 +233,12 @@ export default function ResultScreen() {
                 analysis: { score: 0, summary: ['Chưa phân tích — có lỗi khi phân tích, bản ghi đã lưu'], strengths: [], improvements: [], strategies: [] },
                 audioUri,
               });
-              Alert.alert('Đã lưu', 'Bản ghi đã lưu. Bạn có thể nghe lại và phân tích lại sau.', [
-                { text: 'OK', onPress: () => navigation.goBack() },
-              ]);
+              showAlert({
+                title: 'Đã lưu',
+                message: 'Bản ghi đã lưu. Bạn có thể nghe lại và phân tích lại sau.',
+                type: 'success',
+                buttons: [{ text: 'OK', style: 'default', onPress: () => navigation.goBack() }],
+              });
             } catch {
               navigation.goBack();
             }
@@ -243,7 +247,7 @@ export default function ResultScreen() {
       }
       // Cho phép thử lại
       buttons.push({ text: 'Thử lại', onPress: () => runAnalysis(transcript) });
-      Alert.alert('Lỗi phân tích', msg, buttons);
+      showAlert({ title: 'Lỗi phân tích', message: msg, type: 'error', buttons });
     } finally {
       setLoading(false);
     }
@@ -353,11 +357,14 @@ export default function ResultScreen() {
         }
       }
 
-      Alert.alert('Đã lưu', 'Kết quả và thông tin khách hàng đã được cập nhật!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      showAlert({
+        title: 'Đã lưu',
+        message: 'Kết quả và thông tin khách hàng đã được cập nhật!',
+        type: 'success',
+        buttons: [{ text: 'OK', style: 'default', onPress: () => navigation.goBack() }],
+      });
     } catch {
-      Alert.alert('Lỗi', 'Không thể lưu. Vui lòng thử lại.');
+      showAlert({ title: 'Lỗi', message: 'Không thể lưu. Vui lòng thử lại.', type: 'error' });
     }
   };
 
