@@ -346,10 +346,44 @@ const getMockChatResponse = (userMessage: string): string => {
   return `Hiện tại chưa kết nối được tới hệ thống AI. Vui lòng kiểm tra kết nối mạng rồi thử lại.`;
 };
 
-// ─── Full pipeline: audio → transcript → analysis ────────────────────────────
+// ─── Step 1.5: Sửa lỗi chính tả transcript tiếng Việt ──────────────────────
+
+export const correctTranscript = async (rawTranscript: string): Promise<string> => {
+  if (!CLAUDE_API_KEY || rawTranscript.length < 20) return rawTranscript;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2048,
+        system: `Bạn là công cụ sửa lỗi chính tả tiếng Việt cho transcript từ Whisper.
+CHỈ sửa lỗi chính tả, dấu thanh, từ nghe nhầm. KHÔNG thay đổi nội dung, ý nghĩa, hoặc cách nói.
+Giữ nguyên xưng hô, giọng văn, câu cú. Trả về transcript đã sửa, không giải thích.`,
+        messages: [{ role: 'user', content: rawTranscript }],
+      }),
+    });
+
+    if (!response.ok) return rawTranscript;
+
+    const data = await response.json();
+    return data.content[0].text as string;
+  } catch {
+    return rawTranscript;
+  }
+};
+
+// ─── Full pipeline: audio → transcript → sửa lỗi → analysis ────────────────
 
 export const analyzeRecording = async (audioUri: string, knowledgeBase?: string): Promise<AnalysisResult> => {
-  const transcript = await transcribeAudio(audioUri);
+  const rawTranscript = await transcribeAudio(audioUri);
+  const transcript = await correctTranscript(rawTranscript);
   const analysis = await analyzeTranscript(transcript, knowledgeBase);
   analysis.transcript = transcript;
   return analysis;

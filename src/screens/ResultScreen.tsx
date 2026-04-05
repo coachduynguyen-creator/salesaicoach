@@ -11,6 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -86,7 +87,8 @@ function SectionCard({ emoji, title, items, backgroundColor, accentColor }: Sect
 const LOADING_STEPS = [
   { label: 'Đang tải file âm thanh...', icon: 'cloud-upload-outline' },
   { label: 'Chuyển giọng nói thành văn bản...', icon: 'text-outline' },
-  { label: 'AI đang phân tích cuộc tư vấn...', icon: 'bulb-outline' },
+  { label: 'Sửa lỗi chính tả tiếng Việt...', icon: 'create-outline' },
+  { label: 'AI đang phân tích chuyên sâu...', icon: 'bulb-outline' },
   { label: 'Hoàn tất! Đang tạo báo cáo...', icon: 'checkmark-circle-outline' },
 ] as const;
 
@@ -221,6 +223,41 @@ export default function ResultScreen() {
   useEffect(() => {
     if (!manualMode) runAnalysis();
   }, []);
+
+  const handleShare = async () => {
+    if (!result) return;
+    const lines: string[] = [
+      `📊 BÁO CÁO PHÂN TÍCH — ${customerName}`,
+      `📅 ${getTodayString()}${duration > 0 ? ` | ⏱ ${formatTime(duration)}` : ''}`,
+      `⭐ Điểm: ${result.score}/10 — ${getScoreLabel(result.score)}`,
+      '',
+      '📋 TÓM TẮT',
+      ...result.summary.map(s => `• ${s}`),
+    ];
+    if (result.communication) {
+      lines.push('', '🎙️ TÁC PHONG & GIAO TIẾP');
+      lines.push(`• Giọng nói: ${result.communication.tone}`);
+      lines.push(`• Lắng nghe: ${result.communication.listening}`);
+      lines.push(`• Đặt câu hỏi: ${result.communication.questioning}`);
+    }
+    lines.push('', '💪 ĐIỂM MẠNH', ...result.strengths.map(s => `• ${s}`));
+    lines.push('', '⚠️ CẦN CẢI THIỆN', ...result.improvements.map(s => `• ${s}`));
+    if (result.scenario) {
+      lines.push('', '🎬 KỊCH BẢN CẢI THIỆN');
+      lines.push(`Tình huống: ${result.scenario.situation}`);
+      lines.push(`❌ Đã làm: ${result.scenario.wrong}`);
+      lines.push(`✅ Nên làm: ${result.scenario.correct}`);
+    }
+    if (result.nextActions?.length) {
+      lines.push('', '✅ VIỆC CẦN LÀM NGAY', ...result.nextActions.map(s => `• ${s}`));
+    }
+    lines.push('', '🎯 CHIẾN LƯỢC LẦN SAU', ...result.strategies.map(s => `• ${s}`));
+    lines.push('', '— Sales Coach App (TTA)');
+
+    try {
+      await Share.share({ message: lines.join('\n') });
+    } catch {}
+  };
 
   const handleSave = async () => {
     if (!result) return;
@@ -377,11 +414,20 @@ export default function ResultScreen() {
           accentColor={C.PRIMARY}
         />
 
-        {/* Save Button */}
-        <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY, shadowColor: C.PRIMARY }]} onPress={handleSave}>
-          <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.saveButtonText}>Lưu kết quả</Text>
-        </TouchableOpacity>
+        {/* Action Buttons */}
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY, shadowColor: C.PRIMARY, flex: 1 }]} onPress={handleSave}>
+            <Ionicons name="save-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.saveButtonText}>Lưu kết quả</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: '#4A5568', shadowColor: '#4A5568', flex: 1 }]}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.saveButtonText}>Chia sẻ</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={{ height: 30 }} />
       </ScrollView>

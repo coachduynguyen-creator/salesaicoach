@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -69,7 +69,26 @@ export default function SessionDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
         </TouchableOpacity>
         <Text style={styles.topBarTitle} numberOfLines={1}>{session.customerName}</Text>
-        <View style={{ width: 38 }} />
+        <TouchableOpacity onPress={() => {
+          const lines: string[] = [
+            `📊 BÁO CÁO — ${session.customerName}`,
+            `📅 ${session.date} | ⏱ ${formatTime(session.duration)} | ⭐ ${session.score}/10`,
+            '', '📋 TÓM TẮT', ...analysis.summary.map(s => `• ${s}`),
+          ];
+          if (analysis.communication) {
+            lines.push('', '🎙️ TÁC PHONG', `• ${analysis.communication.tone}`, `• ${analysis.communication.listening}`);
+          }
+          lines.push('', '💪 ĐIỂM MẠNH', ...analysis.strengths.map(s => `• ${s}`));
+          lines.push('', '⚠️ CẦN CẢI THIỆN', ...analysis.improvements.map(s => `• ${s}`));
+          if (analysis.scenario) {
+            lines.push('', '🎬 KỊCH BẢN', `❌ ${analysis.scenario.wrong}`, `✅ ${analysis.scenario.correct}`);
+          }
+          if (analysis.nextActions?.length) lines.push('', '✅ LÀM NGAY', ...analysis.nextActions.map(s => `• ${s}`));
+          lines.push('', '— Sales Coach App');
+          Share.share({ message: lines.join('\n') });
+        }} style={styles.backButton}>
+          <Ionicons name="share-outline" size={20} color={COLORS.TEXT} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>

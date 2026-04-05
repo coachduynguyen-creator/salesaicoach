@@ -194,6 +194,51 @@ export default function HomeScreen() {
           <Text style={styles.tipText}>{tip}</Text>
         </View>
 
+        {/* Progress Chart */}
+        {sessions.length >= 2 && (
+          <View style={styles.chartCard}>
+            <Text style={styles.chartTitle}>Tiến bộ điểm số</Text>
+            <View style={styles.chartContainer}>
+              {sessions.slice(0, 10).reverse().map((s, i, arr) => {
+                const barHeight = Math.max(8, (s.score / 10) * 100);
+                const barColor = s.score >= 7 ? COLORS.SUCCESS : s.score >= 5 ? COLORS.WARNING : COLORS.DANGER;
+                return (
+                  <View key={s.id} style={styles.chartBarWrap}>
+                    <Text style={styles.chartBarScore}>{s.score.toFixed(1)}</Text>
+                    <View style={[styles.chartBar, { height: barHeight, backgroundColor: barColor }]} />
+                    <Text style={styles.chartBarLabel}>{s.date.slice(0, 5)}</Text>
+                  </View>
+                );
+              })}
+            </View>
+            {sessions.length >= 3 && (() => {
+              const last3 = sessions.slice(0, 3);
+              const prev3 = sessions.slice(3, 6);
+              if (prev3.length === 0) return null;
+              const avgRecent = last3.reduce((s, x) => s + x.score, 0) / last3.length;
+              const avgPrev = prev3.reduce((s, x) => s + x.score, 0) / prev3.length;
+              const diff = avgRecent - avgPrev;
+              const trending = diff > 0.3 ? 'up' : diff < -0.3 ? 'down' : 'stable';
+              return (
+                <View style={styles.trendRow}>
+                  <Ionicons
+                    name={trending === 'up' ? 'trending-up' : trending === 'down' ? 'trending-down' : 'remove-outline'}
+                    size={16}
+                    color={trending === 'up' ? COLORS.SUCCESS : trending === 'down' ? COLORS.DANGER : COLORS.TEXT_LIGHT}
+                  />
+                  <Text style={[styles.trendText, {
+                    color: trending === 'up' ? COLORS.SUCCESS : trending === 'down' ? COLORS.DANGER : COLORS.TEXT_LIGHT,
+                  }]}>
+                    {trending === 'up' ? `Tiến bộ +${diff.toFixed(1)} điểm` :
+                     trending === 'down' ? `Giảm ${Math.abs(diff).toFixed(1)} điểm` :
+                     'Ổn định'}
+                  </Text>
+                </View>
+              );
+            })()}
+          </View>
+        )}
+
         {/* Recent Sessions */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Gần đây</Text>
@@ -471,5 +516,65 @@ const styles = StyleSheet.create({
   sessionMeta: {
     fontSize: 12,
     color: COLORS.TEXT_LIGHT,
+  },
+  // Chart styles
+  chartCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: COLORS.CARD,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  chartTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.TEXT,
+    marginBottom: 12,
+  },
+  chartContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-around',
+    height: 120,
+    gap: 4,
+  },
+  chartBarWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  chartBar: {
+    width: '70%',
+    minWidth: 16,
+    borderRadius: 4,
+    marginVertical: 4,
+  },
+  chartBarScore: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  chartBarLabel: {
+    fontSize: 9,
+    color: COLORS.TEXT_LIGHT,
+  },
+  trendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
+  },
+  trendText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
