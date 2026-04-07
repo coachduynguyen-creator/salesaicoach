@@ -40,8 +40,8 @@ export default function LessonDetailScreen() {
   };
 
   const mdStyles = StyleSheet.create({
-    body: { fontSize: 15, color: COLORS.TEXT, lineHeight: 24 },
-    strong: { fontWeight: '700', color: COLORS.TEXT },
+    body: { fontSize: 15, color: C.TEXT, lineHeight: 24 },
+    strong: { fontWeight: '700', color: C.TEXT },
     paragraph: { marginBottom: 10 },
     bullet_list: { marginBottom: 8 },
     ordered_list: { marginBottom: 8 },
@@ -58,30 +58,30 @@ export default function LessonDetailScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.topBar}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.topBar, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle} numberOfLines={1}>{cat.label}</Text>
+        <Text style={[styles.topBarTitle, { color: C.TEXT }]} numberOfLines={1}>{cat.label}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.hero}>
-          <View style={[styles.heroEmoji, { backgroundColor: cat.color + '15' }]}>
-            <Text style={styles.emojiText}>{lesson.emoji}</Text>
+          <View style={[styles.heroEmoji, { backgroundColor: cat.color + '12' }]}>
+            <Ionicons name={(lesson.icon || 'book') as any} size={40} color={cat.color} />
           </View>
           <View style={[styles.tagBadge, { backgroundColor: cat.color + '18' }]}>
             <Text style={[styles.tagBadgeText, { color: cat.color }]}>{cat.label}</Text>
           </View>
-          <Text style={styles.heroTitle}>{lesson.title}</Text>
+          <Text style={[styles.heroTitle, { color: C.TEXT }]}>{lesson.title}</Text>
           <Text style={styles.heroMeta}>{lesson.duration}</Text>
         </View>
 
         {/* Content */}
-        <View style={styles.contentCard}>
+        <View style={[styles.contentCard, { backgroundColor: C.CARD }]}>
           <Markdown style={mdStyles}>{lesson.content}</Markdown>
         </View>
 

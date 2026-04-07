@@ -6,14 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  TextInput,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { updateStreak, loadStreak, loadBadges, checkBadges, ALL_BADGES, StreakInfo } from '../services/gamificationService';
+import { loadUserAvatar } from '../services/imageService';
+import { getDailyInsight, DailyInsight } from '../services/dailyInsightService';
+import { getCurrentChallenge, getChallengeProgress, toggleChallengeTask, WeeklyChallenge, SavedChallenge } from '../services/challengeService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
-import { loadSessions, Session } from '../services/storageService';
+import { loadSessions, Session, loadCustomers } from '../services/storageService';
 import { useKnowledge } from '../contexts/KnowledgeContext';
 
 function formatTime(seconds: number): string {
@@ -61,10 +67,30 @@ export default function HomeScreen() {
   const { isStaleCache, reload } = useKnowledge();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [streak, setStreak] = useState<StreakInfo>({ current: 0, longest: 0, lastDate: '' });
+  const [earnedBadges, setEarnedBadges] = useState<string[]>([]);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [dailyInsight, setDailyInsight] = useState<DailyInsight | null>(null);
+  const [customerMap, setCustomerMap] = useState<Record<string, string>>({});
+  const [challenge, setChallenge] = useState<WeeklyChallenge | null>(null);
+  const [challengeProgress, setChallengeProgress] = useState<SavedChallenge | null>(null);
   const tip = TIPS[new Date().getDay() % TIPS.length];
 
   useFocusEffect(
-    useCallback(() => { loadSessions().then(setSessions); }, [])
+    useCallback(() => {
+      loadSessions().then(setSessions);
+      updateStreak().then(setStreak);
+      loadBadges().then(setEarnedBadges);
+      loadUserAvatar().then(setAvatarUri);
+      loadCustomers().then(customers => {
+        const map: Record<string, string> = {};
+        customers.forEach(c => { map[c.name.toLowerCase().trim()] = c.id; });
+        setCustomerMap(map);
+      });
+      getDailyInsight().then(setDailyInsight);
+      setChallenge(getCurrentChallenge());
+      getChallengeProgress().then(setChallengeProgress);
+    }, [])
   );
 
   const onRefresh = useCallback(async () => {
@@ -77,7 +103,7 @@ export default function HomeScreen() {
   const recent = sessions.slice(0, 3);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}>
 
         {/* Hero Header */}
@@ -97,7 +123,11 @@ export default function HomeScreen() {
               style={styles.heroAvatar}
               onPress={() => navigation.navigate('CaiDat')}
             >
-              <Ionicons name="person" size={22} color={C.PRIMARY} />
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.heroAvatarImage} />
+              ) : (
+                <Ionicons name="person" size={22} color={C.PRIMARY} />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -125,6 +155,45 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
+        {/* Quick Search */}
+        <TouchableOpacity
+          style={[styles.searchBar, { backgroundColor: C.CARD }]}
+          onPress={() => navigation.navigate('DaoTao')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="search-outline" size={18} color={C.TEXT_LIGHT} />
+          <Text style={[styles.searchPlaceholder, { color: C.TEXT_LIGHT }]}>Tìm bài học, kỹ năng, tình huống...</Text>
+        </TouchableOpacity>
+
+        {/* Streak + Badges */}
+        {streak.current > 0 && (
+          <View style={[styles.streakCard, { backgroundColor: C.CARD }]}>
+            <View style={styles.streakTop}>
+              <View style={styles.streakFireWrap}>
+                <Ionicons name="flame" size={24} color="#F59E0B" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.streakCount, { color: C.TEXT }]}>{streak.current} ngày liên tiếp</Text>
+                <Text style={[styles.streakBest, { color: C.TEXT_LIGHT }]}>Kỷ lục: {streak.longest} ngày</Text>
+              </View>
+              <View style={[styles.streakNum, { backgroundColor: '#F59E0B' }]}>
+                <Text style={styles.streakNumText}>{streak.current}</Text>
+              </View>
+            </View>
+            {earnedBadges.length > 0 && (
+              <View style={[styles.badgeRow, { borderTopWidth: 1, borderTopColor: C.BORDER, paddingTop: 10, marginTop: 10 }]}>
+                <Text style={[styles.badgeLabel, { color: C.TEXT_LIGHT }]}>Huy hiệu:</Text>
+                {ALL_BADGES.filter(b => earnedBadges.includes(b.id)).slice(-5).map(b => (
+                  <Text key={b.id} style={styles.badgeEmoji}>{b.emoji}</Text>
+                ))}
+                {earnedBadges.length > 5 && (
+                  <Text style={[styles.badgeMore, { color: C.TEXT_LIGHT }]}>+{earnedBadges.length - 5}</Text>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Cảnh báo khi dùng kiến thức cũ */}
         {isStaleCache && (
           <TouchableOpacity
@@ -141,73 +210,143 @@ export default function HomeScreen() {
         {/* Quick Actions */}
         <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: C.CARD }]}
             onPress={() => navigation.navigate('GhiAm')}
           >
             <LinearGradient
-              colors={[COLORS.DANGER, '#F97316']}
+              colors={['#DC2626', '#F97316']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.actionIcon}
             >
-              <Ionicons name="mic" size={22} color="#fff" />
+              <Ionicons name="radio" size={22} color="#fff" />
             </LinearGradient>
-            <Text style={styles.actionText}>Ghi âm</Text>
+            <Text style={[styles.actionText, { color: C.TEXT_SECONDARY }]}>Ghi âm</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: C.CARD }]}
             onPress={() => navigation.navigate('AiCoach')}
           >
             <LinearGradient
-              colors={[C.PRIMARY, C.PRIMARY_LIGHT]}
+              colors={['#7C3AED', '#A78BFA']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.actionIcon}
             >
               <Ionicons name="sparkles" size={22} color="#fff" />
             </LinearGradient>
-            <Text style={styles.actionText}>AI Coach</Text>
+            <Text style={[styles.actionText, { color: C.TEXT_SECONDARY }]}>AI Coach</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: C.CARD }]}
             onPress={() => navigation.navigate('DaoTao')}
           >
             <LinearGradient
-              colors={[COLORS.SUCCESS, '#34D399']}
+              colors={['#059669', '#34D399']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.actionIcon}
             >
-              <Ionicons name="book" size={22} color="#fff" />
+              <Ionicons name="library" size={22} color="#fff" />
             </LinearGradient>
-            <Text style={styles.actionText}>Đào tạo</Text>
+            <Text style={[styles.actionText, { color: C.TEXT_SECONDARY }]}>Đào tạo</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('LichSu')}
+            style={[styles.actionCard, { backgroundColor: C.CARD }]}
+            onPress={() => navigation.navigate('KhachHang')}
           >
             <LinearGradient
-              colors={[COLORS.WARNING, COLORS.ACCENT_LIGHT]}
+              colors={['#2563EB', '#60A5FA']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.actionIcon}
             >
-              <Ionicons name="time" size={22} color="#fff" />
+              <Ionicons name="people" size={22} color="#fff" />
             </LinearGradient>
-            <Text style={styles.actionText}>Lịch sử</Text>
+            <Text style={[styles.actionText, { color: C.TEXT_SECONDARY }]}>Khách hàng</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Tip Card */}
-        <View style={styles.tipCard}>
-          <View style={styles.tipHeader}>
-            <View style={styles.tipBadge}>
-              <Text style={styles.tipBadgeText}>TIP</Text>
-            </View>
-            <Text style={styles.tipTitle}>Mẹo hôm nay</Text>
-          </View>
-          <Text style={styles.tipText}>{tip}</Text>
+        {/* AI Tools */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Công cụ AI</Text>
         </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 16, marginBottom: 16 }}>
+          {[
+            { key: 'script', label: 'Tạo kịch bản', icon: 'document-text', color: '#E67E22', nav: 'ScriptGenerator' },
+            { key: 'precall', label: 'Chuẩn bị gặp', icon: 'clipboard', color: '#2563EB', nav: 'AITools', params: { tool: 'precall' } },
+            { key: 'postcall', label: 'Tóm tắt sau gặp', icon: 'reader', color: '#059669', nav: 'AITools', params: { tool: 'postcall' } },
+            { key: 'roleplay', label: 'Luyện đối đáp', icon: 'chatbubbles', color: '#7C3AED', nav: 'AITools', params: { tool: 'roleplay' } },
+            { key: 'objection', label: 'Xử lý từ chối', icon: 'shield-checkmark', color: '#DC2626', nav: 'AITools', params: { tool: 'objection' } },
+            { key: 'goals', label: 'Mục tiêu', icon: 'flag', color: '#F59E0B', nav: 'GoalSetting' },
+            { key: 'commission', label: 'Hoa hồng', icon: 'calculator', color: '#10B981', nav: 'Commission' },
+          ].map(tool => (
+            <TouchableOpacity
+              key={tool.key}
+              style={[styles.toolCard, { backgroundColor: C.CARD }]}
+              onPress={() => navigation.navigate(tool.nav as any, (tool as any).params)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.toolIcon, { backgroundColor: tool.color + '12' }]}>
+                <Ionicons name={tool.icon as any} size={20} color={tool.color} />
+              </View>
+              <Text style={[styles.toolLabel, { color: C.TEXT }]} numberOfLines={1}>{tool.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Daily Insight */}
+        {dailyInsight && (
+          <View style={[styles.tipCard, { backgroundColor: C.CARD }]}>
+            <View style={styles.tipHeader}>
+              <View style={[styles.tipBadge, { backgroundColor: dailyInsight.color + '18' }]}>
+                <Ionicons name={dailyInsight.icon as any} size={12} color={dailyInsight.color} />
+              </View>
+              <Text style={[styles.tipTitle, { color: C.TEXT }]}>{dailyInsight.title}</Text>
+              <Text style={{ fontSize: 9, fontWeight: '700', color: dailyInsight.color, letterSpacing: 1 }}>HÔM NAY</Text>
+            </View>
+            <Text style={[styles.tipText, { color: C.TEXT_SECONDARY }]}>{dailyInsight.body}</Text>
+          </View>
+        )}
+
+        {/* Weekly Challenge */}
+        {challenge && challengeProgress && (
+          <View style={[styles.tipCard, { backgroundColor: C.CARD }]}>
+            <View style={styles.tipHeader}>
+              <View style={[styles.tipBadge, { backgroundColor: challenge.color + '18' }]}>
+                <Ionicons name={challenge.icon as any} size={12} color={challenge.color} />
+              </View>
+              <Text style={[styles.tipTitle, { color: C.TEXT }]}>{challenge.title}</Text>
+              <Text style={{ fontSize: 9, fontWeight: '700', color: challenge.color, letterSpacing: 1 }}>TUẦN NÀY</Text>
+            </View>
+            <Text style={[styles.tipText, { color: C.TEXT_SECONDARY, marginBottom: 10 }]}>{challenge.description}</Text>
+            {challenge.tasks.map((task, i) => (
+              <TouchableOpacity
+                key={i}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}
+                onPress={async () => {
+                  const updated = await toggleChallengeTask(i);
+                  setChallengeProgress(updated);
+                }}
+              >
+                <Ionicons
+                  name={challengeProgress.tasksCompleted[i] ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={18}
+                  color={challengeProgress.tasksCompleted[i] ? '#10B981' : C.TEXT_LIGHT}
+                />
+                <Text style={{
+                  fontSize: 12, color: challengeProgress.tasksCompleted[i] ? C.TEXT_LIGHT : C.TEXT_SECONDARY,
+                  textDecorationLine: challengeProgress.tasksCompleted[i] ? 'line-through' : 'none',
+                  flex: 1, lineHeight: 18,
+                }}>{task}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Progress Chart */}
         {sessions.length >= 2 && (
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Tiến bộ điểm số</Text>
+          <View style={[styles.chartCard, { backgroundColor: C.CARD }]}>
+            <Text style={[styles.chartTitle, { color: C.TEXT }]}>Tiến bộ điểm số</Text>
             <View style={styles.chartContainer}>
               {sessions.slice(0, 10).reverse().map((s, i, arr) => {
                 const barHeight = Math.max(8, (s.score / 10) * 100);
@@ -251,7 +390,7 @@ export default function HomeScreen() {
 
         {/* Recent Sessions */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Gần đây</Text>
+          <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Gần đây</Text>
           {sessions.length > 0 && (
             <TouchableOpacity onPress={() => navigation.navigate('LichSu')}>
               <Text style={[styles.seeAll, { color: C.PRIMARY }]}>Xem tất cả</Text>
@@ -267,26 +406,34 @@ export default function HomeScreen() {
             <View style={[styles.emptyIconWrap, { backgroundColor: C.PRIMARY + '10' }]}>
               <Ionicons name="mic-outline" size={32} color={C.PRIMARY_LIGHT} />
             </View>
-            <Text style={styles.emptyTitle}>Chưa có buổi tư vấn nào</Text>
+            <Text style={[styles.emptyTitle, { color: C.TEXT }]}>Chưa có buổi tư vấn nào</Text>
             <Text style={styles.emptyDesc}>Nhấn để ghi âm buổi đầu tiên</Text>
           </TouchableOpacity>
         ) : (
-          recent.map(session => (
-            <TouchableOpacity
-              key={session.id}
-              style={styles.sessionCard}
-              onPress={() => navigation.navigate('SessionDetail', { session })}
-            >
-              <View style={[styles.sessionScore, { backgroundColor: getScoreColor(session.score) }]}>
-                <Text style={styles.sessionScoreText}>{session.score.toFixed(1)}</Text>
-              </View>
-              <View style={styles.sessionInfo}>
-                <Text style={styles.sessionName}>{session.customerName}</Text>
-                <Text style={styles.sessionMeta}>{session.date}  •  {formatTime(session.duration)}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.TEXT_LIGHT} />
-            </TouchableOpacity>
-          ))
+          recent.map(session => {
+            const custId = customerMap[session.customerName?.toLowerCase().trim()];
+            return (
+              <TouchableOpacity
+                key={session.id}
+                style={[styles.sessionCard, { backgroundColor: C.CARD }]}
+                onPress={() => navigation.navigate('SessionDetail', { session })}
+              >
+                <View style={[styles.sessionScore, { backgroundColor: getScoreColor(session.score) }]}>
+                  <Text style={styles.sessionScoreText}>{session.score.toFixed(1)}</Text>
+                </View>
+                <View style={styles.sessionInfo}>
+                  <TouchableOpacity
+                    onPress={() => custId && navigation.navigate('CustomerDetail', { customerId: custId })}
+                    disabled={!custId}
+                  >
+                    <Text style={[styles.sessionName, { color: custId ? C.PRIMARY : C.TEXT }]}>{session.customerName}</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.sessionMeta}>{session.date}  •  {formatTime(session.duration)}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={C.TEXT_LIGHT} />
+              </TouchableOpacity>
+            );
+          })
         )}
 
         <View style={{ height: 30 }} />
@@ -298,6 +445,49 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.BACKGROUND },
   scroll: { flex: 1 },
+
+  // Search
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.CARD, marginHorizontal: 16, marginTop: 12,
+    paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  searchPlaceholder: { fontSize: 14, color: COLORS.TEXT_LIGHT },
+
+  // AI Tools
+  toolCard: {
+    width: 90, borderRadius: 12, padding: 12, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  toolIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  toolLabel: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
+
+  // Streak + Badges
+  streakCard: {
+    marginHorizontal: 16, marginTop: 12, marginBottom: 2,
+    paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  streakTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  streakFireWrap: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center',
+  },
+  streakCount: { fontSize: 15, fontWeight: '700' },
+  streakBest: { fontSize: 11, marginTop: 1 },
+  streakNum: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  streakNumText: { fontSize: 16, fontWeight: '900', color: '#fff' },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badgeLabel: { fontSize: 11, fontWeight: '600', marginRight: 2 },
+  badgeEmoji: { fontSize: 18 },
+  badgeMore: { fontSize: 11, fontWeight: '600', marginLeft: 2 },
 
   // Hero
   hero: {
@@ -336,6 +526,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  heroAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   statsRow: {
     flexDirection: 'row',
@@ -367,7 +563,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    marginTop: -12,
+    marginTop: 12,
     gap: 10,
   },
   actionCard: {
@@ -383,15 +579,20 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   actionText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: COLORS.TEXT_SECONDARY,
   },

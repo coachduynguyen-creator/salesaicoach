@@ -124,7 +124,7 @@ export async function migrateLocalToCloud(userId: string, teamId: string): Promi
 
     await AsyncStorage.setItem(MIGRATION_KEY, 'true');
   } catch (err) {
-    console.warn('Migration error (will retry next time):', err);
+    // Migration failed, will retry next app launch
     // Không set MIGRATION_KEY → sẽ retry lần sau
   }
 }

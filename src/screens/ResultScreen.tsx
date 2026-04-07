@@ -119,7 +119,7 @@ function LoadingScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]}>
       <View style={styles.loadingContainer}>
         <View style={styles.loadingIconWrap}>
           <ActivityIndicator size="large" color={C.PRIMARY} />
@@ -159,7 +159,7 @@ function ManualInputScreen({ onSubmit }: { onSubmit: (text: string) => void }) {
   const C = useColors();
   const [text, setText] = useState('');
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -198,13 +198,15 @@ export default function ResultScreen() {
   const C = useColors();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<ResultRouteParams, 'ResultScreen'>>();
-  const { audioUri, manualMode = false, duration = 0, customerName = 'Khách hàng' } = route.params ?? {};
+  const { audioUri, manualMode = false, duration = 0, customerName: initialName = 'Khách hàng' } = route.params ?? {};
   const { knowledgeBase } = useKnowledge();
   const { businessContext } = useBusiness();
   const { showAlert } = useAlert();
 
   const [loading, setLoading] = useState(!manualMode);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [customerName, setCustomerName] = useState(initialName);
+  const [editingName, setEditingName] = useState(false);
 
   const runAnalysis = async (transcript?: string) => {
     setLoading(true);
@@ -386,19 +388,19 @@ export default function ResultScreen() {
   const scoreColor = getScoreColor(result.score);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]}>
       {/* Top bar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Kết quả phân tích</Text>
+        <Text style={[styles.topBarTitle, { color: C.TEXT }]}>Kết quả phân tích</Text>
         <View style={{ width: 38 }} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Score Hero */}
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: C.CARD }]}>
           <View style={[styles.scoreRing, { borderColor: scoreColor }]}>
             <Text style={[styles.scoreNumber, { color: scoreColor }]}>{result.score}</Text>
             <Text style={styles.scoreOutOf}>/10</Text>
@@ -406,7 +408,25 @@ export default function ResultScreen() {
           <Text style={[styles.scoreLabel, { color: scoreColor }]}>
             {getScoreLabel(result.score)}
           </Text>
-          <Text style={styles.heroCustomer}>{customerName}</Text>
+          <TouchableOpacity onPress={() => setEditingName(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {editingName ? (
+              <TextInput
+                style={[styles.heroCustomer, { borderBottomWidth: 1, borderBottomColor: C.PRIMARY, minWidth: 120, textAlign: 'center', color: C.TEXT }]}
+                value={customerName}
+                onChangeText={setCustomerName}
+                onBlur={() => setEditingName(false)}
+                onSubmitEditing={() => setEditingName(false)}
+                autoFocus
+                placeholder="Nhập tên khách hàng"
+                placeholderTextColor={C.TEXT_LIGHT}
+              />
+            ) : (
+              <>
+                <Text style={[styles.heroCustomer, { color: C.TEXT }]}>{customerName}</Text>
+                <Ionicons name="create-outline" size={14} color={C.TEXT_LIGHT} />
+              </>
+            )}
+          </TouchableOpacity>
           <View style={styles.heraMeta}>
             <Ionicons name="calendar-outline" size={13} color={COLORS.TEXT_LIGHT} />
             <Text style={styles.heroMetaText}>{getTodayString()}</Text>

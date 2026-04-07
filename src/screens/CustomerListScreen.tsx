@@ -1,30 +1,20 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, RefreshControl, ScrollView, Image,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput,
+  RefreshControl, Image, ScrollView, Modal, Dimensions,
 } from 'react-native';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
-import { loadCustomers, deleteCustomer, CustomerProfile, loadSessions, addCustomer, updateCustomer, loadCustomerStatuses, CustomerStatus } from '../services/storageService';
+import {
+  loadCustomers, deleteCustomer, CustomerProfile, loadSessions,
+  addCustomer, updateCustomer, loadCustomerStatuses, CustomerStatus,
+} from '../services/storageService';
 import { useAlert } from '../contexts/AlertContext';
-
-const STAGE_COLORS: Record<string, string> = {
-  'mới tiếp cận': '#9F7AEA',
-  'đang tìm hiểu': COLORS.WARNING,
-  'đang so sánh': '#ED8936',
-  'sắp chốt': COLORS.PRIMARY,
-  'đã chốt': COLORS.SUCCESS,
-};
-
-function getStageColor(stage: string): string {
-  const lower = stage.toLowerCase();
-  for (const [key, color] of Object.entries(STAGE_COLORS)) {
-    if (lower.includes(key)) return color;
-  }
-  return COLORS.TEXT_LIGHT;
-}
 
 export default function CustomerListScreen() {
   const navigation = useNavigation<any>();
@@ -34,8 +24,10 @@ export default function CustomerListScreen() {
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [funnelExpanded, setFunnelExpanded] = useState(true);
 
-  // Sync khách hàng từ sessions cũ vào CRM
   const syncCustomersFromSessions = useCallback(async () => {
     loadCustomerStatuses().then(setStatuses);
     const [existingCustomers, sessions] = await Promise.all([loadCustomers(), loadSessions()]);
@@ -45,15 +37,12 @@ export default function CustomerListScreen() {
 
     for (const s of sessions) {
       const name = s.customerName?.trim();
-      if (!name || name === 'Khách hàng' || name === 'Chưa nhập tên') continue;
+      if (!name) continue;
       const key = name.toLowerCase();
       if (customerNames.has(key)) {
-        // Khách đã có — thêm sessionId nếu chưa có
         const existing = existingCustomers.find(c => c.name.toLowerCase().trim() === key);
         if (existing && !(existing.sessionIds || []).includes(s.id)) {
-          await updateCustomer(existing.id, {
-            sessionIds: [...(existing.sessionIds || []), s.id],
-          });
+          await updateCustomer(existing.id, { sessionIds: [...(existing.sessionIds || []), s.id] });
         }
         continue;
       }
@@ -66,43 +55,25 @@ export default function CustomerListScreen() {
     }
 
     for (const data of Object.values(toCreate)) {
-      const avgScore = data.scores.length > 0
-        ? (data.scores.reduce((a, b) => a + b, 0) / data.scores.length).toFixed(1)
-        : '';
       const newCustomer = await addCustomer({
-        name: data.name,
-        company: data.company,
-        phone: '',
-        email: '',
-        needs: '',
-        budget: '',
-        concerns: '',
-        stage: '',
-        statusId: 'new',
-        decisionFactors: '',
-        personality: '',
-        nextStep: '',
+        name: data.name, company: data.company,
+        phone: '', email: '', needs: '', budget: '', concerns: '',
+        stage: '', statusId: 'new', decisionFactors: '', personality: '', nextStep: '',
       });
       await updateCustomer(newCustomer.id, {
         sessionIds: data.sessionIds,
         notes: data.dates.map((d, i) => ({
-          date: d,
-          content: `Điểm: ${data.scores[i]?.toFixed(1) || '?'}/10`,
-          sessionId: data.sessionIds[i],
+          date: d, content: `Điểm: ${data.scores[i]?.toFixed(1) || '?'}/10`, sessionId: data.sessionIds[i],
         })),
       });
     }
 
-    // Reload
-    const updated = await loadCustomers();
-    setCustomers(updated);
+    setCustomers(await loadCustomers());
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      syncCustomersFromSessions();
-    }, [syncCustomersFromSessions])
-  );
+  useFocusEffect(useCallback(() => {
+    syncCustomersFromSessions();
+  }, [syncCustomersFromSessions]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -110,12 +81,18 @@ export default function CustomerListScreen() {
     setRefreshing(false);
   }, [syncCustomersFromSessions]);
 
-  const filtered = search.trim()
+  const searchFiltered = search.trim()
     ? customers.filter(c =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.company.toLowerCase().includes(search.toLowerCase())
-      )
+        c.company.toLowerCase().includes(search.toLowerCase()))
     : customers;
+
+  const filtered = activeFilter === 'all'
+    ? searchFiltered
+    : searchFiltered.filter(c => c.statusId === activeFilter);
+
+  const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order);
+  const activeStatusObj = sortedStatuses.find(s => s.id === activeFilter);
 
   const handleDelete = (customer: CustomerProfile) => {
     showAlert({
@@ -136,24 +113,23 @@ export default function CustomerListScreen() {
   };
 
   const renderCustomer = ({ item }: { item: CustomerProfile }) => {
-    // Ưu tiên statusId, fallback sang stage text cũ
     const statusObj = statuses.find(s => s.id === item.statusId);
-    const stageColor = statusObj?.color || getStageColor(item.stage || '');
+    const stageColor = statusObj?.color || COLORS.TEXT_LIGHT;
     const stageLabel = statusObj?.label || item.stage || '';
-    const noteCount = item.notes?.length || 0;
     const sessionCount = item.sessionIds?.length || 0;
     const score = item.leadScore || 0;
 
     return (
       <TouchableOpacity
-        style={styles.customerCard}
+        style={[styles.customerCard, { backgroundColor: C.CARD }]}
         onPress={() => navigation.navigate('CustomerDetail', { customerId: item.id })}
         onLongPress={() => handleDelete(item)}
         activeOpacity={0.7}
       >
-        <View style={[styles.avatar, { backgroundColor: C.PRIMARY + '14', overflow: 'hidden' }]}>
+        <View style={[styles.cardLeft, { borderLeftColor: stageColor }]} />
+        <View style={[styles.avatar, { backgroundColor: C.PRIMARY + '12' }]}>
           {item.photoUri ? (
-            <Image source={{ uri: item.photoUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+            <Image source={{ uri: item.photoUri }} style={styles.avatarImg} />
           ) : (
             <Text style={[styles.avatarText, { color: C.PRIMARY }]}>
               {item.name.charAt(0).toUpperCase()}
@@ -162,75 +138,117 @@ export default function CustomerListScreen() {
         </View>
 
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          {item.company ? (
-            <Text style={styles.company} numberOfLines={1}>{item.company}</Text>
-          ) : null}
-
+          <Text style={[styles.name, { color: C.TEXT }]} numberOfLines={1}>{item.name}</Text>
+          {item.company ? <Text style={styles.company} numberOfLines={1}>{item.company}</Text> : null}
           <View style={styles.metaRow}>
             {stageLabel ? (
-              <View style={[styles.stageBadge, { backgroundColor: stageColor + '18' }]}>
-                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: stageColor, marginRight: 4 }} />
+              <View style={[styles.stageBadge, { backgroundColor: stageColor + '15' }]}>
+                <View style={[styles.stageDot, { backgroundColor: stageColor }]} />
                 <Text style={[styles.stageText, { color: stageColor }]}>{stageLabel}</Text>
               </View>
             ) : null}
             {score > 0 && (
-              <Text style={[styles.metaText, { fontWeight: '700', color: score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#EF4444' }]}>
+              <Text style={[styles.scoreVal, { color: score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#EF4444' }]}>
                 {score}đ
               </Text>
             )}
-            <Text style={styles.metaText}>
-              {sessionCount} cuộc gọi
-            </Text>
+            <Text style={styles.metaText}>{sessionCount} cuộc gọi</Text>
           </View>
         </View>
 
-        <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_LIGHT} />
+        <Ionicons name="chevron-forward" size={16} color={COLORS.BORDER} />
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Khách Hàng</Text>
-        <Text style={styles.headerSub}>{customers.length} khách hàng</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: C.BACKGROUND }]}>
+        <Text style={[styles.headerTitle, { color: C.TEXT }]}>Khách Hàng</Text>
+        <Text style={[styles.headerSub, { color: C.TEXT_LIGHT }]}>{customers.length} khách hàng</Text>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color={COLORS.TEXT_LIGHT} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm theo tên hoặc công ty..."
-          placeholderTextColor={COLORS.TEXT_LIGHT}
-          value={search}
-          onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={18} color={COLORS.TEXT_LIGHT} />
-          </TouchableOpacity>
-        )}
+      {/* Sales Funnel */}
+      {customers.length > 0 && sortedStatuses.length > 0 && (() => {
+        const funnelData = sortedStatuses.map(status => ({
+          ...status,
+          count: customers.filter(c => c.statusId === status.id).length,
+        }));
+        const maxCount = Math.max(...funnelData.map(d => d.count), 1);
+
+        return (
+          <View style={[styles.funnelCard, { backgroundColor: C.CARD }]}>
+            <TouchableOpacity style={styles.funnelHeader} onPress={() => setFunnelExpanded(!funnelExpanded)} activeOpacity={0.7}>
+              <Ionicons name="funnel" size={16} color={C.PRIMARY} />
+              <Text style={styles.funnelTitle}>Sales Funnel</Text>
+              <Text style={styles.funnelTotal}>{customers.length} khách</Text>
+              <Ionicons name={funnelExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.TEXT_LIGHT} />
+            </TouchableOpacity>
+            {funnelExpanded && funnelData.map((stage, idx) => {
+              const pct = idx === 0
+                ? '100%'
+                : funnelData[idx - 1].count > 0
+                  ? (Math.round((stage.count / funnelData[idx - 1].count) * 100)) + '%'
+                  : '0%';
+              const barWidth = maxCount > 0 ? Math.max((stage.count / maxCount) * 100, 8) : 8;
+
+              return (
+                <TouchableOpacity
+                  key={stage.id}
+                  style={styles.funnelRow}
+                  onPress={() => setActiveFilter(activeFilter === stage.id ? 'all' : stage.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.funnelLabel} numberOfLines={1}>{stage.label}</Text>
+                  <View style={styles.funnelBarWrap}>
+                    <View style={[styles.funnelBar, { width: `${barWidth}%`, backgroundColor: stage.color + '35' }]}>
+                      {stage.count > 0 && (
+                        <Text style={[styles.funnelBarText, { color: stage.color }]}>{stage.count}</Text>
+                      )}
+                    </View>
+                  </View>
+                  <Text style={[styles.funnelPct, { color: stage.color }]}>{pct}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        );
+      })()}
+
+      {/* Search + Dropdown Filter */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={16} color={COLORS.TEXT_LIGHT} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm tên, công ty..."
+            placeholderTextColor={COLORS.TEXT_LIGHT}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={16} color={COLORS.TEXT_LIGHT} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.filterBtn, activeFilter !== 'all' && { borderColor: activeStatusObj?.color || C.PRIMARY }]}
+          onPress={() => setShowDropdown(true)}
+        >
+          {activeFilter !== 'all' && (
+            <View style={[styles.filterDot, { backgroundColor: activeStatusObj?.color }]} />
+          )}
+          <Text style={[styles.filterBtnText, activeFilter !== 'all' && { color: activeStatusObj?.color }]} numberOfLines={1}>
+            {activeFilter === 'all' ? 'Tất cả' : activeStatusObj?.label || 'Lọc'}
+          </Text>
+          <Ionicons name="chevron-down" size={14} color={activeFilter !== 'all' ? activeStatusObj?.color : COLORS.TEXT_LIGHT} />
+        </TouchableOpacity>
       </View>
 
-      {/* Stage Summary */}
-      {customers.length > 0 && statuses.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 8 }}>
-          {statuses.sort((a, b) => a.order - b.order).map(status => {
-            const count = customers.filter(c => c.statusId === status.id).length;
-            if (count === 0) return null;
-            return (
-              <View key={status.id} style={[styles.statusChip, { backgroundColor: status.color + '18' }]}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: status.color }} />
-                <Text style={[styles.statusChipText, { color: status.color }]}>{status.label}</Text>
-                <Text style={[styles.statusChipCount, { color: status.color }]}>{count}</Text>
-              </View>
-            );
-          }).filter(Boolean)}
-        </ScrollView>
-      )}
-
+      {/* List */}
       <FlatList
         data={filtered}
         keyExtractor={item => item.id}
@@ -242,14 +260,55 @@ export default function CustomerListScreen() {
           <View style={styles.emptyWrap}>
             <Ionicons name="people-outline" size={48} color={COLORS.TEXT_LIGHT} />
             <Text style={styles.emptyTitle}>
-              {search ? 'Không tìm thấy' : 'Chưa có khách hàng'}
+              {search || activeFilter !== 'all' ? 'Không tìm thấy' : 'Chưa có khách hàng'}
             </Text>
             <Text style={styles.emptyDesc}>
-              {search ? 'Thử từ khóa khác' : 'Ghi âm cuộc gọi đầu tiên, AI sẽ tự tạo profile khách'}
+              {search ? 'Thử từ khóa khác' : activeFilter !== 'all' ? 'Không có khách ở giai đoạn này' : 'Ghi âm cuộc gọi đầu tiên, AI sẽ tự tạo profile khách'}
             </Text>
           </View>
         }
       />
+
+      {/* Dropdown Modal */}
+      <Modal visible={showDropdown} transparent animationType="fade">
+        <TouchableOpacity style={styles.dropdownOverlay} activeOpacity={1} onPress={() => setShowDropdown(false)}>
+          <View style={styles.dropdownBox}>
+            <Text style={styles.dropdownTitle}>Lọc theo giai đoạn</Text>
+
+            <TouchableOpacity
+              style={[styles.dropdownItem, activeFilter === 'all' && styles.dropdownItemActive]}
+              onPress={() => { setActiveFilter('all'); setShowDropdown(false); }}
+            >
+              <Text style={[styles.dropdownItemText, activeFilter === 'all' && { color: C.PRIMARY, fontWeight: '700' }]}>
+                Tất cả ({customers.length})
+              </Text>
+              {activeFilter === 'all' && <Ionicons name="checkmark" size={18} color={C.PRIMARY} />}
+            </TouchableOpacity>
+
+            {sortedStatuses.map(status => {
+              const count = customers.filter(c => c.statusId === status.id).length;
+              const isActive = activeFilter === status.id;
+              return (
+                <TouchableOpacity
+                  key={status.id}
+                  style={[styles.dropdownItem, isActive && styles.dropdownItemActive]}
+                  onPress={() => { setActiveFilter(status.id); setShowDropdown(false); }}
+                >
+                  <View style={[styles.dropdownDot, { backgroundColor: status.color }]} />
+                  <Text style={[styles.dropdownItemText, isActive && { color: status.color, fontWeight: '700' }]}>
+                    {status.label} ({count})
+                  </Text>
+                  {isActive && <Ionicons name="checkmark" size={18} color={status.color} />}
+                </TouchableOpacity>
+              );
+            })}
+
+            <TouchableOpacity style={styles.dropdownClose} onPress={() => setShowDropdown(false)}>
+              <Text style={styles.dropdownCloseText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -259,39 +318,99 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   headerTitle: { fontSize: 26, fontWeight: '800', color: COLORS.TEXT },
   headerSub: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 2 },
+
+  // Funnel
+  funnelCard: {
+    marginHorizontal: 16, marginBottom: 10, backgroundColor: COLORS.CARD,
+    borderRadius: 14, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+  },
+  funnelHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14,
+  },
+  funnelTitle: { fontSize: 14, fontWeight: '700', color: COLORS.TEXT, flex: 1 },
+  funnelTotal: { fontSize: 12, color: COLORS.TEXT_LIGHT },
+  funnelRow: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8,
+  },
+  funnelLabel: { width: 72, fontSize: 11, fontWeight: '600', color: COLORS.TEXT_SECONDARY },
+  funnelBarWrap: { flex: 1, height: 30, justifyContent: 'center' },
+  funnelBar: {
+    height: 30, borderRadius: 6, justifyContent: 'center', paddingHorizontal: 10,
+  },
+  funnelBarText: { fontSize: 12, fontWeight: '800' },
+  funnelPct: { width: 38, fontSize: 11, fontWeight: '700', textAlign: 'right' },
+
+  // Search + Filter
+  searchRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 8 },
   searchWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: 16, marginVertical: 10, backgroundColor: COLORS.CARD,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: COLORS.CARD, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
     borderWidth: 1, borderColor: COLORS.BORDER,
   },
-  searchInput: { flex: 1, fontSize: 14, color: COLORS.TEXT },
-  statusChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+  searchInput: { flex: 1, fontSize: 13, color: COLORS.TEXT },
+  filterBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.CARD, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: COLORS.BORDER, minWidth: 80,
   },
-  statusChipText: { fontSize: 12, fontWeight: '600' },
-  statusChipCount: { fontSize: 12, fontWeight: '800' },
-  listContent: { paddingHorizontal: 16, paddingBottom: 30 },
+  filterDot: { width: 8, height: 8, borderRadius: 4 },
+  filterBtnText: { fontSize: 12, fontWeight: '600', color: COLORS.TEXT_SECONDARY },
+
+  // List
+  listContent: { padding: 16, paddingTop: 4, gap: 6, paddingBottom: 30 },
   customerCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 14,
-    flexDirection: 'row', alignItems: 'center', marginBottom: 10,
+    backgroundColor: COLORS.CARD, borderRadius: 12, padding: 12,
+    flexDirection: 'row', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+    shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
+    overflow: 'hidden',
   },
+  cardLeft: { width: 3, height: '100%', position: 'absolute', left: 0, top: 0, bottom: 0, borderTopLeftRadius: 12, borderBottomLeftRadius: 12 },
   avatar: {
-    width: 44, height: 44, borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    width: 42, height: 42, borderRadius: 21,
+    alignItems: 'center', justifyContent: 'center', marginRight: 10, overflow: 'hidden',
   },
-  avatarText: { fontSize: 18, fontWeight: '800' },
+  avatarImg: { width: 42, height: 42, borderRadius: 21 },
+  avatarText: { fontSize: 17, fontWeight: '800' },
   info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '700', color: COLORS.TEXT },
-  company: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginTop: 1 },
+  name: { fontSize: 14, fontWeight: '700', color: COLORS.TEXT },
+  company: { fontSize: 11, color: COLORS.TEXT_LIGHT, marginTop: 1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  stageBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  stageText: { fontSize: 10, fontWeight: '700' },
-  metaText: { fontSize: 11, color: COLORS.TEXT_LIGHT },
-  needsText: { fontSize: 11, color: COLORS.TEXT_SECONDARY, marginTop: 3, fontStyle: 'italic' },
+  stageBadge: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6,
+  },
+  stageDot: { width: 5, height: 5, borderRadius: 3, marginRight: 4 },
+  stageText: { fontSize: 9, fontWeight: '700' },
+  scoreVal: { fontSize: 10, fontWeight: '800' },
+  metaText: { fontSize: 10, color: COLORS.TEXT_LIGHT },
+
+  // Dropdown
+  dropdownOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  dropdownBox: {
+    backgroundColor: COLORS.CARD, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 36,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
+  },
+  dropdownTitle: { fontSize: 16, fontWeight: '700', color: COLORS.TEXT, marginBottom: 14 },
+  dropdownItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+  },
+  dropdownItemActive: { backgroundColor: COLORS.SURFACE, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: 10 },
+  dropdownDot: { width: 10, height: 10, borderRadius: 5 },
+  dropdownItemText: { fontSize: 14, color: COLORS.TEXT, flex: 1 },
+  dropdownClose: { alignItems: 'center', paddingVertical: 14, marginTop: 8 },
+  dropdownCloseText: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT_LIGHT },
+
   emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: COLORS.TEXT },
   emptyDesc: { fontSize: 13, color: COLORS.TEXT_LIGHT, textAlign: 'center', paddingHorizontal: 40 },

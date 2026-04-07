@@ -1,13 +1,14 @@
 // Màu mặc định (dùng cho static styles, fallback)
+// Dark mode sử dụng useColors() hook thay vì COLORS trực tiếp
 export const COLORS = {
-  // Primary palette — sẽ bị override bởi theme
+  // Primary palette
   PRIMARY: '#4F46E5',
   PRIMARY_LIGHT: '#818CF8',
   PRIMARY_DARK: '#3730A3',
   ACCENT: '#F59E0B',
   ACCENT_LIGHT: '#FCD34D',
 
-  // Nền & Surface
+  // Nền & Surface (light mode defaults)
   BACKGROUND: '#F8FAFC',
   CARD: '#FFFFFF',
   SURFACE: '#F1F5F9',
@@ -33,18 +34,3 @@ export const COLORS = {
   GRADIENT_START: '#4F46E5',
   GRADIENT_END: '#7C3AED',
 };
-
-// Tạo bộ COLORS dynamic dựa trên theme
-export const getThemedColors = (themeColors: {
-  PRIMARY: string;
-  PRIMARY_LIGHT: string;
-  PRIMARY_DARK: string;
-  GRADIENT_END: string;
-}) => ({
-  ...COLORS,
-  PRIMARY: themeColors.PRIMARY,
-  PRIMARY_LIGHT: themeColors.PRIMARY_LIGHT,
-  PRIMARY_DARK: themeColors.PRIMARY_DARK,
-  GRADIENT_START: themeColors.PRIMARY,
-  GRADIENT_END: themeColors.GRADIENT_END,
-});

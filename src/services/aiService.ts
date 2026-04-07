@@ -36,6 +36,23 @@ const logUsage = (action: string, model: string, durationMs: number, inputTokens
   }).catch(() => {});
 };
 
+const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 2): Promise<Response> => {
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.status === 429 && i < maxRetries) {
+        await new Promise(r => setTimeout(r, Math.pow(2, i) * 1500));
+        continue;
+      }
+      return response;
+    } catch (err) {
+      if (i === maxRetries) throw err;
+      await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+    }
+  }
+  throw new Error('Không thể kết nối. Kiểm tra kết nối mạng.');
+};
+
 export const setApiKeys = (openaiKey: string, claudeKey: string) => {
   OPENAI_API_KEY = openaiKey || DEFAULT_OPENAI_KEY;
   CLAUDE_API_KEY = claudeKey || DEFAULT_CLAUDE_KEY;
@@ -89,7 +106,7 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
   formData.append('model', 'whisper-1');
   formData.append('language', 'vi');
 
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+  const response = await fetchWithRetry('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -165,7 +182,7 @@ JSON (chỉ JSON, không giải thích):
   "strategies": [<2 chiến lược cho buổi gặp tiếp theo, theo phương pháp 3 Điểm Chạm>]
 }`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -187,9 +204,6 @@ JSON (chỉ JSON, không giải thích):
   if (!response.ok) {
     if (response.status === 401) {
       throw new Error('Claude API key không hợp lệ. Vui lòng liên hệ admin.');
-    }
-    if (response.status === 429) {
-      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
     }
     throw new Error('Lỗi phân tích. Vui lòng thử lại.');
   }
@@ -294,7 +308,7 @@ export const chatWithCoach = async (
     throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -432,7 +446,7 @@ export const correctTranscript = async (rawTranscript: string): Promise<string> 
   if (!CLAUDE_API_KEY || rawTranscript.length < 20) return rawTranscript;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -504,7 +518,7 @@ export const extractCustomerInfo = async (transcript: string): Promise<Extracted
   if (!CLAUDE_API_KEY) return EMPTY_EXTRACTED;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -584,7 +598,7 @@ export const scoreCustomerWithAI = async (profileSummary: string): Promise<AISco
   if (!CLAUDE_API_KEY) return null;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -16,12 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
-import { useTheme, THEME_OPTIONS } from '../contexts/ThemeContext';
+import { useTheme, useColors, THEME_OPTIONS } from '../contexts/ThemeContext';
 import { loadSessions, Session, loadCustomerStatuses, saveCustomerStatuses, CustomerStatus, DEFAULT_STATUSES } from '../services/storageService';
 import { useAlert } from '../contexts/AlertContext';
 import { useAuth } from '../contexts/AuthContext';
 import { signOut, deleteAccount } from '../services/authService';
 import { pickFromGallery, takePhoto, saveUserAvatar, loadUserAvatar, removeUserAvatar } from '../services/imageService';
+import { shareReferral } from '../services/referralService';
 import { enableDailyReminders, disableReminders, isRemindersEnabled } from '../services/notificationService';
 
 const USER_NAME_KEY = '@salescoach_user_name';
@@ -43,9 +44,10 @@ function getThisWeekCount(sessions: Session[]): number {
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { showAlert } = useAlert();
-  const { theme, setThemeById } = useTheme();
+  const { theme, setThemeById, darkMode, setDarkMode } = useTheme();
   const { profile: authProfile, team } = useAuth();
-  const C = { ...COLORS, PRIMARY: theme.colors.PRIMARY, PRIMARY_LIGHT: theme.colors.PRIMARY_LIGHT, PRIMARY_DARK: theme.colors.PRIMARY_DARK };
+  const Cdyn = useColors();
+  const C = { ...Cdyn, PRIMARY: theme.colors.PRIMARY, PRIMARY_LIGHT: theme.colors.PRIMARY_LIGHT, PRIMARY_DARK: theme.colors.PRIMARY_DARK };
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [userName, setUserName] = useState('');
@@ -56,6 +58,8 @@ export default function ProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [remindersOn, setRemindersOn] = useState(false);
+  const [themeExpanded, setThemeExpanded] = useState(false);
+  const [statusExpanded, setStatusExpanded] = useState(false);
   // Status management
   const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
   const [showStatusManager, setShowStatusManager] = useState(false);
@@ -122,16 +126,16 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]}>
+      <ScrollView style={[styles.container, { backgroundColor: C.BACKGROUND }]} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Cài Đặt</Text>
-          <Text style={styles.headerSubtitle}>Quản lý tài khoản</Text>
+          <Text style={[styles.headerTitle, { color: C.TEXT }]}>Cài Đặt</Text>
+          <Text style={[styles.headerSubtitle, { color: C.TEXT_LIGHT }]}>Quản lý tài khoản</Text>
         </View>
 
         {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { backgroundColor: C.CARD }]}>
           <TouchableOpacity
             onPress={() => setShowAvatarModal(true)}
             activeOpacity={0.7}
@@ -156,7 +160,7 @@ export default function ProfileScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Text style={styles.profileName}>
+            <Text style={[styles.profileName, { color: C.TEXT }]}>
               {userName || 'Nhấn để nhập tên'}
             </Text>
             <Text style={styles.profileRole}>
@@ -191,49 +195,57 @@ export default function ProfileScreen() {
         </View>
 
         {/* Theme Color Picker */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionTitleRow}>
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
+          <TouchableOpacity style={styles.sectionTitleRow} onPress={() => setThemeExpanded(!themeExpanded)} activeOpacity={0.7}>
             <Ionicons name="color-palette-outline" size={18} color={C.PRIMARY} />
-            <Text style={styles.sectionTitle}>Màu giao diện</Text>
-          </View>
-          <Text style={styles.sectionDesc}>
-            Chọn màu chủ đạo cho ứng dụng
-          </Text>
-          <View style={styles.colorGrid}>
-            {THEME_OPTIONS.map(opt => {
-              const isActive = theme.id === opt.id;
-              return (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={styles.colorOption}
-                  onPress={() => setThemeById(opt.id)}
-                >
-                  <View style={[
-                    styles.colorCircle,
-                    { backgroundColor: opt.colors.PRIMARY },
-                    isActive && styles.colorCircleActive,
-                  ]}>
-                    {isActive && (
-                      <Ionicons name="checkmark" size={18} color="#fff" />
-                    )}
-                  </View>
-                  <Text style={[
-                    styles.colorLabel,
-                    isActive && { color: opt.colors.PRIMARY, fontWeight: '700' },
-                  ]}>
-                    {opt.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+            <Text style={[styles.sectionTitle, { color: C.TEXT, flex: 1 }]}>Giao diện</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: C.PRIMARY }} />
+              <Text style={{ fontSize: 11, color: C.TEXT_LIGHT }}>{darkMode === 'dark' ? 'Tối' : darkMode === 'system' ? 'Auto' : 'Sáng'}</Text>
+              <Ionicons name={themeExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={C.TEXT_LIGHT} />
+            </View>
+          </TouchableOpacity>
+          {themeExpanded && (
+            <>
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 12, marginBottom: 12 }}>
+                {([['light', 'Sáng'], ['dark', 'Tối'], ['system', 'Hệ thống']] as const).map(([mode, label]) => (
+                  <TouchableOpacity
+                    key={mode}
+                    style={[{
+                      flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center',
+                      borderWidth: 1, borderColor: darkMode === mode ? C.PRIMARY : COLORS.BORDER,
+                      backgroundColor: darkMode === mode ? C.PRIMARY : 'transparent',
+                    }]}
+                    onPress={() => setDarkMode(mode)}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: darkMode === mode ? '#fff' : COLORS.TEXT_SECONDARY }}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.colorGrid}>
+                {THEME_OPTIONS.map(opt => {
+                  const isActive = theme.id === opt.id;
+                  return (
+                    <TouchableOpacity key={opt.id} style={styles.colorOption} onPress={() => setThemeById(opt.id)}>
+                      <View style={[styles.colorCircle, { backgroundColor: opt.colors.PRIMARY }, isActive && styles.colorCircleActive]}>
+                        {isActive && <Ionicons name="checkmark" size={16} color="#fff" />}
+                      </View>
+                      <Text style={[styles.colorLabel, isActive && { color: opt.colors.PRIMARY, fontWeight: '700' }]}>{opt.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
         </View>
 
         {/* Business Profile */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="briefcase-outline" size={18} color={C.PRIMARY} />
-            <Text style={styles.sectionTitle}>Thông tin doanh nghiệp</Text>
+            <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Thông tin doanh nghiệp</Text>
           </View>
           <Text style={styles.sectionDesc}>
             Nhập thông tin công ty, sản phẩm, khách hàng để AI Coach cá nhân hóa
@@ -244,12 +256,38 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Referral */}
+        <TouchableOpacity
+          style={[styles.sectionCard, { backgroundColor: C.CARD, borderWidth: 1, borderColor: '#10B98130' }]}
+          onPress={() => shareReferral(userName || 'Bạn', team?.invite_code)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.sectionTitleRow, { marginBottom: 0 }]}>
+            <Ionicons name="gift" size={18} color="#10B981" />
+            <Text style={[styles.sectionTitle, { color: '#10B981' }]}>Mời bạn bè dùng app</Text>
+            <Ionicons name="share-outline" size={16} color="#10B981" style={{ marginLeft: 'auto' }} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Upgrade */}
+        <TouchableOpacity
+          style={[styles.sectionCard, { backgroundColor: C.CARD, borderWidth: 1, borderColor: '#7C3AED30' }]}
+          onPress={() => navigation.navigate('Paywall')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.sectionTitleRow, { marginBottom: 0 }]}>
+            <Ionicons name="diamond" size={18} color="#7C3AED" />
+            <Text style={[styles.sectionTitle, { color: '#7C3AED' }]}>Nâng cấp Pro</Text>
+            <Ionicons name="chevron-forward" size={16} color="#7C3AED" style={{ marginLeft: 'auto' }} />
+          </View>
+        </TouchableOpacity>
+
         {/* Admin Dashboard - chỉ hiện cho admin/manager */}
         {(authProfile?.role === 'admin' || authProfile?.role === 'manager') && (
-          <View style={styles.sectionCard}>
+          <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
             <View style={styles.sectionTitleRow}>
               <Ionicons name="analytics-outline" size={18} color={C.PRIMARY} />
-              <Text style={styles.sectionTitle}>Admin Dashboard</Text>
+              <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Admin Dashboard</Text>
             </View>
             <Text style={styles.sectionDesc}>
               Theo dõi hiệu suất team, AI usage, tiến độ đào tạo, bảng xếp hạng
@@ -262,10 +300,10 @@ export default function ProfileScreen() {
         )}
 
         {/* Team Management */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="people-outline" size={18} color={C.PRIMARY} />
-            <Text style={styles.sectionTitle}>Quản lý Team</Text>
+            <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Quản lý Team</Text>
           </View>
           <Text style={styles.sectionDesc}>
             {team ? `Team: ${team.name} | Mã mời: ${team.invite_code}` : 'Chưa tham gia team'}
@@ -277,66 +315,71 @@ export default function ProfileScreen() {
         </View>
 
         {/* Status Management */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionTitleRow}>
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
+          <TouchableOpacity style={styles.sectionTitleRow} onPress={() => setStatusExpanded(!statusExpanded)} activeOpacity={0.7}>
             <Ionicons name="flag-outline" size={18} color={C.PRIMARY} />
-            <Text style={styles.sectionTitle}>Trạng thái khách hàng</Text>
-          </View>
-          <Text style={styles.sectionDesc}>
-            Quản lý các trạng thái trong CRM. Kéo để sắp xếp thứ tự.
-          </Text>
-
-          {statuses.sort((a, b) => a.order - b.order).map((s, idx) => (
-            <View key={s.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: idx < statuses.length - 1 ? 1 : 0, borderBottomColor: COLORS.BORDER }}>
-              <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: s.color, marginRight: 10 }} />
-              <Text style={{ flex: 1, fontSize: 14, color: COLORS.TEXT, fontWeight: '500' }}>{s.label}</Text>
-              <TouchableOpacity onPress={() => {
-                setEditingStatusId(s.id);
-                setStatusLabel(s.label);
-                setStatusColor(s.color);
-                setShowStatusManager(true);
-              }} style={{ padding: 6 }}>
-                <Ionicons name="create-outline" size={16} color={COLORS.TEXT_LIGHT} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => {
-                const updated = statuses.filter(x => x.id !== s.id);
-                setStatuses(updated);
-                saveCustomerStatuses(updated);
-              }} style={{ padding: 6 }}>
-                <Ionicons name="trash-outline" size={16} color={COLORS.DANGER} />
-              </TouchableOpacity>
+            <Text style={[styles.sectionTitle, { color: C.TEXT, flex: 1 }]}>Trạng thái khách hàng</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontSize: 11, color: C.TEXT_LIGHT }}>{statuses.length} trạng thái</Text>
+              <Ionicons name={statusExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={C.TEXT_LIGHT} />
             </View>
-          ))}
-
-          <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: C.PRIMARY, marginTop: 12 }]}
-            onPress={() => {
-              setEditingStatusId(null);
-              setStatusLabel('');
-              setStatusColor('#3B82F6');
-              setShowStatusManager(true);
-            }}
-          >
-            <Ionicons name="add-circle-outline" size={18} color="#fff" />
-            <Text style={styles.saveButtonText}>Thêm trạng thái</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={{ marginTop: 8, alignItems: 'center', paddingVertical: 8 }}
-            onPress={() => {
-              setStatuses(DEFAULT_STATUSES);
-              saveCustomerStatuses(DEFAULT_STATUSES);
-            }}
-          >
-            <Text style={{ fontSize: 12, color: COLORS.TEXT_LIGHT }}>Khôi phục mặc định</Text>
-          </TouchableOpacity>
+          {statusExpanded && (
+            <>
+              {statuses.sort((a, b) => a.order - b.order).map((s, idx) => (
+                <View key={s.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: idx < statuses.length - 1 ? 1 : 0, borderBottomColor: C.BORDER }}>
+                  <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: s.color, marginRight: 10 }} />
+                  <Text style={{ flex: 1, fontSize: 14, color: C.TEXT, fontWeight: '500' }}>{s.label}</Text>
+                  <TouchableOpacity onPress={() => {
+                    setEditingStatusId(s.id);
+                    setStatusLabel(s.label);
+                    setStatusColor(s.color);
+                    setShowStatusManager(true);
+                  }} style={{ padding: 6 }}>
+                    <Ionicons name="create-outline" size={16} color={C.TEXT_LIGHT} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    const updated = statuses.filter(x => x.id !== s.id);
+                    setStatuses(updated);
+                    saveCustomerStatuses(updated);
+                  }} style={{ padding: 6 }}>
+                    <Ionicons name="trash-outline" size={16} color={COLORS.DANGER} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: C.PRIMARY, marginTop: 12 }]}
+                onPress={() => {
+                  setEditingStatusId(null);
+                  setStatusLabel('');
+                  setStatusColor('#3B82F6');
+                  setShowStatusManager(true);
+                }}
+              >
+                <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                <Text style={styles.saveButtonText}>Thêm trạng thái</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ marginTop: 8, alignItems: 'center', paddingVertical: 8 }}
+                onPress={() => {
+                  setStatuses(DEFAULT_STATUSES);
+                  saveCustomerStatuses(DEFAULT_STATUSES);
+                }}
+              >
+                <Text style={{ fontSize: 12, color: C.TEXT_LIGHT }}>Khôi phục mặc định</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* Notification */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="notifications-outline" size={18} color={C.PRIMARY} />
-            <Text style={styles.sectionTitle}>Nhắc nhở</Text>
+            <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Nhắc nhở</Text>
           </View>
           <Text style={styles.sectionDesc}>
             Nhận thông báo nhắc học bài (8h sáng) và ghi âm buổi tư vấn (5h chiều)
@@ -361,10 +404,10 @@ export default function ProfileScreen() {
         </View>
 
         {/* App Settings — chỉ giữ tính năng hoạt động */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="options-outline" size={18} color={C.PRIMARY} />
-            <Text style={styles.sectionTitle}>Ứng dụng</Text>
+            <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Ứng dụng</Text>
           </View>
 
           <TouchableOpacity style={styles.settingsRow} onPress={handleDeleteAllData}>
@@ -377,10 +420,10 @@ export default function ProfileScreen() {
         </View>
 
         {/* About */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="information-circle-outline" size={18} color={C.PRIMARY} />
-            <Text style={styles.sectionTitle}>Giới thiệu</Text>
+            <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Giới thiệu</Text>
           </View>
           <Text style={styles.sectionDesc}>
             Về ứng dụng, tác giả Coach Duy Nguyễn, bản quyền và điều khoản pháp lý
@@ -392,10 +435,10 @@ export default function ProfileScreen() {
         </View>
 
         {/* Account Info & Logout */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="log-out-outline" size={18} color={COLORS.DANGER} />
-            <Text style={styles.sectionTitle}>Tài khoản</Text>
+            <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Tài khoản</Text>
           </View>
           {authProfile && (
             <Text style={[styles.sectionDesc, { marginBottom: 8 }]}>
@@ -454,7 +497,7 @@ export default function ProfileScreen() {
         {/* App Version */}
         <View style={styles.versionContainer}>
           <Ionicons name="information-circle-outline" size={14} color={COLORS.TEXT_LIGHT} />
-          <Text style={styles.versionText}>Sales Coach App v1.0.0</Text>
+          <Text style={styles.versionText}>Sales Coach v1.0.0 | THE TRUSTED ADVISOR</Text>
         </View>
 
         <View style={{ height: 24 }} />

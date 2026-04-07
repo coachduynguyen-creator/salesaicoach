@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
+import { useColors } from '../contexts/ThemeContext';
 import { BusinessProfile, EMPTY_PROFILE, saveBusinessProfile, loadBusinessProfile } from '../services/storageService';
 import { useBusiness } from '../contexts/BusinessContext';
 import { useAlert } from '../contexts/AlertContext';
@@ -69,6 +70,7 @@ const FIELDS: { key: keyof BusinessProfile; label: string; placeholder: string; 
 ];
 
 export default function BusinessProfileScreen() {
+  const C = useColors();
   const navigation = useNavigation();
   const { reload: reloadBusiness } = useBusiness();
   const { showAlert } = useAlert();
@@ -99,12 +101,12 @@ export default function BusinessProfileScreen() {
   const filledCount = FIELDS.filter(f => profile[f.key].trim()).length;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.topBar, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: C.SURFACE }]}>
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Thông tin doanh nghiệp</Text>
+        <Text style={[styles.topBarTitle, { color: C.TEXT }]}>Thông tin doanh nghiệp</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -114,27 +116,27 @@ export default function BusinessProfileScreen() {
       >
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Info card */}
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Cá nhân hóa AI Coach</Text>
-            <Text style={styles.infoText}>
+          <View style={[styles.infoCard, { backgroundColor: C.PRIMARY + '08', borderColor: C.PRIMARY + '15' }]}>
+            <Text style={[styles.infoTitle, { color: C.PRIMARY }]}>Cá nhân hóa AI Coach</Text>
+            <Text style={[styles.infoText, { color: C.TEXT_SECONDARY }]}>
               Nhập thông tin về công ty, sản phẩm và khách hàng để AI Coach đưa ra lời khuyên phù hợp chính xác với công việc của bạn.
             </Text>
             <View style={styles.progressRow}>
-              <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarBg, { backgroundColor: C.BORDER }]}>
                 <View style={[styles.progressBarFill, { width: `${(filledCount / FIELDS.length) * 100}%` }]} />
               </View>
-              <Text style={styles.progressText}>{filledCount}/{FIELDS.length}</Text>
+              <Text style={[styles.progressText, { color: C.TEXT_SECONDARY }]}>{filledCount}/{FIELDS.length}</Text>
             </View>
           </View>
 
           {/* Fields */}
           {FIELDS.map(field => (
             <View key={field.key} style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>{field.label}</Text>
+              <Text style={[styles.fieldLabel, { color: C.TEXT }]}>{field.label}</Text>
               <TextInput
-                style={[styles.fieldInput, field.lines > 1 && { height: field.lines * 24 + 24, textAlignVertical: 'top' }]}
+                style={[styles.fieldInput, { backgroundColor: C.CARD, borderColor: C.BORDER, color: C.TEXT }, field.lines > 1 && { height: field.lines * 24 + 24, textAlignVertical: 'top' }]}
                 placeholder={field.placeholder}
-                placeholderTextColor={COLORS.TEXT_LIGHT}
+                placeholderTextColor={C.TEXT_LIGHT}
                 value={profile[field.key]}
                 onChangeText={v => updateField(field.key, v)}
                 multiline={field.lines > 1}
@@ -144,7 +146,7 @@ export default function BusinessProfileScreen() {
 
           {/* Save button */}
           <TouchableOpacity
-            style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+            style={[styles.saveBtn, { backgroundColor: C.PRIMARY }, isSaving && { opacity: 0.6 }]}
             onPress={handleSave}
             disabled={isSaving}
           >

@@ -76,6 +76,10 @@
 
 > Nâng cao độ ổn định, chuyên nghiệp, trải nghiệm mượt mà.
 
+- [x] **Xóa console.log/warn** (đã thay bằng silent comments)
+- [x] **Retry logic cho API calls** (auto retry 2 lần khi lỗi mạng/429)
+- [x] **Accessibility labels** (tab navigation)
+- [x] **Version management** (hiển thị version trong Cài Đặt)
 - [ ] **Crash reporting (Sentry)**
   - Tự động báo cáo crash + lỗi
   - Dashboard theo dõi lỗi realtime
@@ -111,6 +115,10 @@
 
 > Tạo sự khác biệt, trải nghiệm vượt trội so với đối thủ.
 
+- [x] **Dark mode** (Sáng/Tối/Hệ thống, toggle trong Cài Đặt)
+- [x] **Biểu đồ Admin Dashboard** (Bar chart điểm TB, Pie chart tỷ lệ deal)
+- [x] **Search bar trang chủ** (dẫn tới Đào Tạo)
+- [x] **Gamification** (Streak 🔥 + 12 badges: buổi đầu, deal đầu, streak 3/7/30 ngày, tốt nghiệp...)
 - [ ] **Onboarding mới**
   - Video intro ngắn hoặc animation đẹp
   - Hướng dẫn tính năng chính bằng hình ảnh

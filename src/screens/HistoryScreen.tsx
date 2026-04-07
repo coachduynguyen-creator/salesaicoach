@@ -95,32 +95,32 @@ function StatsSummary({ sessions, colors }: { sessions: Session[]; colors: Retur
 
   return (
     <View style={statStyles.container}>
-      <Text style={statStyles.sectionTitle}>Tổng quan</Text>
+      <Text style={[statStyles.sectionTitle, { color: colors.TEXT }]}>Tổng quan</Text>
       <View style={statStyles.row}>
         {/* Total Sessions */}
-        <View style={[statStyles.statCard, { borderColor: colors.BORDER }]}>
+        <View style={[statStyles.statCard, { borderColor: colors.BORDER, backgroundColor: colors.CARD }]}>
           <View style={[statStyles.statIcon, { backgroundColor: colors.PRIMARY + '15' }]}>
             <Ionicons name="albums-outline" size={18} color={colors.PRIMARY} />
           </View>
-          <Text style={statStyles.statValue}>{totalSessions}</Text>
-          <Text style={statStyles.statLabel}>Tổng buổi</Text>
+          <Text style={[statStyles.statValue, { color: colors.TEXT }]}>{totalSessions}</Text>
+          <Text style={[statStyles.statLabel, { color: colors.TEXT_LIGHT }]}>Tổng buổi</Text>
         </View>
 
         {/* Best Session */}
         {bestSession && (
-          <View style={[statStyles.statCard, { borderColor: colors.BORDER }]}>
+          <View style={[statStyles.statCard, { borderColor: colors.BORDER, backgroundColor: colors.CARD }]}>
             <View style={[statStyles.statIcon, { backgroundColor: COLORS.SUCCESS + '15' }]}>
               <Ionicons name="trophy-outline" size={18} color={COLORS.SUCCESS} />
             </View>
-            <Text style={statStyles.statValue}>{bestSession.score.toFixed(1)}</Text>
-            <Text style={statStyles.statLabel} numberOfLines={1}>
+            <Text style={[statStyles.statValue, { color: colors.TEXT }]}>{bestSession.score.toFixed(1)}</Text>
+            <Text style={[statStyles.statLabel, { color: colors.TEXT_LIGHT }]} numberOfLines={1}>
               {bestSession.customerName}
             </Text>
           </View>
         )}
 
         {/* Trend */}
-        <View style={[statStyles.statCard, { borderColor: colors.BORDER }]}>
+        <View style={[statStyles.statCard, { borderColor: colors.BORDER, backgroundColor: colors.CARD }]}>
           <View style={[statStyles.statIcon, {
             backgroundColor: trendInfo?.direction === 'up'
               ? COLORS.SUCCESS + '15'
@@ -151,13 +151,13 @@ function StatsSummary({ sessions, colors }: { sessions: Session[]; colors: Retur
               ? COLORS.SUCCESS
               : trendInfo?.direction === 'down'
                 ? COLORS.DANGER
-                : COLORS.TEXT,
+                : colors.TEXT,
           }]}>
             {trendInfo
               ? `${trendInfo.direction === 'up' ? '+' : ''}${(trendInfo.diff ?? 0).toFixed(1)}`
               : '--'}
           </Text>
-          <Text style={statStyles.statLabel}>Xu hướng</Text>
+          <Text style={[statStyles.statLabel, { color: colors.TEXT_LIGHT }]}>Xu hướng</Text>
         </View>
       </View>
     </View>
@@ -217,11 +217,11 @@ function ScoreBarChart({ sessions, colors }: { sessions: Session[]; colors: Retu
 
   if (chartData.length < 2) {
     return (
-      <View style={chartStyles.noDataContainer}>
+      <View style={[chartStyles.noDataContainer, { backgroundColor: colors.CARD, borderColor: colors.BORDER }]}>
         <View style={[chartStyles.noDataIcon, { backgroundColor: colors.PRIMARY + '15' }]}>
           <Ionicons name="bar-chart-outline" size={28} color={colors.PRIMARY} />
         </View>
-        <Text style={chartStyles.noDataText}>
+        <Text style={[chartStyles.noDataText, { color: colors.TEXT_LIGHT }]}>
           Cần ít nhất 2 buổi ghi để xem xu hướng
         </Text>
       </View>
@@ -238,8 +238,8 @@ function ScoreBarChart({ sessions, colors }: { sessions: Session[]; colors: Retu
 
   return (
     <View style={chartStyles.container}>
-      <Text style={chartStyles.sectionTitle}>Xu hướng điểm số</Text>
-      <View style={[chartStyles.chartCard, { borderColor: colors.BORDER }]}>
+      <Text style={[chartStyles.sectionTitle, { color: colors.TEXT }]}>Xu hướng điểm số</Text>
+      <View style={[chartStyles.chartCard, { borderColor: colors.BORDER, backgroundColor: colors.CARD }]}>
         {/* Y-axis labels */}
         <View style={chartStyles.yAxisLabels}>
           <Text style={chartStyles.yLabel}>10</Text>
@@ -346,7 +346,7 @@ const chartStyles = StyleSheet.create({
     marginRight: 6,
   },
   yLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: COLORS.TEXT_LIGHT,
     fontWeight: '500',
   },
@@ -373,7 +373,7 @@ const chartStyles = StyleSheet.create({
   },
   barScore: {
     position: 'absolute',
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
@@ -385,7 +385,7 @@ const chartStyles = StyleSheet.create({
     marginTop: 4,
   },
   xLabel: {
-    fontSize: 8,
+    fontSize: 11,
     color: COLORS.TEXT_LIGHT,
     textAlign: 'center',
     fontWeight: '500',
@@ -421,18 +421,19 @@ function SessionCard({ session, onPress, onDelete }: {
   onPress: () => void;
   onDelete: () => void;
 }) {
+  const C = useColors();
   const scoreColor = getScoreColor(session.score);
   const outcomeInfo = session.outcome ? OUTCOME_CONFIG[session.outcome] : null;
 
   return (
-    <TouchableOpacity style={styles.sessionCard} onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity style={[styles.sessionCard, { backgroundColor: C.CARD }]} onPress={onPress} activeOpacity={0.75}>
       <View style={[styles.iconWrap, { backgroundColor: scoreColor + '20' }]}>
         <Ionicons name="person" size={20} color={scoreColor} />
       </View>
 
       <View style={styles.sessionInfo}>
         <View style={styles.nameRow}>
-          <Text style={styles.customerName}>{session.customerName}</Text>
+          <Text style={[styles.customerName, { color: C.TEXT }]}>{session.customerName}</Text>
           {outcomeInfo && (
             <View style={[styles.outcomeBadge, { backgroundColor: outcomeInfo.color + '18' }]}>
               <View style={[styles.outcomeDot, { backgroundColor: outcomeInfo.color }]} />
@@ -443,14 +444,14 @@ function SessionCard({ session, onPress, onDelete }: {
           )}
         </View>
         {session.companyName ? (
-          <Text style={styles.companyName}>{session.companyName}</Text>
+          <Text style={[styles.companyName, { color: C.TEXT_LIGHT }]}>{session.companyName}</Text>
         ) : null}
         <View style={styles.metaRow}>
-          <Ionicons name="calendar-outline" size={12} color={COLORS.TEXT_LIGHT} />
-          <Text style={styles.metaText}>{session.date}</Text>
-          <View style={styles.metaDivider} />
-          <Ionicons name="time-outline" size={12} color={COLORS.TEXT_LIGHT} />
-          <Text style={styles.metaText}>{formatTime(session.duration)}</Text>
+          <Ionicons name="calendar-outline" size={12} color={C.TEXT_LIGHT} />
+          <Text style={[styles.metaText, { color: C.TEXT_LIGHT }]}>{session.date}</Text>
+          <View style={[styles.metaDivider, { backgroundColor: C.BORDER }]} />
+          <Ionicons name="time-outline" size={12} color={C.TEXT_LIGHT} />
+          <Text style={[styles.metaText, { color: C.TEXT_LIGHT }]}>{formatTime(session.duration)}</Text>
         </View>
       </View>
 
@@ -462,7 +463,7 @@ function SessionCard({ session, onPress, onDelete }: {
           {getScoreLabel(session.score)}
         </Text>
         <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="trash-outline" size={15} color={COLORS.TEXT_LIGHT} />
+          <Ionicons name="trash-outline" size={15} color={C.TEXT_LIGHT} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -515,18 +516,18 @@ export default function HistoryScreen() {
       <View>
         <StatsSummary sessions={sessions} colors={C} />
         <ScoreBarChart sessions={sessions} colors={C} />
-        <Text style={styles.listSectionTitle}>Tất cả phiên tư vấn</Text>
+        <Text style={[styles.listSectionTitle, { color: C.TEXT }]}>Tất cả phiên tư vấn</Text>
       </View>
     );
   }, [sessions, C]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]}>
+      <View style={[styles.container, { backgroundColor: C.BACKGROUND }]}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Lịch sử tư vấn</Text>
-          <Text style={styles.headerSubtitle}>{sessions.length} buổi đã ghi</Text>
+          <Text style={[styles.headerTitle, { color: C.TEXT }]}>Lịch sử tư vấn</Text>
+          <Text style={[styles.headerSubtitle, { color: C.TEXT_LIGHT }]}>{sessions.length} buổi đã ghi</Text>
         </View>
 
         {sessions.length > 0 ? (
@@ -547,9 +548,9 @@ export default function HistoryScreen() {
           />
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={64} color={COLORS.BORDER} />
-            <Text style={styles.emptyTitle}>Chưa có lịch sử</Text>
-            <Text style={styles.emptySubtitle}>
+            <Ionicons name="document-text-outline" size={64} color={C.BORDER} />
+            <Text style={[styles.emptyTitle, { color: C.TEXT }]}>Chưa có lịch sử</Text>
+            <Text style={[styles.emptySubtitle, { color: C.TEXT_LIGHT }]}>
               Ghi âm một phiên tư vấn và nhấn "Lưu kết quả" — sẽ xuất hiện ở đây.
             </Text>
             <TouchableOpacity
@@ -604,7 +605,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
   },
   outcomeDot: { width: 6, height: 6, borderRadius: 3 },
-  outcomeLabel: { fontSize: 10, fontWeight: '700' },
+  outcomeLabel: { fontSize: 11, fontWeight: '700' },
   customerName: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT },
   companyName: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginBottom: 4 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
@@ -616,7 +617,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   scoreNumber: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  scoreLabel: { fontSize: 10, fontWeight: '600' },
+  scoreLabel: { fontSize: 11, fontWeight: '600' },
   deleteBtn: { marginTop: 4 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT, marginTop: 16, marginBottom: 8 },

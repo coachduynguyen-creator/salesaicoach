@@ -11,9 +11,10 @@ export interface LessonItem {
   title: string;
   description: string;
   duration: string;
-  emoji: string;
-  content: string;        // markdown
-  keyLesson: string;      // bài học lớn nhất
+  emoji: string;           // fallback
+  icon?: string;           // Ionicons name (premium)
+  content: string;         // markdown
+  keyLesson: string;       // bài học lớn nhất
 }
 
 export const CATEGORY_INFO: Record<LessonCategory, { label: string; color: string }> = {
@@ -36,7 +37,7 @@ export const ALL_LESSONS: LessonItem[] = [
     title: 'Định nghĩa cốt lõi',
     description: 'Cố vấn tin cậy là gì, không phải là gì, và vì sao sự "đủ vững" quan trọng hơn kỹ thuật bán hàng.',
     duration: '3 phút',
-    emoji: '🏛️',
+    emoji: '🏛️', icon: 'shield-checkmark',
     keyLesson: 'Cố vấn tin cậy không cố bán. Họ giúp khách nghĩ rõ và quyết định đúng với bối cảnh của họ.',
     content: `Cố vấn tin cậy là người đủ vững để giúp khách hàng nghĩ rõ và quyết định đúng với bối cảnh của họ.
 
@@ -58,7 +59,7 @@ export const ALL_LESSONS: LessonItem[] = [
     title: 'Công thức tin cậy',
     description: 'T = (C + R + E) / Sf. Bốn yếu tố quyết định mức độ tin cậy và cách mẫu số phá hủy mọi thứ.',
     duration: '4 phút',
-    emoji: '🔢',
+    emoji: '🔢', icon: 'calculator',
     keyLesson: 'Giảm Sf (bớt nói về mình, KPI, hoa hồng) là cách nhanh nhất để tăng Trust. Mẫu số phá hủy nhanh hơn tử số xây dựng.',
     content: `**T = (C + R + E) / Sf**
 
@@ -82,7 +83,7 @@ Khi Sf tăng (lo cho doanh số của mình), Trust giảm dù C + R + E có cao
     title: 'Tam giác vàng',
     description: 'Ba đỉnh phong thái cố vấn tin cậy: Chuyên nghiệp, Chân thành, Chuyên môn. Và ba kịch bản sụp đổ.',
     duration: '4 phút',
-    emoji: '🔺',
+    emoji: '🔺', icon: 'triangle',
     keyLesson: 'Thiếu một đỉnh, hai đỉnh còn lại không cứu được. Giỏi mà không chân thành thì lạnh lùng. Chân thành mà không giỏi thì hào nhoáng rỗng.',
     content: `Ba đỉnh cần cân bằng. **Thiếu một đỉnh, hai đỉnh còn lại không cứu được.**
 
@@ -114,7 +115,7 @@ Biết đủ sâu để khách cảm nhận "người này hiểu lĩnh vực n�
     title: '10 khác biệt: Cố vấn vs. Bán hàng',
     description: 'So sánh trực tiếp tư duy và hành vi của người bán hàng truyền thống với cố vấn tin cậy.',
     duration: '4 phút',
-    emoji: '🔄',
+    emoji: '🔄', icon: 'swap-horizontal',
     keyLesson: 'Người bán hàng hỏi "Làm sao để khách thấy sản phẩm phù hợp?" Cố vấn hỏi "Người này thật sự cần gì, và mình có phải người phù hợp để giúp họ không?"',
     content: `**1. Mục đích**
 Người bán hàng: chốt giao dịch.
@@ -162,7 +163,7 @@ Cố vấn: "Người ngồi trước mặt mình thật sự cần gì, và mì
     title: 'Vòng tuần hoàn tin cậy',
     description: 'Tin cậy là vòng lặp tự tăng cường. Bắt đầu từ sự thật, không phải kỹ thuật bán hàng.',
     duration: '2 phút',
-    emoji: '🔁',
+    emoji: '🔁', icon: 'repeat',
     keyLesson: 'Nghịch lý cốt lõi: Càng cố bán cho khách hàng cao cấp, họ càng xa. Càng giúp họ nghĩ rõ, họ càng ở lại.',
     content: `Tin cậy không phải trạng thái tĩnh. Nó là một vòng tuần hoàn tự tăng cường:
 
@@ -178,7 +179,7 @@ Vòng tuần hoàn này bắt đầu từ **sự thật**, không phải từ k�
     title: '4 nguyên lý tư duy',
     description: 'Bốn nguyên lý nền tảng định hình mọi hành vi của cố vấn tin cậy.',
     duration: '3 phút',
-    emoji: '💡',
+    emoji: '💡', icon: 'bulb',
     keyLesson: 'Dám nói "chưa phù hợp" là cách nhanh nhất xây dựng tin cậy, và cũng là cách khó nhất vì đòi hỏi đặt lợi ích khách lên trên doanh số.',
     content: `**Nguyên lý 1: Lấy khách hàng làm trung tâm, không phải sản phẩm**
 
@@ -207,7 +208,7 @@ Quyết định bị ép sẽ dẫn đến hối hận, hủy hợp đồng, m�
     title: 'Hai hệ thống tư duy (Kahneman)',
     description: 'Hệ thống nhanh quyết định cảm xúc, hệ thống chậm hợp lý hóa. Ứng dụng trong từng giai đoạn buổi tư vấn.',
     duration: '4 phút',
-    emoji: '🧠',
+    emoji: '🧠', icon: 'fitness',
     keyLesson: 'Tạo cảm xúc đúng trước (Hệ thống nhanh), logic sau (Hệ thống chậm). Không ai mua hàng bằng bảng tính Excel.',
     content: `Theo nhà tâm lý học Daniel Kahneman, con người ra quyết định bằng hai hệ thống:
 
@@ -229,7 +230,7 @@ Sai lầm lớn nhất của sales: liệt kê tính năng, so sánh giá (kích
     title: '3 cảm xúc cần tạo ra',
     description: 'Không phải hứng khởi hay áp lực. Ba cảm xúc đúng: An toàn, Rõ ràng, Tin tưởng.',
     duration: '3 phút',
-    emoji: '🎭',
+    emoji: '🎭', icon: 'heart-circle',
     keyLesson: 'Không có an toàn, mọi câu hỏi sâu đều vô nghĩa vì khách chỉ trả lời bề mặt.',
     content: `Nhiều sales cố tạo hứng khởi hoặc áp lực. Cả hai đều sai. Cố vấn tin cậy cần tạo ra ba cảm xúc khác:
 
@@ -248,7 +249,7 @@ Tin tưởng không đến từ lời hứa. Tin tưởng đến từ hành vi n
     title: '5 giai đoạn nhận thức',
     description: 'Từ mơ hồ đến sẵn sàng cam kết. Mỗi giai đoạn cần cách tiếp cận khác nhau.',
     duration: '4 phút',
-    emoji: '📊',
+    emoji: '📊', icon: 'bar-chart',
     keyLesson: 'Sai lầm lớn nhất: nhảy sang giới thiệu giải pháp khi khách vẫn ở giai đoạn mơ hồ, chưa nhận ra vấn đề.',
     content: `Khách hàng không nhảy từ "chưa biết" sang "mua" trong một bước. Họ đi qua năm giai đoạn nhận thức:
 
@@ -275,7 +276,7 @@ Cân nhắc các lựa chọn. Hệ thống chậm phân tích, hệ thống nha
     title: '5 hành trình cảm xúc',
     description: 'Song song với nhận thức, khách trải qua 5 trạng thái cảm xúc. Đừng nhầm hào hứng với sẵn sàng mua.',
     duration: '3 phút',
-    emoji: '🎢',
+    emoji: '🎢', icon: 'trending-up',
     keyLesson: 'Quyết định trong hưng phấn thường bị hủy sau đó. Quyết định dựa trên nhận thức đầy đủ mới bền vững.',
     content: `Song song với 5 giai đoạn nhận thức, khách hàng trải qua 5 trạng thái cảm xúc:
 
@@ -300,7 +301,7 @@ Quyết định dựa trên nhận thức đầy đủ → nhẹ nhõm. Quyết 
     title: '5 khoảnh khắc quyết định',
     description: 'Năm thời điểm then chốt trong buổi tư vấn mà cách bạn phản ứng sẽ định hình toàn bộ mối quan hệ.',
     duration: '4 phút',
-    emoji: '⏱️',
+    emoji: '⏱️', icon: 'timer',
     keyLesson: '30 giây đầu tiên quyết định bạn là "người bán" hay "người đáng nghe." Mở đầu bằng câu hỏi quan tâm, không phải giới thiệu sản phẩm.',
     content: `Có năm thời điểm trong buổi tư vấn mà cách bạn phản ứng sẽ định hình toàn bộ mối quan hệ:
 
@@ -325,7 +326,7 @@ Quan trọng nhất. Một tin nhắn ngắn xác nhận quyết định, nhắc
     title: '3 tầng nỗi sợ',
     description: 'Tầng bề mặt khách nói ra. Tầng giữa khách giấu. Tầng gốc chính khách không nhận ra.',
     duration: '3 phút',
-    emoji: '🧊',
+    emoji: '🧊', icon: 'layers',
     keyLesson: 'Kỹ thuật chốt chỉ xử lý tầng bề mặt. Hai tầng bên dưới vẫn còn nguyên, nên khách hủy sau khi đồng ý.',
     content: `**Ba tầng nỗi sợ:**
 
@@ -345,7 +346,7 @@ Kỹ thuật chốt chỉ xử lý tầng bề mặt. Hai tầng bên dưới v�
     title: '6 nỗi sợ cốt lõi',
     description: 'Sáu nỗi sợ chi phối quyết định cao cấp: sợ sai, mất kiểm soát, thay đổi, bị bán, mất nhân dạng, hối hận.',
     duration: '5 phút',
-    emoji: '😰',
+    emoji: '😰', icon: 'alert-circle',
     keyLesson: 'Sợ bị bán là nỗi sợ không thể phá bằng lời nói, chỉ bằng hành vi. Im lặng ở chỗ người bán sẽ nói, dám nói "chưa phù hợp" ở chỗ người bán cố chốt.',
     content: `**1. Sợ ra quyết định sai:** Phổ biến nhất. Biểu hiện: hỏi nhiều, so sánh nhiều bên. Hay nói: "Cần tìm hiểu thêm." Cách xử lý: không cung cấp thêm thông tin (vấn đề không phải thiếu thông tin), giúp khách nhận ra "đã đủ rõ để chọn có trách nhiệm chưa."
 
@@ -365,7 +366,7 @@ Kỹ thuật chốt chỉ xử lý tầng bề mặt. Hai tầng bên dưới v�
     title: 'Thiên lệch nhận thức',
     description: 'Lý thuyết triển vọng, hiệu ứng neo, đóng khung, ác cảm mất mát, và tải nhận thức.',
     duration: '4 phút',
-    emoji: '🔬',
+    emoji: '🔬', icon: 'flask',
     keyLesson: 'Nỗi đau mất mát mạnh gấp 2-2.5 lần niềm vui được lợi. "Anh đang mất gì mỗi ngày" luôn mạnh hơn "Anh sẽ được gì."',
     content: `**Lý thuyết triển vọng (Kahneman & Tversky):**
 Nỗi đau mất mát mạnh gấp 2 đến 2.5 lần niềm vui được lợi. Vì vậy "Anh/chị đang mất gì mỗi ngày nếu tiếp tục như hiện tại" luôn mạnh hơn "Anh/chị sẽ được gì." Đây là nền tảng của "Cái giá của sự trì hoãn": trì hoãn cũng là một quyết định, và quyết định đó có cái giá.
@@ -396,7 +397,7 @@ Não bộ chỉ xử lý được 5 đến 9 đơn vị thông tin cùng lúc. �
     title: 'Tổng quan 3 Điểm Chạm',
     description: 'Ba trạng thái nhận thức khách cần đi qua để TỰ ra quyết định, không cần ép, không cần kỹ thuật chốt.',
     duration: '3 phút',
-    emoji: '🎯',
+    emoji: '🎯', icon: 'navigate-circle',
     keyLesson: 'Người nói nhiều hơn trong buổi tư vấn đúng nghĩa là khách hàng, không phải cố vấn.',
     content: `3 Điểm Chạm là ba trạng thái nhận thức mà khách hàng cần đi qua để TỰ ra quyết định. Khi cả ba đủ rõ, quyết định đến tự nhiên, không cần ép, không cần kỹ thuật chốt.
 
@@ -414,7 +415,7 @@ Não bộ chỉ xử lý được 5 đến 9 đơn vị thông tin cùng lúc. �
     title: 'Giai đoạn 0: Kết nối tin tưởng',
     description: '5 phút đầu không quyết định khách có mua, nhưng quyết định khách có sẵn sàng mở lòng.',
     duration: '3 phút',
-    emoji: '🤝',
+    emoji: '🤝', icon: 'hand-left',
     keyLesson: 'Nếu khách giữ khoảng cách, đừng cố mở bằng câu hỏi sâu. Hỏi sâu lúc này chỉ tạo thêm áp lực.',
     content: `**Mục tiêu:** Tạo an toàn tâm lý để khách mở lòng.
 
@@ -437,7 +438,7 @@ Nếu khách giữ khoảng cách ngay từ đầu, đừng cố mở bằng câ
     title: 'Điểm Chạm 1: Chạm Động Lực',
     description: 'Giúp khách nhìn rõ điều họ THẬT SỰ muốn, không phải điều họ nghĩ mình muốn.',
     duration: '5 phút',
-    emoji: '🔥',
+    emoji: '🔥', icon: 'flame',
     keyLesson: 'Không hỏi "anh cần gì?" mà hỏi "điều gì đang quan trọng với anh ở thời điểm này?" Cố vấn không tạo ra động lực, mà giúp khách nhận ra động lực đã có sẵn.',
     content: `**Mục tiêu:** Giúp khách nhìn rõ điều họ THẬT SỰ muốn, không phải điều họ nghĩ mình muốn.
 
@@ -465,7 +466,7 @@ Nếu khách giữ khoảng cách ngay từ đầu, đừng cố mở bằng câ
     title: 'Điểm Chạm 2: Chạm Điểm Nghẽn',
     description: 'Giúp khách đối diện nguyên nhân THẬT SỰ đang giữ họ đứng yên. Kỹ thuật "Cái giá của sự trì hoãn."',
     duration: '5 phút',
-    emoji: '🔓',
+    emoji: '🔓', icon: 'lock-open',
     keyLesson: 'Khi khách vừa nhìn thấy điểm nghẽn, đừng vội chuyển sang giải pháp. Dừng lại, để khách "ở trong" nhận thức đó đủ lâu.',
     content: `**Mục tiêu:** Giúp khách đối diện với nguyên nhân THẬT SỰ đang giữ họ đứng yên.
 
@@ -496,7 +497,7 @@ Giúp khách tự tính chi phí thực sự của việc không thay đổi, kh
     title: 'Điểm Chạm 3: Chạm Con Đường',
     description: 'Đặt giải pháp trong bối cảnh riêng của khách. Dùng ngôn ngữ của KHÁCH, không phải ngôn ngữ sản phẩm.',
     duration: '4 phút',
-    emoji: '🛤️',
+    emoji: '🛤️', icon: 'map',
     keyLesson: 'Ghi chép những từ khách dùng ở Chạm 1 và 2, rồi dùng lại chính xác những từ đó khi trình bày giải pháp.',
     content: `**Mục tiêu:** Giúp khách nhìn thấy hướng đi phù hợp với bối cảnh, khả năng và mức độ sẵn sàng của HỌ.
 
@@ -518,7 +519,7 @@ Giúp khách tự tính chi phí thực sự của việc không thay đổi, kh
     title: 'Phản chiếu và Cam kết',
     description: 'Khi khách qua 3 Điểm Chạm, cam kết là bước tự nhiên. Để KHÁCH tự đề xuất bước tiếp theo.',
     duration: '3 phút',
-    emoji: '✅',
+    emoji: '✅', icon: 'checkmark-done-circle',
     keyLesson: 'Khi thấy tín hiệu mua (hỏi triển khai, dùng ngôn ngữ sở hữu), DỪNG trình bày. Bắt đầu bước cam kết.',
     content: `Khi khách đã qua 3 Điểm Chạm, lời mời cam kết là bước cuối tự nhiên:
 
@@ -554,7 +555,7 @@ Giúp khách tự tính chi phí thực sự của việc không thay đổi, kh
     title: 'Lắng nghe sâu',
     description: 'Nghe 3 tầng: nội dung, cảm xúc, ý định chưa nói. Quy tắc 70/30.',
     duration: '4 phút',
-    emoji: '👂',
+    emoji: '👂', icon: 'ear',
     keyLesson: 'Khi khách nói "để tôi nghĩ thêm", tầng 3 nghe ra: "tôi chưa đủ tin tưởng." Sales giỏi phản hồi tầng 3.',
     content: `Lắng nghe sâu không chỉ là im lặng khi khách nói. Đó là khả năng nghe ở ba tầng:
 
@@ -587,7 +588,7 @@ Phát huy mạnh nhất ở **Chạm Động Lực**: nghe ra mong muốn thật
     title: 'Câu hỏi dẫn dắt',
     description: 'Câu hỏi tốt khiến khách dừng lại và nhìn thấy điều chưa nghĩ tới. So sánh thẩm vấn vs. dẫn dắt.',
     duration: '3 phút',
-    emoji: '❓',
+    emoji: '❓', icon: 'help-circle',
     keyLesson: '"Ngân sách anh bao nhiêu?" là thẩm vấn. "Anh mong đợi giải pháp mang lại kết quả gì?" là dẫn dắt. Khác biệt rất lớn.',
     content: `Câu hỏi tốt không phải câu khiến khách trả lời nhiều. **Câu hỏi tốt là câu khiến khách dừng lại và nhìn thấy điều mà trước đó họ chưa nghĩ tới.**
 
@@ -616,7 +617,7 @@ Phát huy mạnh nhất ở **Chạm Động Lực** và **Chạm Điểm Nghẽ
     title: 'Phản chiếu',
     description: 'Trả lại cho khách những gì họ nói, được sắp xếp lại để khách nghe rõ hơn chính mình.',
     duration: '3 phút',
-    emoji: '🪞',
+    emoji: '🪞', icon: 'eye',
     keyLesson: 'Phản chiếu không phải nhắc lại nguyên văn. Mà là giúp khách nhìn thấy bức tranh mà trước đó họ chỉ thấy từng mảnh rời rạc.',
     content: `Phản chiếu là trả lại cho khách những gì họ đã nói, được sắp xếp và gọi tên lại để khách nghe rõ hơn chính mình.
 
@@ -643,7 +644,7 @@ Phản chiếu phát huy mạnh nhất ở **Chạm Điểm Nghẽn** và khi x�
     title: 'Đọc tín hiệu và điều chỉnh',
     description: 'Nhận biết tín hiệu mở lòng, phòng thủ, sẵn sàng mua. Quy tắc chữ "nhưng."',
     duration: '4 phút',
-    emoji: '🔍',
+    emoji: '🔍', icon: 'scan',
     keyLesson: 'Khách nói "hay lắm nhưng..." Mọi thứ trước "nhưng" là lịch sự. Mọi thứ sau "nhưng" mới là thật.',
     content: `Trong suốt buổi tư vấn, khách liên tục phát ra tín hiệu. Cố vấn giỏi đọc được và điều chỉnh kịp thời.
 
@@ -675,7 +676,7 @@ Phản chiếu phát huy mạnh nhất ở **Chạm Điểm Nghẽn** và khi x�
     title: 'Im lặng chiến lược',
     description: 'Im lặng không phải thiếu vắng lời nói. Đây là hành động tư vấn có sức mạnh riêng.',
     duration: '3 phút',
-    emoji: '🤫',
+    emoji: '🤫', icon: 'volume-mute',
     keyLesson: 'Lấp đầy im lặng = cho khách thấy bạn không thoải mái = bạn đang cần họ hơn họ cần bạn.',
     content: `Im lặng không phải thiếu vắng lời nói. Đây là hành động tư vấn có sức mạnh riêng.
 
@@ -697,7 +698,7 @@ Nếu vẫn im lặng: "Anh/chị đang nghĩ đến điều gì vậy?" (giọn
     title: 'Quản trị cảm xúc',
     description: 'Quy trình Neo vững 5 phút trước mỗi buổi tư vấn: nhận diện, buông kỳ vọng, xác nhận vai trò, thiết lập ý định.',
     duration: '3 phút',
-    emoji: '🧘',
+    emoji: '🧘', icon: 'pulse',
     keyLesson: 'Nếu vào buổi với kỳ vọng chốt, mọi câu hỏi của bạn sẽ vô tình hướng về đó, và khách cảm nhận được.',
     content: `Cảm xúc của cố vấn ảnh hưởng trực tiếp đến chất lượng buổi tư vấn. Nếu bạn lo lắng, khách sẽ lo lắng. Nếu bạn nôn nóng chốt, khách sẽ phòng thủ.
 
@@ -731,7 +732,7 @@ Một mục tiêu quá trình cụ thể (không phải kết quả). Ví dụ: 
     title: 'Tư duy đúng khi gặp từ chối',
     description: 'Không hỏi "làm sao vượt qua?" mà hỏi "Điểm Chạm nào chưa hoàn tất?"',
     duration: '3 phút',
-    emoji: '🧭',
+    emoji: '🧭', icon: 'compass',
     keyLesson: 'Thay vì đối đầu với câu từ chối, quay lại dẫn dắt nhận thức ở đúng giai đoạn cần thiết.',
     content: `Khi khách từ chối, KHÔNG hỏi "làm sao vượt qua câu từ chối này?"
 Hỏi: **"Điểm Chạm nào chưa hoàn tất? Mình cần quay lại đâu?"**
@@ -752,7 +753,7 @@ Cách tiếp cận này khác hoàn toàn với "xử lý objection" truyền th
     title: 'Phương pháp REFLECT',
     description: 'R-E-F-L-E-C-T: 7 bước phản chiếu khi gặp tình huống khó. Không tranh luận, không giải thích thêm.',
     duration: '4 phút',
-    emoji: '💎',
+    emoji: '💎', icon: 'diamond',
     keyLesson: 'Nếu chưa sẵn sàng, dừng lại với phẩm giá. Không níu kéo. Giữ mối quan hệ cho tương lai.',
     content: `Không tranh luận. Không giải thích thêm. Phản chiếu lại đúng điều khách đang lo để họ tự nhìn thấy mình.
 
@@ -783,7 +784,7 @@ Nếu chưa sẵn sàng, dừng lại với phẩm giá. Không níu kéo. Giữ
     title: '6 lỗi mất vị thế',
     description: 'Sáu lỗi bộc lộ rõ nhất khi áp lực chốt tăng cao: nói nhiều, giải thích, phản biện, ép thời gian...',
     duration: '4 phút',
-    emoji: '⚠️',
+    emoji: '⚠️', icon: 'warning',
     keyLesson: 'Khi khách nói "sợ không phù hợp", họ không hỏi về sản phẩm. Họ đang lo về quyền kiểm soát quyết định.',
     content: `Sáu lỗi này bộc lộ rõ nhất trong tình huống khó, khi áp lực chốt tăng cao:
 
@@ -811,7 +812,7 @@ Kiên trì là giữ mối quan hệ và chờ đúng thời điểm. Níu kéo 
     title: 'Xử lý: "Giá cao quá"',
     description: 'Nỗi sợ thật không phải giá. Là sợ đầu tư sai. Đừng giảm giá, hãy hỏi "cao so với điều gì?"',
     duration: '3 phút',
-    emoji: '💰',
+    emoji: '💰', icon: 'cash',
     keyLesson: 'Giảm giá ngay = khách nghĩ giá ban đầu là "giá ảo." Hỏi "cao so với điều gì?" để hiểu nỗi sợ thật.',
     content: `**Nỗi sợ thật:** Sợ đầu tư sai, sợ không tạo ra thay đổi xứng đáng. Điểm Chạm còn thiếu: Chạm Con Đường.
 
@@ -833,7 +834,7 @@ Sau đó: "Điều gì sẽ giúp anh/chị cảm thấy đầu tư này xứng 
     title: 'Xử lý: "Để suy nghĩ thêm"',
     description: 'Không kết thúc thụ động. Hỏi "Anh đang phân vân điều gì nhất?" để tìm nỗi sợ chưa nói.',
     duration: '3 phút',
-    emoji: '🤔',
+    emoji: '🤔', icon: 'help-buoy',
     keyLesson: '"Dạ vâng, nghĩ xong liên hệ em nhé" là cách kết thúc thụ động nhất. Hãy hỏi khách đang phân vân điều gì.',
     content: `**Nỗi sợ thật:** Chưa đủ rõ ràng bên trong để quyết định. Có thể vẫn còn nỗi sợ chưa được nói ra.
 
@@ -852,7 +853,7 @@ Nếu khách thật sự cần thời gian, tôn trọng điều đó. Nhưng h�
     title: 'Xử lý: Khách so sánh đối thủ',
     description: 'Không tấn công đối thủ. Không liệt kê điểm hơn. Để tiêu chí của KHÁCH làm khung đánh giá.',
     duration: '3 phút',
-    emoji: '⚔️',
+    emoji: '⚔️', icon: 'git-compare',
     keyLesson: 'Khi bạn so sánh, bạn chấp nhận khung "ai tốt hơn ai." Người cố vấn không chơi trò đó.',
     content: `**KHÔNG tấn công đối thủ. KHÔNG liệt kê điểm hơn.**
 
@@ -871,7 +872,7 @@ Nếu khách thật sự cần thời gian, tôn trọng điều đó. Nhưng h�
     title: 'Xử lý: Người thứ ba & kiểm tra năng lực',
     description: 'Biến người đi cùng thành đồng minh. Khi bị hỏi năng lực, kể câu chuyện thật thay vì khoe thành tích.',
     duration: '3 phút',
-    emoji: '👥',
+    emoji: '👥', icon: 'people',
     keyLesson: 'Bỏ qua người đi cùng = sau buổi gặp họ sẽ nói: "Anh cẩn thận, tôi thấy không ổn."',
     content: `**Khi có người thứ ba:**
 
@@ -895,7 +896,7 @@ Khi người thứ ba không có mặt: "Thường thì anh/chị nhà quan tâm
     title: 'Chuẩn bị trước buổi tư vấn',
     description: 'Nghiên cứu khách hàng 3 lớp và quy trình Neo vững 5 phút trước mỗi buổi.',
     duration: '3 phút',
-    emoji: '📋',
+    emoji: '📋', icon: 'clipboard',
     keyLesson: 'Lớp 2 là dự đoán tâm lý, không phải kết luận. Sẵn sàng buông bỏ khi thực tế khác đi.',
     content: `**Nghiên cứu khách hàng 3 lớp:**
 
@@ -924,7 +925,7 @@ Ví dụ: "Điều gì đang thật sự khiến họ tìm tới mình ở thờ
     title: 'Kịch bản nhắn tin',
     description: 'Tin nhắn tiếp cận lạnh, sau buổi gặp (24h), và follow-up (3-7 ngày). Mang giá trị, không hỏi "quyết định chưa?"',
     duration: '3 phút',
-    emoji: '💬',
+    emoji: '💬', icon: 'chatbubbles',
     keyLesson: 'Tin nhắn follow-up phải mang thêm giá trị, không chỉ hỏi "có quyết định chưa?"',
     content: `**Tin nhắn tiếp cận lạnh (Cold outreach):**
 
@@ -949,7 +950,7 @@ Mang thêm giá trị, KHÔNG chỉ hỏi "có quyết định chưa?"
     title: '9 lỗi phổ biến nhất',
     description: 'Từ nói về giải pháp quá sớm, đến nghe để phản hồi thay vì nghe để hiểu, đến níu kéo khi khách muốn dừng.',
     duration: '4 phút',
-    emoji: '🚫',
+    emoji: '🚫', icon: 'close-circle',
     keyLesson: 'Sai lầm phổ biến nhất: nói về giải pháp trước khi khách hiểu vấn đề của mình.',
     content: `**1. Nói về giải pháp trước khi khách hiểu vấn đề của mình.** Đây là sai lầm phổ biến nhất. Khách chưa sẵn sàng nghe giải pháp nếu họ chưa nhìn rõ vấn đề.
 

@@ -13,7 +13,7 @@ import {
   CustomerProfile, Session, DecisionMaker, LeadScoring, EMPTY_SCORING, addConversation,
   loadCustomerStatuses, CustomerStatus,
 } from '../services/storageService';
-import { scoreCustomerWithAI } from '../services/aiService';
+import { scoreCustomerWithAI, extractCustomerInfo } from '../services/aiService';
 import { pickFromGallery, takePhoto, saveCustomerPhoto } from '../services/imageService';
 
 type RouteParams = { CustomerDetail: { customerId: string } };
@@ -146,6 +146,7 @@ export default function CustomerDetailScreen() {
   const [dmAttitude, setDmAttitude] = useState('trung lập');
 
   const [isScoring, setIsScoring] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -197,6 +198,76 @@ export default function CustomerDetailScreen() {
     }
     setIsScoring(false);
   }, [customer]);
+
+  const syncFromCalls = useCallback(async () => {
+    if (!customer || !sessions.length) {
+      showAlert({ title: 'Không có cuộc gọi', message: 'Chưa có cuộc gọi nào để đồng bộ.', type: 'warning' });
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      // Gom tất cả transcripts
+      const transcripts = sessions
+        .map(s => s.analysis?.transcript || '')
+        .filter(t => t.length > 20)
+        .join('\n\n---\n\n');
+
+      if (!transcripts) {
+        showAlert({ title: 'Không có nội dung', message: 'Các cuộc gọi chưa có transcript để phân tích.', type: 'warning' });
+        setIsSyncing(false);
+        return;
+      }
+
+      const info = await extractCustomerInfo(transcripts);
+
+      // Merge: chỉ cập nhật field trống
+      const updates: any = {};
+      if (info.needs && !customer.needs) updates.needs = info.needs;
+      if (info.budget && !customer.budget) updates.budget = info.budget;
+      if (info.concerns && !customer.concerns) updates.concerns = info.concerns;
+      if (info.stage && !customer.stage) updates.stage = info.stage;
+      if (info.decisionFactors && !customer.decisionFactors) updates.decisionFactors = info.decisionFactors;
+      if (info.personality && !customer.personality) updates.personality = info.personality;
+      if (info.nextStep && !customer.nextStep) updates.nextStep = info.nextStep;
+
+      // Cập nhật field có sẵn nếu AI có thông tin mới tốt hơn
+      if (info.needs && customer.needs) updates.needs = customer.needs + '\n' + info.needs;
+      if (info.concerns && customer.concerns) updates.concerns = customer.concerns + '\n' + info.concerns;
+
+      // ICP merge
+      const newIcp = { ...(customer.icp || {}) };
+      const icpData = info.icp || {};
+      for (const [key, val] of Object.entries(icpData)) {
+        if (val && !(newIcp as any)[key]) (newIcp as any)[key] = val;
+      }
+      updates.icp = newIcp;
+
+      // Decision makers
+      if (info.decisionMaker?.name) {
+        const existing = customer.decisionMakers || [];
+        const alreadyExists = existing.some(d => d.name.toLowerCase() === info.decisionMaker!.name.toLowerCase());
+        if (!alreadyExists) {
+          updates.decisionMakers = [...existing, { ...info.decisionMaker, notes: '' }];
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await updateCustomer(customer.id, updates);
+        setCustomer(prev => prev ? { ...prev, ...updates } : prev);
+        showAlert({
+          title: 'Đồng bộ thành công',
+          message: `Đã cập nhật ${Object.keys(updates).length} trường thông tin từ ${sessions.length} cuộc gọi.`,
+          type: 'success',
+        });
+      } else {
+        showAlert({ title: 'Đã đầy đủ', message: 'Tất cả thông tin đã được cập nhật.', type: 'info' });
+      }
+    } catch (err: any) {
+      showAlert({ title: 'Lỗi', message: err.message || 'Không thể phân tích cuộc gọi.', type: 'error' });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [customer, sessions, showAlert]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
@@ -273,12 +344,12 @@ export default function CustomerDetailScreen() {
     : '#CD7F32';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.topBar}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.topBar, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle} numberOfLines={1}>{customer.name}</Text>
+        <Text style={[styles.topBarTitle, { color: C.TEXT }]} numberOfLines={1}>{customer.name}</Text>
         <TouchableOpacity onPress={() => {
           const lines = [`👤 ${customer.name}`, customer.company ? `🏢 ${customer.company}` : '',
             `📊 Điểm: ${customer.leadScore}/100`, customer.stage ? `📍 ${customer.stage}` : '',
@@ -337,15 +408,23 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Quick Actions */}
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: C.PRIMARY }]}
             onPress={() => navigation.navigate('GhiAm', { customerName: customer.name, companyName: customer.company })}>
-            <Ionicons name="mic" size={18} color="#fff" />
+            <Ionicons name="mic" size={16} color="#fff" />
             <Text style={styles.actionBtnText}>Ghi âm</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#7C3AED' }]} onPress={handleChatWithAI}>
-            <Ionicons name="chatbubbles" size={18} color="#fff" />
-            <Text style={styles.actionBtnText}>Chat AI Coach</Text>
+            <Ionicons name="chatbubbles" size={16} color="#fff" />
+            <Text style={styles.actionBtnText}>AI Coach</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#E67E22' }]}
+            onPress={syncFromCalls}
+            disabled={isSyncing}
+          >
+            <Ionicons name={isSyncing ? 'hourglass' : 'sync'} size={16} color="#fff" />
+            <Text style={styles.actionBtnText}>{isSyncing ? 'Đang...' : 'Đồng bộ'}</Text>
           </TouchableOpacity>
         </View>
 

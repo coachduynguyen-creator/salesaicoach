@@ -184,12 +184,12 @@ export default function RecordScreen() {
   const formatPlaybackTime = (ms: number) => formatTime(Math.floor(ms / 1000));
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Ghi âm</Text>
-          <Text style={styles.headerSub}>
+          <Text style={[styles.headerTitle, { color: C.TEXT }]}>Ghi âm</Text>
+          <Text style={[styles.headerSub, { color: C.TEXT_LIGHT }]}>
             {reviewMode ? 'Xem lại bản ghi' : isRecording ? (customerName || 'Đang ghi âm...') : 'Phiên tư vấn mới'}
           </Text>
         </View>
@@ -197,13 +197,13 @@ export default function RecordScreen() {
         {/* Input fields — chỉ khi idle và không review */}
         {!isRecording && !reviewMode && (
           <View style={styles.inputGroup}>
-            <View style={styles.inputWrap}>
-              <Ionicons name="person-outline" size={18} color={COLORS.TEXT_LIGHT} />
-              <TextInput style={styles.input} placeholder="Tên khách hàng" placeholderTextColor={COLORS.TEXT_LIGHT} value={customerName} onChangeText={setCustomerName} />
+            <View style={[styles.inputWrap, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
+              <Ionicons name="person-outline" size={18} color={C.TEXT_LIGHT} />
+              <TextInput style={[styles.input, { color: C.TEXT }]} placeholder="Tên khách hàng" placeholderTextColor={C.TEXT_LIGHT} value={customerName} onChangeText={setCustomerName} />
             </View>
-            <View style={styles.inputWrap}>
-              <Ionicons name="business-outline" size={18} color={COLORS.TEXT_LIGHT} />
-              <TextInput style={styles.input} placeholder="Tên công ty (không bắt buộc)" placeholderTextColor={COLORS.TEXT_LIGHT} value={companyName} onChangeText={setCompanyName} />
+            <View style={[styles.inputWrap, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
+              <Ionicons name="business-outline" size={18} color={C.TEXT_LIGHT} />
+              <TextInput style={[styles.input, { color: C.TEXT }]} placeholder="Tên công ty (không bắt buộc)" placeholderTextColor={C.TEXT_LIGHT} value={companyName} onChangeText={setCompanyName} />
             </View>
           </View>
         )}
@@ -220,14 +220,14 @@ export default function RecordScreen() {
               </TouchableOpacity>
 
               {/* Playback time */}
-              <Text style={styles.timer}>
+              <Text style={[styles.timer, { color: C.TEXT }]}>
                 {formatPlaybackTime(playbackPosition)}
-                <Text style={styles.timerDivider}> / </Text>
+                <Text style={[styles.timerDivider, { color: C.TEXT_LIGHT }]}> / </Text>
                 {playbackDuration > 0 ? formatPlaybackTime(playbackDuration) : formatTime(recordedDuration)}
               </Text>
 
               {/* Playback progress bar */}
-              <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarBg, { backgroundColor: C.BORDER }]}>
                 <View
                   style={[
                     styles.progressBarFill,
@@ -262,7 +262,7 @@ export default function RecordScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.reviewBtn, styles.reviewBtnSecondary]}
+                style={[styles.reviewBtn, styles.reviewBtnSecondary, { backgroundColor: C.CARD, borderColor: C.BORDER }]}
                 onPress={handleReRecord}
                 activeOpacity={0.85}
               >
@@ -295,12 +295,12 @@ export default function RecordScreen() {
               )}
 
               {/* Timer */}
-              <Text style={styles.timer}>{formatTime(elapsed)}</Text>
+              <Text style={[styles.timer, { color: C.TEXT }]}>{formatTime(elapsed)}</Text>
 
               {/* Status */}
               <View style={styles.statusRow}>
                 {recordingState === 'recording' && <View style={styles.liveDot} />}
-                <Text style={[styles.statusText,
+                <Text style={[styles.statusText, { color: C.TEXT_LIGHT },
                   recordingState === 'recording' && { color: COLORS.DANGER },
                   recordingState === 'paused' && { color: COLORS.WARNING },
                 ]}>
@@ -312,7 +312,7 @@ export default function RecordScreen() {
             {/* Controls */}
             {isRecording && (
               <View style={styles.controls}>
-                <TouchableOpacity style={styles.ctrlBtn} onPress={handlePause}>
+                <TouchableOpacity style={[styles.ctrlBtn, { backgroundColor: C.CARD, borderColor: C.BORDER }]} onPress={handlePause}>
                   <Ionicons name={recordingState === 'paused' ? 'play' : 'pause'} size={24} color={C.PRIMARY} />
                   <Text style={[styles.ctrlText, { color: C.PRIMARY }]}>{recordingState === 'paused' ? 'Tiếp tục' : 'Tạm dừng'}</Text>
                 </TouchableOpacity>
@@ -325,12 +325,12 @@ export default function RecordScreen() {
 
             {/* Tips */}
             {!isRecording && (
-              <View style={styles.tipsCard}>
-                <Text style={styles.tipsTitle}>Hướng dẫn</Text>
+              <View style={[styles.tipsCard, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
+                <Text style={[styles.tipsTitle, { color: C.TEXT }]}>Hướng dẫn</Text>
                 {['Nhập tên khách hàng trước khi ghi', 'Đặt điện thoại gần nguồn âm thanh', 'Sau khi dừng, bạn có thể nghe lại trước khi phân tích'].map((t, i) => (
                   <View key={i} style={styles.tipRow}>
                     <View style={styles.tipDot} />
-                    <Text style={styles.tipText}>{t}</Text>
+                    <Text style={[styles.tipText, { color: C.TEXT_SECONDARY }]}>{t}</Text>
                   </View>
                 ))}
               </View>

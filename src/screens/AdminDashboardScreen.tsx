@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -87,12 +87,12 @@ export default function AdminDashboardScreen() {
   const estimatedCost = ((totalTokens / 1000000) * 0.25).toFixed(2); // Claude Haiku ~$0.25/1M tokens
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.topBar}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.topBar, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Admin Dashboard</Text>
+        <Text style={[styles.topBarTitle, { color: C.TEXT }]}>Admin Dashboard</Text>
         <TouchableOpacity
           onPress={() => {
             if (stats && team) shareTeamReport(team.name, stats, members);
@@ -177,6 +177,62 @@ export default function AdminDashboardScreen() {
             </>
           )}
         </View>
+
+        {/* Score Chart (custom bars) */}
+        {members.length > 0 && (() => {
+          const maxScore = Math.max(...members.map(m => m.avg_score || 0), 1);
+          return (
+            <>
+              <Text style={styles.sectionTitle}>Điểm trung bình</Text>
+              <View style={styles.card}>
+                {members.slice(0, 8).map(m => {
+                  const pct = maxScore > 0 ? ((m.avg_score || 0) / 10) * 100 : 0;
+                  const color = m.avg_score >= 7 ? '#10B981' : m.avg_score >= 5 ? '#F59E0B' : '#EF4444';
+                  return (
+                    <View key={m.user_id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: COLORS.TEXT_SECONDARY, width: 60 }} numberOfLines={1}>{(m.full_name || '?').slice(0, 8)}</Text>
+                      <View style={{ flex: 1, height: 20, backgroundColor: COLORS.SURFACE, borderRadius: 4, overflow: 'hidden' }}>
+                        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color + '40', borderRadius: 4, justifyContent: 'center', paddingLeft: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color }}>{m.avg_score}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          );
+        })()}
+
+        {/* Deal Summary (custom) */}
+        {(stats?.won_deals || 0) + (stats?.lost_deals || 0) > 0 && (() => {
+          const total = (stats?.won_deals || 0) + (stats?.lost_deals || 0);
+          const pending = Math.max(0, (stats?.total_sessions || 0) - total);
+          const data = [
+            { label: 'Won', count: stats?.won_deals || 0, color: '#10B981' },
+            { label: 'Lost', count: stats?.lost_deals || 0, color: '#EF4444' },
+            { label: 'Pending', count: pending, color: '#F59E0B' },
+          ];
+          const maxDeal = Math.max(...data.map(d => d.count), 1);
+          return (
+            <>
+              <Text style={styles.sectionTitle}>Tỷ lệ Deal</Text>
+              <View style={styles.card}>
+                {data.map(d => (
+                  <View key={d.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: d.color }} />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.TEXT_SECONDARY, width: 55 }}>{d.label}</Text>
+                    <View style={{ flex: 1, height: 22, backgroundColor: COLORS.SURFACE, borderRadius: 4, overflow: 'hidden' }}>
+                      <View style={{ width: `${(d.count / maxDeal) * 100}%`, height: '100%', backgroundColor: d.color + '35', borderRadius: 4, justifyContent: 'center', paddingLeft: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: d.color }}>{d.count}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          );
+        })()}
 
         {/* Member Rankings */}
         <Text style={styles.sectionTitle}>Bảng xếp hạng nhân viên</Text>

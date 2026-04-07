@@ -98,7 +98,7 @@ function MessageBubble({ message, streaming }: { message: Message; streaming?: b
             <Text style={{ color: C.PRIMARY }}>{'▍'}</Text>
           </Text>
         ) : (
-          <Markdown style={mdStyles}>{message.content}</Markdown>
+          <Markdown style={getMdStyles(C)}>{message.content}</Markdown>
         )}
         {!streaming && (
           <Text style={[styles.bubbleTime, isUser ? styles.bubbleTimeUser : styles.bubbleTimeAI]}>
@@ -312,12 +312,12 @@ export default function AiCoachScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.BACKGROUND }]} edges={['top', 'bottom']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
         {conversationId && (
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={22} color={COLORS.TEXT} />
+            <Ionicons name="chevron-back" size={22} color={C.TEXT} />
           </TouchableOpacity>
         )}
         <View style={styles.headerLeft}>
@@ -325,7 +325,7 @@ export default function AiCoachScreen() {
             <Ionicons name="chatbubbles" size={20} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
+            <Text style={[styles.headerTitle, { color: C.TEXT }]} numberOfLines={1}>
               {conversationTitle || 'AI Sales Coach'}
             </Text>
             <View style={styles.onlineRow}>
@@ -388,7 +388,7 @@ export default function AiCoachScreen() {
         )}
 
         {/* Input Bar */}
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, { backgroundColor: C.CARD, borderTopColor: C.BORDER }]}>
           {/* Mic button */}
           <TouchableOpacity
             style={[
@@ -438,28 +438,30 @@ export default function AiCoachScreen() {
 
 // ─── Markdown Styles ─────────────────────────────────────────────────────────
 
-const mdStyles = StyleSheet.create({
-  body: { fontSize: 14, lineHeight: 22, color: COLORS.TEXT },
-  heading1: { fontSize: 17, fontWeight: '800', color: COLORS.PRIMARY_DARK, marginBottom: 6, marginTop: 10 },
-  heading2: { fontSize: 15, fontWeight: '700', color: COLORS.PRIMARY, marginBottom: 4, marginTop: 8 },
-  heading3: { fontSize: 14, fontWeight: '700', color: COLORS.TEXT, marginBottom: 4, marginTop: 6 },
-  strong: { fontWeight: '700', color: COLORS.TEXT },
-  em: { fontStyle: 'italic' },
-  paragraph: { marginBottom: 6, marginTop: 0 },
-  bullet_list: { marginBottom: 4 },
-  ordered_list: { marginBottom: 4 },
-  list_item: { marginBottom: 2 },
-  blockquote: {
-    backgroundColor: COLORS.PRIMARY + '08',
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.PRIMARY_LIGHT,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginVertical: 6,
-    borderRadius: 8,
-  },
-  hr: { backgroundColor: COLORS.DIVIDER, height: 1, marginVertical: 10 },
-});
+function getMdStyles(colors: any) {
+  return StyleSheet.create({
+    body: { fontSize: 14, lineHeight: 22, color: colors.TEXT },
+    heading1: { fontSize: 17, fontWeight: '800', color: colors.PRIMARY, marginBottom: 6, marginTop: 10 },
+    heading2: { fontSize: 15, fontWeight: '700', color: colors.PRIMARY, marginBottom: 4, marginTop: 8 },
+    heading3: { fontSize: 14, fontWeight: '700', color: colors.TEXT, marginBottom: 4, marginTop: 6 },
+    strong: { fontWeight: '700', color: colors.TEXT },
+    em: { fontStyle: 'italic' },
+    paragraph: { marginBottom: 6, marginTop: 0 },
+    bullet_list: { marginBottom: 4 },
+    ordered_list: { marginBottom: 4 },
+    list_item: { marginBottom: 2 },
+    blockquote: {
+      backgroundColor: colors.PRIMARY + '10',
+      borderLeftWidth: 3,
+      borderLeftColor: colors.PRIMARY,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginVertical: 6,
+      borderRadius: 8,
+    },
+    hr: { backgroundColor: colors.BORDER, height: 1, marginVertical: 10 },
+  });
+}
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -505,7 +507,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.TEXT,
+    color: COLORS.TEXT, // TODO: use C.TEXT
   },
   onlineRow: {
     flexDirection: 'row',
@@ -577,7 +579,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   bubbleTextAI: {
-    color: COLORS.TEXT,
+    color: COLORS.TEXT, // TODO: use C.TEXT
   },
   bubbleTime: {
     fontSize: 10,
@@ -657,7 +659,7 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 15,
-    color: COLORS.TEXT,
+    color: COLORS.TEXT, // TODO: use C.TEXT
     lineHeight: 20,
   },
   sendBtn: {

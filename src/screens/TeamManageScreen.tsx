@@ -126,12 +126,12 @@ export default function TeamManageScreen() {
   if (!team) return null;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.topBar}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.topBar, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Quản lý Team</Text>
+        <Text style={[styles.topBarTitle, { color: C.TEXT }]}>Quản lý Team</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -140,7 +140,7 @@ export default function TeamManageScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Team Info */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: C.CARD }]}>
           <Text style={styles.teamName}>{team.name}</Text>
           <View style={styles.codeRow}>
             <Text style={styles.codeLabel}>Mã mời:</Text>
@@ -177,7 +177,7 @@ export default function TeamManageScreen() {
         )}
 
         {/* Members */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: C.CARD }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Thành viên ({members.length})</Text>
             {isManager && (
@@ -230,7 +230,7 @@ export default function TeamManageScreen() {
 
         {/* Pending Invitations */}
         {isManager && invitations.length > 0 && (
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: C.CARD }]}>
             <Text style={styles.sectionTitle}>Lời mời chờ ({invitations.length})</Text>
             {invitations.map(inv => (
               <View key={inv.id} style={styles.inviteRow}>

@@ -19,12 +19,14 @@ import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from './src/config/defaultKeys
 import { migrateLocalToCloud } from './src/services/syncService';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import OfflineBanner from './src/components/OfflineBanner';
+import FirstExperienceScreen, { shouldShowFirstExperience } from './src/screens/FirstExperienceScreen';
 
 const ONBOARDING_KEY = '@salescoach_onboarding_done';
 
 function AppContent() {
   const { isLoading, isAuthenticated, profile, team } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [showFirstExp, setShowFirstExp] = useState(false);
 
   useEffect(() => {
     loadApiKeys().then(({ claudeKey, openaiKey }) => {
@@ -36,6 +38,13 @@ function AppContent() {
       setShowOnboarding(val !== 'true');
     });
   }, []);
+
+  // Check first experience
+  useEffect(() => {
+    if (profile?.id && team?.id) {
+      shouldShowFirstExperience().then(show => setShowFirstExp(show));
+    }
+  }, [profile?.id, team?.id]);
 
   // Set sync context + auto-migrate khi có team
   useEffect(() => {
@@ -72,6 +81,11 @@ function AppContent() {
 
   if (!team) {
     return <TeamSetupScreen />;
+  }
+
+  // Kiểm tra first experience sau khi có team
+  if (showFirstExp) {
+    return <FirstExperienceScreen onComplete={() => setShowFirstExp(false)} />;
   }
 
   return (

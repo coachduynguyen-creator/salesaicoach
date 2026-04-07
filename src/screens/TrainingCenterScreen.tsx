@@ -6,14 +6,18 @@ import {
   TouchableOpacity,
   FlatList,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
 import { loadLessonProgress } from '../services/storageService';
 import { ALL_LESSONS, CATEGORY_INFO, LessonCategory, LessonItem } from '../constants/lessonContent';
+import { analyzeSkillGaps, SkillProfile } from '../services/skillAnalysisService';
+import { shareCertificate } from '../services/certificateService';
 
 type Filter = 'all' | LessonCategory;
 
@@ -30,12 +34,14 @@ export default function TrainingCenterScreen() {
   const C = useColors();
   const [activeFilter, setActiveFilter] = useState<Filter>('all');
   const [completedIds, setCompletedIds] = useState<string[]>([]);
+  const [skillProfile, setSkillProfile] = useState<SkillProfile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<any>();
 
   useFocusEffect(
     useCallback(() => {
       loadLessonProgress().then(setCompletedIds);
+      analyzeSkillGaps().then(setSkillProfile);
     }, [])
   );
 
@@ -57,12 +63,12 @@ export default function TrainingCenterScreen() {
     const cat = CATEGORY_INFO[item.category];
     return (
       <TouchableOpacity
-        style={styles.lessonCard}
+        style={[styles.lessonCard, { backgroundColor: C.CARD }]}
         onPress={() => navigation.navigate('LessonDetail', { lesson: item })}
         activeOpacity={0.7}
       >
-        <View style={[styles.lessonEmoji, { backgroundColor: cat.color + '15' }]}>
-          <Text style={styles.emojiText}>{item.emoji}</Text>
+        <View style={[styles.lessonEmoji, { backgroundColor: cat.color + '12' }]}>
+          <Ionicons name={(item.icon || 'book') as any} size={22} color={cat.color} />
         </View>
 
         <View style={styles.lessonContent}>
@@ -77,7 +83,7 @@ export default function TrainingCenterScreen() {
             )}
           </View>
 
-          <Text style={styles.lessonTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={[styles.lessonTitle, { color: C.TEXT }]} numberOfLines={2}>{item.title}</Text>
           <Text style={styles.lessonDesc} numberOfLines={2}>{item.description}</Text>
           <Text style={styles.lessonDuration}>{item.duration}</Text>
         </View>
@@ -86,13 +92,17 @@ export default function TrainingCenterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Đào Tạo</Text>
-        <Text style={styles.headerSub}>Phương pháp Bán bằng Vị thế: THE TRUSTED ADVISOR</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: C.BACKGROUND }]}>
+        <Text style={[styles.headerTitle, { color: C.TEXT }]}>Đào Tạo</Text>
+        <Text style={[styles.headerSub, { color: C.TEXT_LIGHT }]}>Phương pháp Bán bằng Vị thế: THE TRUSTED ADVISOR</Text>
       </View>
 
-      <View style={[styles.progressBanner, { backgroundColor: C.PRIMARY }]}>
+      <TouchableOpacity
+        style={[styles.progressBanner, { backgroundColor: C.PRIMARY }]}
+        onPress={() => completedCount > 0 && shareCertificate('Học viên', completedCount, totalCount)}
+        activeOpacity={0.8}
+      >
         <View>
           <Text style={styles.progressTitle}>Tiến độ của bạn</Text>
           <Text style={styles.progressSub}>{completedCount} / {totalCount} bài đã hoàn thành</Text>
@@ -101,9 +111,12 @@ export default function TrainingCenterScreen() {
           <View style={styles.progressBarBg}>
             <View style={[styles.progressBarFill, { width: `${progressPct}%` }]} />
           </View>
-          <Text style={styles.progressPct}>{progressPct}%</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <Text style={styles.progressPct}>{progressPct}%</Text>
+            {completedCount > 0 && <Ionicons name="share-outline" size={12} color="rgba(255,255,255,0.6)" />}
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.filterRow}>
         {FILTERS.map(f => {
@@ -129,6 +142,37 @@ export default function TrainingCenterScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}
+        ListHeaderComponent={
+          skillProfile && skillProfile.recommendedLessons.length > 0 && activeFilter === 'all' ? (
+            <View style={{ marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <Ionicons name="sparkles" size={16} color={C.PRIMARY} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: C.TEXT }}>Đề xuất cho bạn</Text>
+                {skillProfile.weakAreas.length > 0 && (
+                  <Text style={{ fontSize: 10, color: C.TEXT_LIGHT, marginLeft: 'auto' }}>
+                    Cần cải thiện: {skillProfile.weakAreas.join(', ')}
+                  </Text>
+                )}
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                {skillProfile.recommendedLessons.map(lesson => {
+                  const cat = CATEGORY_INFO[lesson.category];
+                  return (
+                    <TouchableOpacity
+                      key={lesson.id}
+                      style={{ width: 160, backgroundColor: C.CARD, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: cat.color + '20' }}
+                      onPress={() => navigation.navigate('LessonDetail', { lesson })}
+                    >
+                      <Ionicons name={(lesson.icon || 'book') as any} size={20} color={cat.color} />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: C.TEXT, marginTop: 6 }} numberOfLines={2}>{lesson.title}</Text>
+                      <Text style={{ fontSize: 10, color: cat.color, fontWeight: '600', marginTop: 4 }}>{cat.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null
+        }
       />
     </SafeAreaView>
   );

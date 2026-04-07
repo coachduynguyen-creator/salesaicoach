@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useColorScheme } from 'react-native';
 
 const THEME_KEY = '@salescoach_theme';
+const DARK_MODE_KEY = '@salescoach_dark_mode';
 
 // ─── Bộ màu theme ────────────────────────────────────────────────────────────
 
@@ -61,52 +63,81 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
 ];
 
+// ─── Dark mode colors ───────────────────────────────────────────────────────
+
+const LIGHT_COLORS = {
+  BACKGROUND: '#F8FAFC',
+  CARD: '#FFFFFF',
+  SURFACE: '#F1F5F9',
+  TEXT: '#0F172A',
+  TEXT_SECONDARY: '#475569',
+  TEXT_LIGHT: '#94A3B8',
+  BORDER: '#E2E8F0',
+  DIVIDER: '#F1F5F9',
+};
+
+const DARK_COLORS = {
+  BACKGROUND: '#0B1120',
+  CARD: '#162032',
+  SURFACE: '#1E2D42',
+  TEXT: '#F8FAFC',
+  TEXT_SECONDARY: '#E2E8F0',
+  TEXT_LIGHT: '#8B9DB8',
+  BORDER: '#253548',
+  DIVIDER: '#1A2536',
+};
+
 // ─── Context ─────────────────────────────────────────────────────────────────
+
+export type DarkModeSetting = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
   theme: ThemeOption;
   setThemeById: (id: string) => void;
+  darkMode: DarkModeSetting;
+  setDarkMode: (mode: DarkModeSetting) => void;
+  isDark: boolean;
 }
 
-const DEFAULT_THEME = THEME_OPTIONS[0]; // Indigo
+const DEFAULT_THEME = THEME_OPTIONS[0];
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: DEFAULT_THEME,
   setThemeById: () => {},
+  darkMode: 'light',
+  setDarkMode: () => {},
+  isDark: false,
 });
 
 export const useTheme = () => useContext(ThemeContext);
 
-// Hook trả về bộ COLORS đã merge với theme — dùng thay COLORS trong mọi screen
 export const useColors = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  const base = isDark ? DARK_COLORS : LIGHT_COLORS;
   return {
     PRIMARY: theme.colors.PRIMARY,
     PRIMARY_LIGHT: theme.colors.PRIMARY_LIGHT,
     PRIMARY_DARK: theme.colors.PRIMARY_DARK,
     ACCENT: '#F59E0B',
     ACCENT_LIGHT: '#FCD34D',
-    BACKGROUND: '#F8FAFC',
-    CARD: '#FFFFFF',
-    SURFACE: '#F1F5F9',
-    TEXT: '#0F172A',
-    TEXT_SECONDARY: '#475569',
-    TEXT_LIGHT: '#94A3B8',
+    ...base,
     SUCCESS: '#10B981',
-    SUCCESS_LIGHT: '#D1FAE5',
+    SUCCESS_LIGHT: isDark ? '#064E3B' : '#D1FAE5',
     WARNING: '#F59E0B',
-    WARNING_LIGHT: '#FEF3C7',
+    WARNING_LIGHT: isDark ? '#78350F' : '#FEF3C7',
     DANGER: '#EF4444',
-    DANGER_LIGHT: '#FEE2E2',
-    BORDER: '#E2E8F0',
-    DIVIDER: '#F1F5F9',
+    DANGER_LIGHT: isDark ? '#7F1D1D' : '#FEE2E2',
     GRADIENT_START: theme.colors.PRIMARY,
     GRADIENT_END: theme.colors.GRADIENT_END,
   };
 };
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const systemScheme = useColorScheme();
   const [theme, setTheme] = useState<ThemeOption>(DEFAULT_THEME);
+  const [darkMode, setDarkModeState] = useState<DarkModeSetting>('light');
+
+  const isDark = darkMode === 'dark' || (darkMode === 'system' && systemScheme === 'dark');
 
   useEffect(() => {
     AsyncStorage.getItem(THEME_KEY).then(id => {
@@ -114,6 +145,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const found = THEME_OPTIONS.find(t => t.id === id);
         if (found) setTheme(found);
       }
+    });
+    AsyncStorage.getItem(DARK_MODE_KEY).then(val => {
+      if (val === 'dark' || val === 'system') setDarkModeState(val);
     });
   }, []);
 
@@ -125,8 +159,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const setDarkMode = (mode: DarkModeSetting) => {
+    setDarkModeState(mode);
+    AsyncStorage.setItem(DARK_MODE_KEY, mode);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, setThemeById }}>
+    <ThemeContext.Provider value={{ theme, setThemeById, darkMode, setDarkMode, isDark }}>
       {children}
     </ThemeContext.Provider>
   );

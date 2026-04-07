@@ -22,6 +22,11 @@ import CustomerDetailScreen from '../screens/CustomerDetailScreen';
 import AboutScreen from '../screens/AboutScreen';
 import TeamManageScreen from '../screens/TeamManageScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import PaywallScreen from '../screens/PaywallScreen';
+import ScriptGeneratorScreen from '../screens/ScriptGeneratorScreen';
+import AIToolsScreen from '../screens/AIToolsScreen';
+import GoalSettingScreen from '../screens/GoalSettingScreen';
+import CommissionScreen from '../screens/CommissionScreen';
 
 export type RootTabParamList = {
   TrangChu: undefined;
@@ -53,6 +58,11 @@ export type RootStackParamList = {
   About: undefined;
   TeamManage: undefined;
   AdminDashboard: undefined;
+  Paywall: undefined;
+  ScriptGenerator: undefined;
+  AITools: { tool: string };
+  GoalSetting: undefined;
+  Commission: undefined;
   LichSu: undefined;
   AiCoachChat: {
     conversationId: string;
@@ -65,16 +75,19 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 
 function MainTabs() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  const bgCard = isDark ? '#1E293B' : COLORS.CARD;
+  const bgBorder = isDark ? '#334155' : COLORS.DIVIDER;
+  const inactiveColor = isDark ? '#64748B' : COLORS.TEXT_LIGHT;
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: theme.colors.PRIMARY,
-        tabBarInactiveTintColor: COLORS.TEXT_LIGHT,
+        tabBarInactiveTintColor: inactiveColor,
         tabBarStyle: {
-          backgroundColor: COLORS.CARD,
-          borderTopColor: COLORS.DIVIDER,
+          backgroundColor: bgCard,
+          borderTopColor: bgBorder,
           borderTopWidth: 0.5,
           height: 70,
           paddingBottom: 12,
@@ -114,32 +127,32 @@ function MainTabs() {
       <Tab.Screen
         name="TrangChu"
         component={HomeScreen}
-        options={{ tabBarLabel: 'Trang Chủ' }}
+        options={{ tabBarLabel: 'Trang Chủ', tabBarAccessibilityLabel: 'Trang chủ' }}
       />
       <Tab.Screen
         name="GhiAm"
         component={RecordScreen}
-        options={{ tabBarLabel: 'Ghi Âm' }}
+        options={{ tabBarLabel: 'Ghi Âm', tabBarAccessibilityLabel: 'Ghi âm buổi tư vấn' }}
       />
       <Tab.Screen
         name="KhachHang"
         component={CustomerListScreen}
-        options={{ tabBarLabel: 'Khách Hàng' }}
+        options={{ tabBarLabel: 'Khách Hàng', tabBarAccessibilityLabel: 'Danh sách khách hàng' }}
       />
       <Tab.Screen
         name="AiCoach"
         component={ConversationListScreen}
-        options={{ tabBarLabel: 'AI Coach' }}
+        options={{ tabBarLabel: 'AI Coach', tabBarAccessibilityLabel: 'AI Coach chat' }}
       />
       <Tab.Screen
         name="DaoTao"
         component={TrainingCenterScreen}
-        options={{ tabBarLabel: 'Đào Tạo' }}
+        options={{ tabBarLabel: 'Đào Tạo', tabBarAccessibilityLabel: 'Đào tạo bài học' }}
       />
       <Tab.Screen
         name="CaiDat"
         component={ProfileScreen}
-        options={{ tabBarLabel: 'Cài Đặt' }}
+        options={{ tabBarLabel: 'Cài Đặt', tabBarAccessibilityLabel: 'Cài đặt tài khoản' }}
       />
     </Tab.Navigator>
   );
@@ -194,6 +207,15 @@ export default function AppNavigator() {
         component={TeamManageScreen}
         options={{ presentation: 'card' }}
       />
+      <Stack.Screen
+        name="Paywall"
+        component={PaywallScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen name="ScriptGenerator" component={ScriptGeneratorScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="AITools" component={AIToolsScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="GoalSetting" component={GoalSettingScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="Commission" component={CommissionScreen} options={{ presentation: 'card' }} />
       <Stack.Screen
         name="AdminDashboard"
         component={AdminDashboardScreen}

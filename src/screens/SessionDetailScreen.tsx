@@ -29,9 +29,9 @@ function getScoreLabel(score: number): string {
   return 'Cần cải thiện';
 }
 
-function SectionCard({ emoji, title, items, backgroundColor, accentColor }: {
+function SectionCard({ emoji, title, items, backgroundColor, accentColor, textColor }: {
   emoji: string; title: string; items: string[];
-  backgroundColor: string; accentColor: string;
+  backgroundColor: string; accentColor: string; textColor?: string;
 }) {
   return (
     <View style={[styles.sectionCard, { backgroundColor }]}>
@@ -42,7 +42,7 @@ function SectionCard({ emoji, title, items, backgroundColor, accentColor }: {
       {items.map((item, i) => (
         <View key={i} style={styles.bulletRow}>
           <View style={[styles.bullet, { backgroundColor: accentColor }]} />
-          <Text style={styles.bulletText}>{item}</Text>
+          <Text style={[styles.bulletText, textColor ? { color: textColor } : undefined]}>{item}</Text>
         </View>
       ))}
     </View>
@@ -125,12 +125,12 @@ export default function SessionDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.topBar, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: C.BACKGROUND }]}>
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle} numberOfLines={1}>{session.customerName}</Text>
+        <Text style={[styles.topBarTitle, { color: C.TEXT }]} numberOfLines={1}>{session.customerName}</Text>
         <TouchableOpacity onPress={() => {
           const lines: string[] = [
             `📊 BÁO CÁO — ${session.customerName}`,
@@ -148,38 +148,38 @@ export default function SessionDetailScreen() {
           if (analysis.nextActions?.length) lines.push('', '✅ LÀM NGAY', ...analysis.nextActions.map(s => `• ${s}`));
           lines.push('', '— Sales Coach App');
           Share.share({ message: lines.join('\n') });
-        }} style={styles.backButton}>
-          <Ionicons name="share-outline" size={20} color={COLORS.TEXT} />
+        }} style={[styles.backButton, { backgroundColor: C.BACKGROUND }]}>
+          <Ionicons name="share-outline" size={20} color={C.TEXT} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Score Hero */}
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: C.CARD }]}>
           <View style={[styles.scoreRing, { borderColor: scoreColor }]}>
             <Text style={[styles.scoreNumber, { color: scoreColor }]}>{session.score.toFixed(1)}</Text>
-            <Text style={styles.scoreOutOf}>/10</Text>
+            <Text style={[styles.scoreOutOf, { color: C.TEXT_LIGHT }]}>/10</Text>
           </View>
           <Text style={[styles.scoreLabel, { color: scoreColor }]}>{getScoreLabel(session.score)}</Text>
-          <Text style={styles.heroCustomer}>{session.customerName}</Text>
+          <Text style={[styles.heroCustomer, { color: C.TEXT }]}>{session.customerName}</Text>
           {session.companyName ? (
-            <Text style={styles.heroCompany}>{session.companyName}</Text>
+            <Text style={[styles.heroCompany, { color: C.TEXT_LIGHT }]}>{session.companyName}</Text>
           ) : null}
           <View style={styles.heroMeta}>
-            <Ionicons name="calendar-outline" size={13} color={COLORS.TEXT_LIGHT} />
-            <Text style={styles.heroMetaText}>{session.date}</Text>
-            <View style={styles.heroDivider} />
-            <Ionicons name="time-outline" size={13} color={COLORS.TEXT_LIGHT} />
-            <Text style={styles.heroMetaText}>{formatTime(session.duration)}</Text>
+            <Ionicons name="calendar-outline" size={13} color={C.TEXT_LIGHT} />
+            <Text style={[styles.heroMetaText, { color: C.TEXT_LIGHT }]}>{session.date}</Text>
+            <View style={[styles.heroDivider, { backgroundColor: C.BORDER }]} />
+            <Ionicons name="time-outline" size={13} color={C.TEXT_LIGHT} />
+            <Text style={[styles.heroMetaText, { color: C.TEXT_LIGHT }]}>{formatTime(session.duration)}</Text>
           </View>
         </View>
 
         {/* Audio Player */}
         {session.audioUri && (
-          <View style={[styles.sectionCard, { backgroundColor: COLORS.CARD }]}>
+          <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionEmoji}>🎧</Text>
-              <Text style={[styles.sectionTitle, { color: COLORS.TEXT }]}>Nghe lại</Text>
+              <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Nghe lại</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <TouchableOpacity
@@ -199,7 +199,7 @@ export default function SessionDetailScreen() {
                     handleSeek(Math.max(0, Math.min(1, locationX / width)));
                   }}
                 >
-                  <View style={{ height: 4, backgroundColor: COLORS.BORDER, borderRadius: 2 }}>
+                  <View style={{ height: 4, backgroundColor: C.BORDER, borderRadius: 2 }}>
                     <View style={{
                       height: 4, borderRadius: 2, backgroundColor: C.PRIMARY,
                       width: audioDuration > 0 ? `${(position / audioDuration) * 100}%` : '0%',
@@ -207,8 +207,8 @@ export default function SessionDetailScreen() {
                   </View>
                 </TouchableOpacity>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                  <Text style={{ fontSize: 11, color: COLORS.TEXT_LIGHT }}>{formatMs(position)}</Text>
-                  <Text style={{ fontSize: 11, color: COLORS.TEXT_LIGHT }}>{formatMs(audioDuration)}</Text>
+                  <Text style={{ fontSize: 11, color: C.TEXT_LIGHT }}>{formatMs(position)}</Text>
+                  <Text style={{ fontSize: 11, color: C.TEXT_LIGHT }}>{formatMs(audioDuration)}</Text>
                 </View>
               </View>
             </View>
@@ -216,8 +216,8 @@ export default function SessionDetailScreen() {
         )}
 
         {/* Outcome */}
-        <View style={styles.outcomeCard}>
-          <Text style={styles.outcomeTitle}>Kết quả deal</Text>
+        <View style={[styles.outcomeCard, { backgroundColor: C.CARD }]}>
+          <Text style={[styles.outcomeTitle, { color: C.TEXT }]}>Kết quả deal</Text>
           <View style={styles.outcomeRow}>
             {([
               { value: 'won' as SessionOutcome, label: 'Chốt', icon: 'checkmark-circle', color: '#10B981', bg: '#ECFDF5' },
@@ -254,71 +254,71 @@ export default function SessionDetailScreen() {
         </View>
 
         <SectionCard emoji="📋" title="Tóm tắt" items={analysis.summary}
-          backgroundColor={COLORS.CARD} accentColor={COLORS.PRIMARY} />
+          backgroundColor={C.CARD} accentColor={C.PRIMARY} textColor={C.TEXT} />
 
         {/* Communication Skills */}
         {analysis.communication && (
-          <View style={[styles.sectionCard, { backgroundColor: '#F5F3FF' }]}>
+          <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionEmoji}>🎙️</Text>
               <Text style={[styles.sectionTitle, { color: '#7C3AED' }]}>Tác phong & Giao tiếp</Text>
             </View>
             <View style={{ paddingVertical: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.TEXT_SECONDARY, marginBottom: 4 }}>Giọng nói & thái độ</Text>
-              <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 20 }}>{analysis.communication.tone}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: C.TEXT_SECONDARY, marginBottom: 4 }}>Giọng nói & thái độ</Text>
+              <Text style={{ fontSize: 13, color: C.TEXT, lineHeight: 20 }}>{analysis.communication.tone}</Text>
             </View>
-            <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.06)' }} />
+            <View style={{ height: 1, backgroundColor: C.BORDER }} />
             <View style={{ paddingVertical: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.TEXT_SECONDARY, marginBottom: 4 }}>Kỹ năng lắng nghe</Text>
-              <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 20 }}>{analysis.communication.listening}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: C.TEXT_SECONDARY, marginBottom: 4 }}>Kỹ năng lắng nghe</Text>
+              <Text style={{ fontSize: 13, color: C.TEXT, lineHeight: 20 }}>{analysis.communication.listening}</Text>
             </View>
-            <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.06)' }} />
+            <View style={{ height: 1, backgroundColor: C.BORDER }} />
             <View style={{ paddingVertical: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.TEXT_SECONDARY, marginBottom: 4 }}>Kỹ năng đặt câu hỏi</Text>
-              <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 20 }}>{analysis.communication.questioning}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: C.TEXT_SECONDARY, marginBottom: 4 }}>Kỹ năng đặt câu hỏi</Text>
+              <Text style={{ fontSize: 13, color: C.TEXT, lineHeight: 20 }}>{analysis.communication.questioning}</Text>
             </View>
           </View>
         )}
 
         <SectionCard emoji="💪" title="Điểm mạnh" items={analysis.strengths}
-          backgroundColor="#F0FFF4" accentColor={COLORS.SUCCESS} />
+          backgroundColor={C.CARD} accentColor={COLORS.SUCCESS} textColor={C.TEXT} />
         <SectionCard emoji="⚠️" title="Cần cải thiện" items={analysis.improvements}
-          backgroundColor="#FFFAF0" accentColor={COLORS.WARNING} />
+          backgroundColor={C.CARD} accentColor={COLORS.WARNING} textColor={C.TEXT} />
 
         {/* Scenario */}
         {analysis.scenario && (
-          <View style={[styles.sectionCard, { backgroundColor: '#FFF5F5' }]}>
+          <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionEmoji}>🎬</Text>
               <Text style={[styles.sectionTitle, { color: '#E53E3E' }]}>Kịch bản cải thiện</Text>
             </View>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.TEXT_SECONDARY, marginBottom: 4, marginTop: 4 }}>Tình huống:</Text>
-            <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 21, marginBottom: 8 }}>{analysis.scenario.situation}</Text>
-            <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.06)' }} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: C.TEXT_SECONDARY, marginBottom: 4, marginTop: 4 }}>Tình huống:</Text>
+            <Text style={{ fontSize: 13, color: C.TEXT, lineHeight: 21, marginBottom: 8 }}>{analysis.scenario.situation}</Text>
+            <View style={{ height: 1, backgroundColor: C.BORDER }} />
             <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.DANGER, marginBottom: 4, marginTop: 8 }}>Sales đã làm:</Text>
-            <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 21, marginBottom: 8 }}>{analysis.scenario.wrong}</Text>
-            <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.06)' }} />
+            <Text style={{ fontSize: 13, color: C.TEXT, lineHeight: 21, marginBottom: 8 }}>{analysis.scenario.wrong}</Text>
+            <View style={{ height: 1, backgroundColor: C.BORDER }} />
             <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.SUCCESS, marginBottom: 4, marginTop: 8 }}>Nên làm thay:</Text>
-            <Text style={{ fontSize: 13, color: COLORS.TEXT, lineHeight: 21, fontStyle: 'italic' }}>{analysis.scenario.correct}</Text>
+            <Text style={{ fontSize: 13, color: C.TEXT, lineHeight: 21, fontStyle: 'italic' }}>{analysis.scenario.correct}</Text>
           </View>
         )}
 
         {/* Next Actions */}
         {analysis.nextActions && analysis.nextActions.length > 0 && (
           <SectionCard emoji="✅" title="Việc cần làm ngay" items={analysis.nextActions}
-            backgroundColor="#F0FFF4" accentColor="#2B6CB0" />
+            backgroundColor={C.CARD} accentColor="#2B6CB0" textColor={C.TEXT} />
         )}
 
         <SectionCard emoji="🎯" title="Chiến lược lần sau" items={analysis.strategies}
-          backgroundColor="#EBF8FF" accentColor={COLORS.PRIMARY} />
+          backgroundColor={C.CARD} accentColor={C.PRIMARY} textColor={C.TEXT} />
 
         {analysis.transcript ? (
-          <View style={[styles.sectionCard, { backgroundColor: COLORS.CARD }]}>
+          <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionEmoji}>📝</Text>
-              <Text style={[styles.sectionTitle, { color: COLORS.TEXT }]}>Transcript</Text>
+              <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Transcript</Text>
             </View>
-            <Text style={styles.transcriptText}>{analysis.transcript}</Text>
+            <Text style={[styles.transcriptText, { color: C.TEXT }]}>{analysis.transcript}</Text>
           </View>
         ) : null}
 

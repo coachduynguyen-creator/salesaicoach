@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { reportCrash } from '../services/crashReportService';
 
 interface Props {
   children: ReactNode;
@@ -22,8 +23,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // TODO: Log to Sentry when integrated
-    console.warn('App crash caught:', error.message);
+    reportCrash(error, 'ErrorBoundary');
   }
 
   handleRetry = () => {

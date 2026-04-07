@@ -46,12 +46,12 @@ export default function AboutScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.topBar}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.topBar, { backgroundColor: C.CARD, borderBottomColor: C.BORDER }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Giới thiệu</Text>
+        <Text style={[styles.topBarTitle, { color: C.TEXT }]}>Giới thiệu</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -68,14 +68,14 @@ export default function AboutScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.authorName}>COACH DUY NGUYỄN</Text>
+          <Text style={[styles.authorName, { color: C.TEXT }]}>COACH DUY NGUYỄN</Text>
           <Text style={styles.authorTitle}>Sales Master Trainer & Mentor</Text>
           <Text style={styles.authorTagline}>Sáng lập phương pháp "Bán bằng Vị thế"</Text>
         </View>
 
         {/* ── Credentials ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Thành tựu</Text>
+        <View style={[styles.card, { backgroundColor: C.CARD }]}>
+          <Text style={[styles.cardTitle, { color: C.TEXT }]}>Thành tựu</Text>
 
           <View style={styles.credRow}>
             <View style={[styles.credIcon, { backgroundColor: '#FEF3C7' }]}>
@@ -127,8 +127,8 @@ export default function AboutScreen() {
         </View>
 
         {/* ── Social Links ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Kết nối</Text>
+        <View style={[styles.card, { backgroundColor: C.CARD }]}>
+          <Text style={[styles.cardTitle, { color: C.TEXT }]}>Kết nối</Text>
 
           {SOCIAL_LINKS.map(link => (
             <TouchableOpacity
@@ -165,8 +165,8 @@ export default function AboutScreen() {
         </View>
 
         {/* ── About App ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Về ứng dụng</Text>
+        <View style={[styles.card, { backgroundColor: C.CARD }]}>
+          <Text style={[styles.cardTitle, { color: C.TEXT }]}>Về ứng dụng</Text>
           <Text style={styles.bodyText}>
             Sales Coach App là ứng dụng đào tạo bán hàng theo phương pháp THE TRUSTED ADVISOR, được phát triển bởi Coach Duy Nguyễn.
           </Text>
@@ -176,8 +176,8 @@ export default function AboutScreen() {
         </View>
 
         {/* ── Copyright ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Bản quyền</Text>
+        <View style={[styles.card, { backgroundColor: C.CARD }]}>
+          <Text style={[styles.cardTitle, { color: C.TEXT }]}>Bản quyền</Text>
           <Text style={styles.bodyText}>
             © 2024 Coach Duy Nguyễn. Mọi quyền được bảo lưu.
           </Text>
@@ -190,8 +190,8 @@ export default function AboutScreen() {
         </View>
 
         {/* ── Legal ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Điều khoản pháp lý</Text>
+        <View style={[styles.card, { backgroundColor: C.CARD }]}>
+          <Text style={[styles.cardTitle, { color: C.TEXT }]}>Điều khoản pháp lý</Text>
 
           <Text style={styles.legalHeading}>Điều khoản sử dụng</Text>
           <Text style={styles.legalText}>
@@ -226,8 +226,8 @@ export default function AboutScreen() {
         </View>
 
         {/* Links */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Tài liệu pháp lý</Text>
+        <View style={[styles.card, { backgroundColor: C.CARD }]}>
+          <Text style={[styles.cardTitle, { color: C.TEXT }]}>Tài liệu pháp lý</Text>
           <TouchableOpacity style={styles.socialRow} onPress={() => openLink('https://coachduynguyen-creator.github.io/salesaicoach/privacy.html')}>
             <View style={[styles.socialIcon, { backgroundColor: '#EDE9FE' }]}>
               <Ionicons name="shield-checkmark" size={20} color="#8B5CF6" />

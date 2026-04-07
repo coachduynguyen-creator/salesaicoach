@@ -6,10 +6,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { useColors } from '../contexts/ThemeContext';
 import { signUp, signIn, resetPassword } from '../services/authService';
 import { useAlert } from '../contexts/AlertContext';
 
 export default function AuthScreen() {
+  const C = useColors();
   const { showAlert } = useAlert();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -17,6 +19,7 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [experience, setExperience] = useState<string>('');
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -67,7 +70,7 @@ export default function AuthScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.BACKGROUND }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
@@ -76,31 +79,58 @@ export default function AuthScreen() {
             <Text style={styles.subtitle}>Phương pháp Bán bằng Vị thế</Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>
+          <View style={[styles.card, { backgroundColor: C.CARD }]}>
+            <Text style={[styles.cardTitle, { color: C.TEXT }]}>
               {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
             </Text>
 
             {mode === 'signup' && (
-              <View style={styles.inputWrap}>
-                <Ionicons name="person-outline" size={18} color={COLORS.TEXT_LIGHT} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Họ và tên"
-                  placeholderTextColor={COLORS.TEXT_LIGHT}
-                  value={fullName}
-                  onChangeText={setFullName}
-                  autoCapitalize="words"
-                />
-              </View>
+              <>
+                <View style={[styles.inputWrap, { backgroundColor: C.SURFACE, borderColor: C.BORDER }]}>
+                  <Ionicons name="person-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Họ và tên"
+                    placeholderTextColor={C.TEXT_LIGHT}
+                    value={fullName}
+                    onChangeText={setFullName}
+                    autoCapitalize="words"
+                  />
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: C.TEXT_SECONDARY, marginBottom: 6 }}>Kinh nghiệm bán hàng</Text>
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
+                  {[
+                    { key: 'new', label: 'Mới bắt đầu', icon: 'leaf-outline' },
+                    { key: 'mid', label: '1-3 năm', icon: 'trending-up-outline' },
+                    { key: 'senior', label: '3+ năm', icon: 'trophy-outline' },
+                    { key: 'manager', label: 'Quản lý', icon: 'people-outline' },
+                  ].map(opt => (
+                    <TouchableOpacity
+                      key={opt.key}
+                      style={[{
+                        flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+                        borderWidth: 1, gap: 2,
+                        borderColor: experience === opt.key ? '#1A7F64' : C.BORDER,
+                        backgroundColor: experience === opt.key ? '#1A7F6410' : 'transparent',
+                      }]}
+                      onPress={() => setExperience(opt.key)}
+                    >
+                      <Ionicons name={opt.icon as any} size={16} color={experience === opt.key ? '#1A7F64' : COLORS.TEXT_LIGHT} />
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: experience === opt.key ? '#1A7F64' : C.TEXT_LIGHT, textAlign: 'center' }}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
             )}
 
             <View style={styles.inputWrap}>
-              <Ionicons name="mail-outline" size={18} color={COLORS.TEXT_LIGHT} style={styles.inputIcon} />
+              <Ionicons name="mail-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Email"
-                placeholderTextColor={COLORS.TEXT_LIGHT}
+                placeholderTextColor={C.TEXT_LIGHT}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -109,11 +139,11 @@ export default function AuthScreen() {
             </View>
 
             <View style={styles.inputWrap}>
-              <Ionicons name="lock-closed-outline" size={18} color={COLORS.TEXT_LIGHT} style={styles.inputIcon} />
+              <Ionicons name="lock-closed-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="Mật khẩu"
-                placeholderTextColor={COLORS.TEXT_LIGHT}
+                placeholderTextColor={C.TEXT_LIGHT}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -169,9 +199,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F0F4F3' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   hero: { alignItems: 'center', marginBottom: 32 },
-  appName: { fontSize: 32, fontWeight: '800', color: '#1A7F64' },
-  tagline: { fontSize: 14, fontWeight: '700', color: '#1A7F64', letterSpacing: 2, marginTop: 4 },
-  subtitle: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 6 },
+  appName: { fontSize: 36, fontWeight: '900', color: '#1A7F64', letterSpacing: -0.5 },
+  tagline: { fontSize: 12, fontWeight: '800', color: '#1A7F64', letterSpacing: 3, marginTop: 6, opacity: 0.7 },
+  subtitle: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 8 },
   card: {
     backgroundColor: '#fff', borderRadius: 20, padding: 24,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
@@ -185,7 +215,7 @@ const styles = StyleSheet.create({
     marginBottom: 12, paddingHorizontal: 12,
   },
   inputIcon: { marginRight: 8 },
-  input: { flex: 1, fontSize: 15, color: COLORS.TEXT, paddingVertical: 14 },
+  input: { flex: 1, fontSize: 15, paddingVertical: 14 },
   submitBtn: {
     borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8,
   },
@@ -193,7 +223,7 @@ const styles = StyleSheet.create({
   linkBtn: { alignItems: 'center', paddingVertical: 10 },
   linkText: { fontSize: 13, color: '#1A7F64', fontWeight: '500' },
   divider: { height: 1, backgroundColor: COLORS.BORDER, marginVertical: 12 },
-  switchText: { fontSize: 14, color: COLORS.TEXT_SECONDARY, textAlign: 'center' },
+  switchText: { fontSize: 14, textAlign: 'center' },
   switchBold: { color: '#1A7F64', fontWeight: '700' },
   footer: { textAlign: 'center', fontSize: 12, color: COLORS.TEXT_LIGHT, marginTop: 24 },
 });

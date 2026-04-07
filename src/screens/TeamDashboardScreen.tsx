@@ -99,7 +99,7 @@ export default function TeamDashboardScreen() {
 
   const renderMember = ({ item }: { item: TeamMember }) => (
     <TouchableOpacity
-      style={styles.memberRow}
+      style={[styles.memberRow, { backgroundColor: C.CARD }]}
       onLongPress={() => handleDeleteMember(item)}
       activeOpacity={0.7}
     >
@@ -107,23 +107,23 @@ export default function TeamDashboardScreen() {
         <Ionicons name="person" size={20} color={C.PRIMARY} />
       </View>
       <View style={styles.memberInfo}>
-        <Text style={styles.memberName}>{item.name}</Text>
-        <Text style={styles.memberMeta}>{item.role}  ·  Tham gia: {formatDate(item.joinedAt)}</Text>
+        <Text style={[styles.memberName, { color: C.TEXT }]}>{item.name}</Text>
+        <Text style={[styles.memberMeta, { color: C.TEXT_LIGHT }]}>{item.role}  ·  Tham gia: {formatDate(item.joinedAt)}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_LIGHT} />
+      <Ionicons name="chevron-forward" size={16} color={C.TEXT_LIGHT} />
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.TEXT} />
+      <View style={[styles.header, { backgroundColor: C.BACKGROUND }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: C.CARD }]}>
+          <Ionicons name="arrow-back" size={22} color={C.TEXT} />
         </TouchableOpacity>
         <View>
-          <Text style={styles.headerTitle}>Quản lý Team</Text>
-          <Text style={styles.headerSubtitle}>Theo dõi hiệu suất đội ngũ</Text>
+          <Text style={[styles.headerTitle, { color: C.TEXT }]}>Quản lý Team</Text>
+          <Text style={[styles.headerSubtitle, { color: C.TEXT_LIGHT }]}>Theo dõi hiệu suất đội ngũ</Text>
         </View>
       </View>
 
@@ -164,21 +164,21 @@ export default function TeamDashboardScreen() {
             </TouchableOpacity>
 
             {/* Member List Header */}
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
               <View style={styles.sectionTitleRow}>
                 <Ionicons name="people-outline" size={18} color={C.PRIMARY} />
-                <Text style={styles.sectionTitle}>Danh sách thành viên</Text>
+                <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Danh sách thành viên</Text>
               </View>
               {members.length === 0 && (
-                <Text style={styles.emptyText}>Chưa có thành viên nào. Nhấn nút trên để thêm.</Text>
+                <Text style={[styles.emptyText, { color: C.TEXT_LIGHT }]}>Chưa có thành viên nào. Nhấn nút trên để thêm.</Text>
               )}
             </View>
           </>
         }
         ListFooterComponent={
           <View style={styles.noteBanner}>
-            <Ionicons name="information-circle-outline" size={16} color={COLORS.TEXT_LIGHT} />
-            <Text style={styles.noteText}>
+            <Ionicons name="information-circle-outline" size={16} color={C.TEXT_LIGHT} />
+            <Text style={[styles.noteText, { color: C.TEXT_LIGHT }]}>
               Nhấn giữ thành viên để xóa
             </Text>
           </View>
@@ -188,29 +188,29 @@ export default function TeamDashboardScreen() {
       {/* Add Member Modal — hoạt động trên cả iOS và Android */}
       <Modal visible={showAddModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Thêm thành viên</Text>
+          <View style={[styles.modalContent, { backgroundColor: C.CARD }]}>
+            <Text style={[styles.modalTitle, { color: C.TEXT }]}>Thêm thành viên</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: C.BACKGROUND, color: C.TEXT, borderColor: C.BORDER }]}
               placeholder="Tên thành viên"
-              placeholderTextColor={COLORS.TEXT_LIGHT}
+              placeholderTextColor={C.TEXT_LIGHT}
               value={newName}
               onChangeText={setNewName}
               autoFocus
             />
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: C.BACKGROUND, color: C.TEXT, borderColor: C.BORDER }]}
               placeholder="Vai trò (VD: Sales, Leader, Manager)"
-              placeholderTextColor={COLORS.TEXT_LIGHT}
+              placeholderTextColor={C.TEXT_LIGHT}
               value={newRole}
               onChangeText={setNewRole}
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalCancelBtn}
+                style={[styles.modalCancelBtn, { borderColor: C.BORDER }]}
                 onPress={() => setShowAddModal(false)}
               >
-                <Text style={styles.modalCancelText}>Hủy</Text>
+                <Text style={[styles.modalCancelText, { color: C.TEXT_LIGHT }]}>Hủy</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSaveBtn, { backgroundColor: C.PRIMARY }, !newName.trim() && { opacity: 0.5 }]}

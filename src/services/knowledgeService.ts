@@ -51,7 +51,7 @@ export const loadKnowledgeBase = async (): Promise<KnowledgeResult> => {
         .download(fileName);
 
       if (error) {
-        console.warn(`Không tải được ${fileName}:`, error.message);
+        // Silent: file not found is expected during setup
         continue;
       }
 

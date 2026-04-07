@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sales Coach App Icon Generator</title>
+<style>
+  body { background: #1a1a2e; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 30px; font-family: -apple-system, sans-serif; color: #fff; }
+  canvas { border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .row { display: flex; gap: 20px; align-items: flex-end; }
+  .label { font-size: 12px; color: #94A3B8; text-align: center; margin-top: 8px; }
+  button { padding: 12px 24px; background: #1A7F64; border: none; border-radius: 10px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; margin: 5px; }
+  button:hover { background: #22A57E; }
+</style>
+</head>
+<body>
+<h2>Sales Coach Icon Generator</h2>
+<div class="row">
+  <div>
+    <canvas id="icon" width="1024" height="1024"></canvas>
+    <div class="label">icon.png (1024x1024)</div>
+  </div>
+  <div>
+    <canvas id="adaptive" width="1024" height="1024"></canvas>
+    <div class="label">adaptive-icon.png</div>
+  </div>
+  <div>
+    <canvas id="splash" width="1024" height="1024"></canvas>
+    <div class="label">splash-icon.png</div>
+  </div>
+</div>
+<div>
+  <button onclick="downloadAll()">Download tất cả</button>
+</div>
+
+<script>
+const GREEN1 = '#0F5C47';
+const GREEN2 = '#1A7F64';
+const GREEN3 = '#22A57E';
+
+function drawGradientBg(ctx, w, h, radius) {
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, GREEN1);
+  grad.addColorStop(0.5, GREEN2);
+  grad.addColorStop(1, GREEN3);
+
+  if (radius > 0) {
+    ctx.beginPath();
+    ctx.roundRect(0, 0, w, h, radius);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  } else {
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }
+}
+
+function drawGlow(ctx, cx, cy, radius, color, alpha) {
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  glow.addColorStop(0, color.replace(')', `,${alpha})`).replace('rgb', 'rgba'));
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+}
+
+function drawIcon(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = 1024, h = 1024;
+
+  // Background gradient with rounded corners
+  drawGradientBg(ctx, w, h, 220);
+
+  // Subtle glow top-right
+  drawGlow(ctx, w * 0.75, h * 0.2, 400, 'rgb(34,165,126)', 0.15);
+
+  // Subtle grid pattern
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < w; i += 60) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
+  }
+
+  // "SC" text with shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 380px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SC', w/2, h * 0.42);
+
+  // Reset shadow
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  // Divider line
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(w * 0.25, h * 0.64);
+  ctx.lineTo(w * 0.75, h * 0.64);
+  ctx.stroke();
+
+  // "SALES COACH" text
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = '800 64px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.letterSpacing = '8px';
+  ctx.fillText('SALES COACH', w/2, h * 0.72);
+
+  // Tagline
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '500 36px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.fillText('AI Coaching | Coach Duy Nguyễn', w/2, h * 0.82);
+}
+
+function drawAdaptive(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = 1024, h = 1024;
+
+  // No rounded corners for adaptive icon
+  drawGradientBg(ctx, w, h, 0);
+  drawGlow(ctx, w * 0.75, h * 0.2, 400, 'rgb(34,165,126)', 0.15);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < w; i += 60) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
+  }
+
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 340px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SC', w/2, h * 0.42);
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(w * 0.25, h * 0.62);
+  ctx.lineTo(w * 0.75, h * 0.62);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.font = '800 58px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.fillText('SALES COACH', w/2, h * 0.71);
+}
+
+function drawSplash(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = 1024, h = 1024;
+
+  drawGradientBg(ctx, w, h, 0);
+  drawGlow(ctx, w * 0.7, h * 0.15, 500, 'rgb(34,165,126)', 0.12);
+
+  ctx.shadowColor = 'rgba(0,0,0,0.2)';
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 240px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SC', w/2, h * 0.38);
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = '800 48px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.fillText('SALES COACH', w/2, h * 0.56);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '500 28px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.fillText('AI Coaching cho Sales', w/2, h * 0.64);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.font = '500 24px -apple-system, "SF Pro Display", Arial, sans-serif';
+  ctx.fillText('by Coach Duy Nguyễn', w/2, h * 0.70);
+}
+
+// Render
+drawIcon(document.getElementById('icon'));
+drawAdaptive(document.getElementById('adaptive'));
+drawSplash(document.getElementById('splash'));
+
+function download(id, filename) {
+  const a = document.createElement('a');
+  a.download = filename;
+  a.href = document.getElementById(id).toDataURL('image/png');
+  a.click();
+}
+
+function downloadAll() {
+  download('icon', 'icon.png');
+  setTimeout(() => download('adaptive', 'adaptive-icon.png'), 500);
+  setTimeout(() => download('splash', 'splash-icon.png'), 1000);
+}
+</script>
+</body>
+</html>

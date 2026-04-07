@@ -100,7 +100,7 @@ export default function ConversationListScreen() {
 
   const renderItem = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: C.CARD }]}
       onPress={() => navigation.navigate('AiCoachChat', { conversationId: item.id, title: item.title })}
       onLongPress={() => handleDelete(item.id, item.title)}
     >
@@ -109,26 +109,26 @@ export default function ConversationListScreen() {
       </View>
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.cardTime}>{formatDate(item.updatedAt)}</Text>
+          <Text style={[styles.cardTitle, { color: C.TEXT }]} numberOfLines={1}>{item.title}</Text>
+          <Text style={[styles.cardTime, { color: C.TEXT_LIGHT }]}>{formatDate(item.updatedAt)}</Text>
         </View>
-        <Text style={styles.cardPreview} numberOfLines={2}>
+        <Text style={[styles.cardPreview, { color: C.TEXT_SECONDARY }]} numberOfLines={2}>
           {item.preview || 'Cuộc trò chuyện mới'}
         </Text>
-        <Text style={styles.cardMsgCount}>
+        <Text style={[styles.cardMsgCount, { color: C.TEXT_LIGHT }]}>
           {item.messages.length} tin nhắn
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={COLORS.TEXT_LIGHT} />
+      <Ionicons name="chevron-forward" size={18} color={C.TEXT_LIGHT} />
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: C.BACKGROUND }]}>
         <View>
-          <Text style={styles.headerTitle}>AI Sales Coach</Text>
-          <Text style={styles.headerSub}>Lịch sử trò chuyện với AI Coach</Text>
+          <Text style={[styles.headerTitle, { color: C.TEXT }]}>AI Sales Coach</Text>
+          <Text style={[styles.headerSub, { color: C.TEXT_LIGHT }]}>Lịch sử trò chuyện với AI Coach</Text>
         </View>
       </View>
 
@@ -141,9 +141,9 @@ export default function ConversationListScreen() {
       {/* Conversation List */}
       {conversations.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="chatbubbles-outline" size={56} color={COLORS.BORDER} />
-          <Text style={styles.emptyTitle}>Chưa có cuộc trò chuyện nào</Text>
-          <Text style={styles.emptySub}>
+          <Ionicons name="chatbubbles-outline" size={56} color={C.BORDER} />
+          <Text style={[styles.emptyTitle, { color: C.TEXT }]}>Chưa có cuộc trò chuyện nào</Text>
+          <Text style={[styles.emptySub, { color: C.TEXT_LIGHT }]}>
             Tạo cuộc trò chuyện mới để trao đổi với AI Coach về khách hàng hoặc tình huống bán hàng.
           </Text>
         </View>
@@ -161,19 +161,19 @@ export default function ConversationListScreen() {
       {/* New Conversation Modal — chọn khách hàng */}
       <Modal visible={showNewModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Cuộc trò chuyện mới</Text>
+          <View style={[styles.modalContent, { backgroundColor: C.CARD }]}>
+            <Text style={[styles.modalTitle, { color: C.TEXT }]}>Cuộc trò chuyện mới</Text>
 
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: C.BACKGROUND, color: C.TEXT, borderColor: C.BORDER }]}
               placeholder="Chủ đề (tùy chọn)"
-              placeholderTextColor={COLORS.TEXT_LIGHT}
+              placeholderTextColor={C.TEXT_LIGHT}
               value={newTitle}
               onChangeText={setNewTitle}
             />
 
             {/* Customer picker */}
-            <Text style={styles.pickerLabel}>Chọn khách hàng để AI có sẵn dữ liệu:</Text>
+            <Text style={[styles.pickerLabel, { color: C.TEXT_SECONDARY }]}>Chọn khách hàng để AI có sẵn dữ liệu:</Text>
             {customers.length > 0 ? (
               <FlatList
                 data={[{ id: null, name: 'Không chọn — hỏi chung', company: '', stage: '' } as any, ...customers]}
@@ -183,20 +183,20 @@ export default function ConversationListScreen() {
                   const isSelected = item.id === selectedCustomerId;
                   return (
                     <TouchableOpacity
-                      style={[styles.customerOption, isSelected && { backgroundColor: C.PRIMARY + '12', borderColor: C.PRIMARY }]}
+                      style={[styles.customerOption, { borderColor: C.BORDER }, isSelected && { backgroundColor: C.PRIMARY + '12', borderColor: C.PRIMARY }]}
                       onPress={() => setSelectedCustomerId(item.id)}
                     >
-                      <View style={[styles.customerAvatar, { backgroundColor: item.id ? C.PRIMARY + '14' : COLORS.SURFACE }]}>
+                      <View style={[styles.customerAvatar, { backgroundColor: item.id ? C.PRIMARY + '14' : C.SURFACE }]}>
                         <Ionicons
                           name={item.id ? 'person' : 'globe-outline'}
                           size={16}
-                          color={item.id ? C.PRIMARY : COLORS.TEXT_LIGHT}
+                          color={item.id ? C.PRIMARY : C.TEXT_LIGHT}
                         />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.customerName, isSelected && { color: C.PRIMARY }]}>{item.name}</Text>
-                        {item.company ? <Text style={styles.customerCompany}>{item.company}</Text> : null}
-                        {item.stage ? <Text style={styles.customerStage}>{item.stage}</Text> : null}
+                        <Text style={[styles.customerName, { color: C.TEXT }, isSelected && { color: C.PRIMARY }]}>{item.name}</Text>
+                        {item.company ? <Text style={[styles.customerCompany, { color: C.TEXT_LIGHT }]}>{item.company}</Text> : null}
+                        {item.stage ? <Text style={[styles.customerStage, { color: C.TEXT_LIGHT }]}>{item.stage}</Text> : null}
                       </View>
                       {isSelected && <Ionicons name="checkmark-circle" size={20} color={C.PRIMARY} />}
                     </TouchableOpacity>
@@ -204,9 +204,9 @@ export default function ConversationListScreen() {
                 }}
               />
             ) : (
-              <View style={styles.noCustomerHint}>
-                <Ionicons name="information-circle-outline" size={18} color={COLORS.TEXT_LIGHT} />
-                <Text style={styles.noCustomerText}>
+              <View style={[styles.noCustomerHint, { backgroundColor: C.BACKGROUND }]}>
+                <Ionicons name="information-circle-outline" size={18} color={C.TEXT_LIGHT} />
+                <Text style={[styles.noCustomerText, { color: C.TEXT_LIGHT }]}>
                   Chưa có khách hàng. Ghi âm cuộc gọi và nhập tên khách → AI sẽ tự tạo hồ sơ khách hàng.
                 </Text>
               </View>
@@ -214,10 +214,10 @@ export default function ConversationListScreen() {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalCancelBtn}
+                style={[styles.modalCancelBtn, { borderColor: C.BORDER }]}
                 onPress={() => { setShowNewModal(false); setNewTitle(''); setSelectedCustomerId(null); }}
               >
-                <Text style={styles.modalCancelText}>Hủy</Text>
+                <Text style={[styles.modalCancelText, { color: C.TEXT_LIGHT }]}>Hủy</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSaveBtn, { backgroundColor: C.PRIMARY }]}
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   },
   customerName: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT },
   customerCompany: { fontSize: 11, color: COLORS.TEXT_LIGHT },
-  customerStage: { fontSize: 10, color: COLORS.TEXT_LIGHT, fontStyle: 'italic' },
+  customerStage: { fontSize: 11, color: COLORS.TEXT_LIGHT, fontStyle: 'italic' },
   noCustomerHint: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
     backgroundColor: COLORS.BACKGROUND, borderRadius: 10, padding: 12,

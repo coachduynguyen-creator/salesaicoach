@@ -5,11 +5,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { useColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useAlert } from '../contexts/AlertContext';
 import { createTeam, joinTeamByCode, checkPendingInvitations, acceptInvitation } from '../services/authService';
 
 export default function TeamSetupScreen() {
+  const C = useColors();
   const { refreshProfile, profile } = useAuth();
   const { showAlert } = useAlert();
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -67,11 +69,11 @@ export default function TeamSetupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.BACKGROUND }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.hero}>
           <Ionicons name="people" size={64} color="#1A7F64" />
-          <Text style={styles.welcome}>Chào {profile?.full_name || 'bạn'}!</Text>
+          <Text style={[styles.welcome, { color: C.TEXT }]}>Chào {profile?.full_name || 'bạn'}!</Text>
           <Text style={styles.subtitle}>Nhập mã mời từ quản lý để tham gia team</Text>
         </View>
 
