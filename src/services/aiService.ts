@@ -1,9 +1,40 @@
 // ─── Config ─────────────────────────────────────────────────────────────────
 import { Platform } from 'react-native';
 import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from '../config/defaultKeys';
+import { logAIUsage, checkAIQuota } from './databaseService';
 
 let OPENAI_API_KEY = DEFAULT_OPENAI_KEY;    // Dùng cho Whisper (speech-to-text)
 let CLAUDE_API_KEY = DEFAULT_CLAUDE_KEY;    // Dùng cho phân tích coaching
+
+// Sync context cho AI usage logging
+let _aiUserId: string | null = null;
+let _aiTeamId: string | null = null;
+
+export const setAISyncContext = (userId: string | null, teamId: string | null) => {
+  _aiUserId = userId;
+  _aiTeamId = teamId;
+};
+
+const checkQuota = async () => {
+  if (!_aiUserId || !_aiTeamId) return;
+  const { allowed, used, limit } = await checkAIQuota(_aiUserId, _aiTeamId);
+  if (!allowed) {
+    throw new Error(`Bạn đã sử dụng hết ${limit} lượt AI trong tháng này (đã dùng ${used}). Liên hệ admin để tăng hạn mức.`);
+  }
+};
+
+const logUsage = (action: string, model: string, durationMs: number, inputTokens = 0, outputTokens = 0) => {
+  if (!_aiUserId) return;
+  logAIUsage({
+    user_id: _aiUserId,
+    team_id: _aiTeamId,
+    action: action as any,
+    model,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    duration_ms: durationMs,
+  }).catch(() => {});
+};
 
 export const setApiKeys = (openaiKey: string, claudeKey: string) => {
   OPENAI_API_KEY = openaiKey || DEFAULT_OPENAI_KEY;
@@ -36,6 +67,7 @@ export interface AnalysisResult {
 // ─── Step 1: Whisper — chuyển audio thành văn bản ─────────────────────────────
 
 export const transcribeAudio = async (audioUri: string): Promise<string> => {
+  await checkQuota();
   if (!OPENAI_API_KEY) {
     throw new Error('Chưa cấu hình OpenAI API key. Vui lòng liên hệ admin.');
   }
@@ -77,6 +109,7 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
   }
 
   const data = await response.json();
+  logUsage('transcribe', 'whisper-1', 0);
   return data.text as string;
 };
 
@@ -222,6 +255,7 @@ function recoverTruncatedJSON(text: string): AnalysisResult {
   if (!result.improvements) result.improvements = [];
   if (!result.strategies) result.strategies = [];
 
+  logUsage('analyze', 'claude-haiku-4-5-20251001', 0);
   return result;
 }
 
@@ -287,6 +321,7 @@ export const chatWithCoach = async (
   }
 
   const data = await response.json();
+  logUsage('chat', 'claude-haiku-4-5-20251001', 0, data.usage?.input_tokens || 0, data.usage?.output_tokens || 0);
   return data.content[0].text as string;
 };
 
@@ -376,6 +411,7 @@ export const streamChatWithCoach = async (
     }
   }
 
+  logUsage('chat', 'claude-haiku-4-5-20251001', 0);
   return fullText;
 };
 
@@ -524,8 +560,10 @@ export const extractCustomerInfo = async (transcript: string): Promise<Extracted
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end !== -1 && end > start) {
+      logUsage('extract_customer', 'claude-haiku-4-5-20251001', 0);
       return JSON.parse(cleaned.slice(start, end + 1)) as ExtractedCustomerInfo;
     }
+    logUsage('extract_customer', 'claude-haiku-4-5-20251001', 0);
     return recoverTruncatedJSON(cleaned) as any;
   } catch {
     return EMPTY_EXTRACTED;
@@ -584,6 +622,7 @@ CHỈ trả về JSON.`,
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end !== -1) {
+      logUsage('score_customer', 'claude-haiku-4-5-20251001', 0);
       return JSON.parse(cleaned.slice(start, end + 1)) as AIScoreResult;
     }
     return null;

@@ -19,6 +19,9 @@ import BusinessProfileScreen from '../screens/BusinessProfileScreen';
 import TeamDashboardScreen from '../screens/TeamDashboardScreen';
 import CustomerListScreen from '../screens/CustomerListScreen';
 import CustomerDetailScreen from '../screens/CustomerDetailScreen';
+import AboutScreen from '../screens/AboutScreen';
+import TeamManageScreen from '../screens/TeamManageScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 
 export type RootTabParamList = {
   TrangChu: undefined;
@@ -47,6 +50,9 @@ export type RootStackParamList = {
   BusinessProfile: undefined;
   TeamDashboard: undefined;
   CustomerDetail: { customerId: string };
+  About: undefined;
+  TeamManage: undefined;
+  AdminDashboard: undefined;
   LichSu: undefined;
   AiCoachChat: {
     conversationId: string;
@@ -176,6 +182,21 @@ export default function AppNavigator() {
       <Stack.Screen
         name="CustomerDetail"
         component={CustomerDetailScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="About"
+        component={AboutScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="TeamManage"
+        component={TeamManageScreen}
+        options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="AdminDashboard"
+        component={AdminDashboardScreen}
         options={{ presentation: 'card' }}
       />
       <Stack.Screen

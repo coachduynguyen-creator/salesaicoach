@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, RefreshControl, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, RefreshControl, ScrollView, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,6 +78,7 @@ export default function CustomerListScreen() {
         budget: '',
         concerns: '',
         stage: '',
+        statusId: 'new',
         decisionFactors: '',
         personality: '',
         nextStep: '',
@@ -150,10 +151,14 @@ export default function CustomerListScreen() {
         onLongPress={() => handleDelete(item)}
         activeOpacity={0.7}
       >
-        <View style={[styles.avatar, { backgroundColor: C.PRIMARY + '14' }]}>
-          <Text style={[styles.avatarText, { color: C.PRIMARY }]}>
-            {item.name.charAt(0).toUpperCase()}
-          </Text>
+        <View style={[styles.avatar, { backgroundColor: C.PRIMARY + '14', overflow: 'hidden' }]}>
+          {item.photoUri ? (
+            <Image source={{ uri: item.photoUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+          ) : (
+            <Text style={[styles.avatarText, { color: C.PRIMARY }]}>
+              {item.name.charAt(0).toUpperCase()}
+            </Text>
+          )}
         </View>
 
         <View style={styles.info}>

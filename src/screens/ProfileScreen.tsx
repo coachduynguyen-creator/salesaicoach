@@ -7,6 +7,9 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  Image,
+  ActionSheetIOS,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +19,10 @@ import { COLORS } from '../constants/colors';
 import { useTheme, THEME_OPTIONS } from '../contexts/ThemeContext';
 import { loadSessions, Session, loadCustomerStatuses, saveCustomerStatuses, CustomerStatus, DEFAULT_STATUSES } from '../services/storageService';
 import { useAlert } from '../contexts/AlertContext';
+import { useAuth } from '../contexts/AuthContext';
+import { signOut, deleteAccount } from '../services/authService';
+import { pickFromGallery, takePhoto, saveUserAvatar, loadUserAvatar, removeUserAvatar } from '../services/imageService';
+import { enableDailyReminders, disableReminders, isRemindersEnabled } from '../services/notificationService';
 
 const USER_NAME_KEY = '@salescoach_user_name';
 const USER_ROLE_KEY = '@salescoach_user_role';
@@ -37,6 +44,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { showAlert } = useAlert();
   const { theme, setThemeById } = useTheme();
+  const { profile: authProfile, team } = useAuth();
   const C = { ...COLORS, PRIMARY: theme.colors.PRIMARY, PRIMARY_LIGHT: theme.colors.PRIMARY_LIGHT, PRIMARY_DARK: theme.colors.PRIMARY_DARK };
 
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -45,6 +53,9 @@ export default function ProfileScreen() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [remindersOn, setRemindersOn] = useState(false);
   // Status management
   const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
   const [showStatusManager, setShowStatusManager] = useState(false);
@@ -58,6 +69,8 @@ export default function ProfileScreen() {
       loadCustomerStatuses().then(setStatuses);
       AsyncStorage.getItem(USER_NAME_KEY).then(v => setUserName(v || ''));
       AsyncStorage.getItem(USER_ROLE_KEY).then(v => setUserRole(v || ''));
+      loadUserAvatar().then(setAvatarUri);
+      isRemindersEnabled().then(setRemindersOn);
     }, [])
   );
 
@@ -69,6 +82,21 @@ export default function ProfileScreen() {
     setUserName(name);
     setUserRole(role);
     setShowNameModal(false);
+  };
+
+  const handlePickAvatar = async (mode: 'gallery' | 'camera') => {
+    setShowAvatarModal(false);
+    const uri = mode === 'gallery' ? await pickFromGallery() : await takePhoto();
+    if (uri) {
+      const saved = await saveUserAvatar(uri);
+      setAvatarUri(saved);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setShowAvatarModal(false);
+    await removeUserAvatar();
+    setAvatarUri(null);
   };
 
   const handleDeleteAllData = () => {
@@ -103,28 +131,46 @@ export default function ProfileScreen() {
         </View>
 
         {/* Profile Card */}
-        <TouchableOpacity
-          style={styles.profileCard}
-          onPress={() => {
-            setEditName(userName);
-            setEditRole(userRole);
-            setShowNameModal(true);
-          }}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.avatarCircle, { backgroundColor: C.PRIMARY + '12' }]}>
-            <Ionicons name="person" size={36} color={C.PRIMARY} />
-          </View>
-          <View style={styles.profileInfo}>
+        <View style={styles.profileCard}>
+          <TouchableOpacity
+            onPress={() => setShowAvatarModal(true)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.avatarCircle, { backgroundColor: C.PRIMARY + '12' }]}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <Ionicons name="person" size={36} color={C.PRIMARY} />
+              )}
+              <View style={[styles.cameraBadge, { backgroundColor: C.PRIMARY }]}>
+                <Ionicons name="camera" size={12} color="#fff" />
+              </View>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.profileInfo}
+            onPress={() => {
+              setEditName(userName);
+              setEditRole(userRole);
+              setShowNameModal(true);
+            }}
+            activeOpacity={0.7}
+          >
             <Text style={styles.profileName}>
               {userName || 'Nhấn để nhập tên'}
             </Text>
             <Text style={styles.profileRole}>
               {userRole || 'Nhấn để nhập vai trò'}
             </Text>
-          </View>
-          <Ionicons name="create-outline" size={18} color={COLORS.TEXT_LIGHT} />
-        </TouchableOpacity>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => {
+            setEditName(userName);
+            setEditRole(userRole);
+            setShowNameModal(true);
+          }}>
+            <Ionicons name="create-outline" size={18} color={COLORS.TEXT_LIGHT} />
+          </TouchableOpacity>
+        </View>
 
         {/* Stats Strip — dữ liệu thật */}
         <View style={[styles.statsStrip, { backgroundColor: C.PRIMARY }]}>
@@ -198,6 +244,23 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Admin Dashboard - chỉ hiện cho admin/manager */}
+        {(authProfile?.role === 'admin' || authProfile?.role === 'manager') && (
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="analytics-outline" size={18} color={C.PRIMARY} />
+              <Text style={styles.sectionTitle}>Admin Dashboard</Text>
+            </View>
+            <Text style={styles.sectionDesc}>
+              Theo dõi hiệu suất team, AI usage, tiến độ đào tạo, bảng xếp hạng
+            </Text>
+            <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY }]} onPress={() => navigation.navigate('AdminDashboard')}>
+              <Ionicons name="bar-chart" size={18} color="#FFFFFF" />
+              <Text style={styles.saveButtonText}>Mở Dashboard</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Team Management */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
@@ -205,11 +268,11 @@ export default function ProfileScreen() {
             <Text style={styles.sectionTitle}>Quản lý Team</Text>
           </View>
           <Text style={styles.sectionDesc}>
-            Theo dõi hiệu suất và quản lý đội ngũ sales của bạn
+            {team ? `Team: ${team.name} | Mã mời: ${team.invite_code}` : 'Chưa tham gia team'}
           </Text>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY }]} onPress={() => navigation.navigate('TeamDashboard')}>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY }]} onPress={() => navigation.navigate('TeamManage')}>
             <Ionicons name="people" size={18} color="#FFFFFF" />
-            <Text style={styles.saveButtonText}>Mở Dashboard Team</Text>
+            <Text style={styles.saveButtonText}>Quản lý Team</Text>
           </TouchableOpacity>
         </View>
 
@@ -269,6 +332,34 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Notification */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="notifications-outline" size={18} color={C.PRIMARY} />
+            <Text style={styles.sectionTitle}>Nhắc nhở</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Nhận thông báo nhắc học bài (8h sáng) và ghi âm buổi tư vấn (5h chiều)
+          </Text>
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: remindersOn ? COLORS.DANGER : C.PRIMARY }]}
+            onPress={async () => {
+              if (remindersOn) {
+                await disableReminders();
+                setRemindersOn(false);
+                showAlert({ title: 'Đã tắt', message: 'Đã tắt nhắc nhở hàng ngày.', type: 'success' });
+              } else {
+                await enableDailyReminders();
+                setRemindersOn(true);
+                showAlert({ title: 'Đã bật', message: 'Bạn sẽ nhận nhắc nhở lúc 8h sáng và 5h chiều.', type: 'success' });
+              }
+            }}
+          >
+            <Ionicons name={remindersOn ? 'notifications-off' : 'notifications'} size={18} color="#fff" />
+            <Text style={styles.saveButtonText}>{remindersOn ? 'Tắt nhắc nhở' : 'Bật nhắc nhở'}</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* App Settings — chỉ giữ tính năng hoạt động */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
@@ -282,6 +373,81 @@ export default function ProfileScreen() {
               <Text style={[styles.settingsRowText, { color: COLORS.DANGER }]}>Xóa tất cả dữ liệu</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_LIGHT} />
+          </TouchableOpacity>
+        </View>
+
+        {/* About */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="information-circle-outline" size={18} color={C.PRIMARY} />
+            <Text style={styles.sectionTitle}>Giới thiệu</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Về ứng dụng, tác giả Coach Duy Nguyễn, bản quyền và điều khoản pháp lý
+          </Text>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY }]} onPress={() => navigation.navigate('About')}>
+            <Ionicons name="book-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.saveButtonText}>Xem giới thiệu</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Account Info & Logout */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="log-out-outline" size={18} color={COLORS.DANGER} />
+            <Text style={styles.sectionTitle}>Tài khoản</Text>
+          </View>
+          {authProfile && (
+            <Text style={[styles.sectionDesc, { marginBottom: 8 }]}>
+              {authProfile.email} | Vai trò: {authProfile.role === 'admin' ? 'Admin' : authProfile.role === 'manager' ? 'Quản lý' : 'Thành viên'}
+            </Text>
+          )}
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: COLORS.DANGER }]}
+            onPress={() => {
+              showAlert({
+                title: 'Đăng xuất',
+                message: 'Bạn có chắc muốn đăng xuất?',
+                type: 'warning',
+                buttons: [
+                  { text: 'Hủy', style: 'cancel' },
+                  { text: 'Đăng xuất', style: 'destructive', onPress: () => signOut() },
+                ],
+              });
+            }}
+          >
+            <Ionicons name="log-out-outline" size={18} color="#fff" />
+            <Text style={styles.saveButtonText}>Đăng xuất</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ marginTop: 12, alignItems: 'center', paddingVertical: 10 }}
+            onPress={() => {
+              showAlert({
+                title: 'Xóa tài khoản',
+                message: 'Hành động này sẽ xóa VĨNH VIỄN tài khoản và toàn bộ dữ liệu của bạn (sessions, khách hàng, hội thoại AI). Không thể hoàn tác.',
+                type: 'warning',
+                buttons: [
+                  { text: 'Hủy', style: 'cancel' },
+                  {
+                    text: 'Xóa vĩnh viễn',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await AsyncStorage.clear();
+                        await deleteAccount();
+                      } catch (err: any) {
+                        showAlert({ title: 'Lỗi', message: err.message || 'Không thể xóa tài khoản.', type: 'error' });
+                      }
+                    },
+                  },
+                ],
+              });
+            }}
+          >
+            <Text style={{ fontSize: 13, color: COLORS.DANGER, textDecorationLine: 'underline' }}>
+              Xóa tài khoản vĩnh viễn
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -348,6 +514,32 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
+      {/* Avatar Picker Modal */}
+      <Modal visible={showAvatarModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAvatarModal(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Ảnh đại diện</Text>
+            <TouchableOpacity style={styles.avatarOption} onPress={() => handlePickAvatar('gallery')}>
+              <Ionicons name="images-outline" size={22} color={C.PRIMARY} />
+              <Text style={styles.avatarOptionText}>Chọn từ thư viện</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.avatarOption} onPress={() => handlePickAvatar('camera')}>
+              <Ionicons name="camera-outline" size={22} color={C.PRIMARY} />
+              <Text style={styles.avatarOptionText}>Chụp ảnh mới</Text>
+            </TouchableOpacity>
+            {avatarUri && (
+              <TouchableOpacity style={styles.avatarOption} onPress={handleRemoveAvatar}>
+                <Ionicons name="trash-outline" size={22} color={COLORS.DANGER} />
+                <Text style={[styles.avatarOptionText, { color: COLORS.DANGER }]}>Xóa ảnh</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.modalCancelBtn, { marginTop: 12 }]} onPress={() => setShowAvatarModal(false)}>
+              <Text style={styles.modalCancelText}>Hủy</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Edit Name Modal */}
       <Modal visible={showNameModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -404,7 +596,20 @@ const styles = StyleSheet.create({
   avatarCircle: {
     width: 64, height: 64, borderRadius: 32,
     alignItems: 'center', justifyContent: 'center', marginRight: 14,
+    overflow: 'hidden',
   },
+  avatarImage: { width: 64, height: 64, borderRadius: 32 },
+  cameraBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 22, height: 22, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: COLORS.CARD,
+  },
+  avatarOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+  },
+  avatarOptionText: { fontSize: 15, fontWeight: '500', color: COLORS.TEXT },
   profileInfo: { flex: 1 },
   profileName: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT },
   profileRole: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 3 },

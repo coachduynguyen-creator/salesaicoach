@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chính sách Bảo mật - Sales Coach App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F7F8FA; color: #1a1a2e; line-height: 1.7; }
+    .container { max-width: 720px; margin: 0 auto; padding: 40px 24px; }
+    h1 { font-size: 28px; font-weight: 800; color: #1A7F64; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: #666; margin-bottom: 32px; }
+    h2 { font-size: 18px; font-weight: 700; color: #1a1a2e; margin-top: 28px; margin-bottom: 12px; }
+    p, li { font-size: 15px; margin-bottom: 8px; }
+    ul { padding-left: 24px; margin-bottom: 16px; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E2E8F0; font-size: 13px; color: #888; }
+    a { color: #1A7F64; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Chính sách Bảo mật</h1>
+    <p class="subtitle">Sales Coach App | Coach Duy Nguyen | Cập nhật: 07/04/2026</p>
+
+    <h2>1. Giới thiệu</h2>
+    <p>Sales Coach App ("Ứng dụng") được phát triển bởi Coach Duy Nguyen. Chúng tôi cam kết bảo vệ quyền riêng tư và dữ liệu cá nhân của bạn. Chính sách này mô tả cách chúng tôi thu thập, sử dụng, và bảo vệ thông tin của bạn.</p>
+
+    <h2>2. Thông tin chúng tôi thu thập</h2>
+    <p>Khi sử dụng Ứng dụng, chúng tôi có thể thu thập:</p>
+    <ul>
+      <li><strong>Thông tin tài khoản:</strong> Họ tên, email, mật khẩu (được mã hóa)</li>
+      <li><strong>Dữ liệu ghi âm:</strong> Nội dung buổi tư vấn bán hàng được ghi âm trong app. File ghi âm chỉ lưu trên thiết bị của bạn, không upload lên server.</li>
+      <li><strong>Transcript (bản chép lời):</strong> Nội dung văn bản được chuyển từ giọng nói, lưu trên cloud để phân tích.</li>
+      <li><strong>Dữ liệu khách hàng CRM:</strong> Tên, công ty, thông tin liên hệ, ghi chú mà bạn nhập.</li>
+      <li><strong>Dữ liệu sử dụng:</strong> Lịch sử chat với AI Coach, tiến độ học bài, số lần sử dụng tính năng AI.</li>
+      <li><strong>Ảnh:</strong> Ảnh đại diện và ảnh khách hàng (lưu trên thiết bị).</li>
+    </ul>
+
+    <h2>3. Cách chúng tôi sử dụng thông tin</h2>
+    <ul>
+      <li>Cung cấp và cải thiện dịch vụ coaching AI</li>
+      <li>Phân tích buổi tư vấn và đưa ra đánh giá, gợi ý cải thiện</li>
+      <li>Theo dõi tiến độ đào tạo và hiệu suất bán hàng</li>
+      <li>Quản lý team (cho quản lý/admin): xem thống kê nhân viên</li>
+      <li>Gửi thông báo nhắc nhở học tập (nếu bạn bật tính năng này)</li>
+    </ul>
+
+    <h2>4. Chia sẻ thông tin với bên thứ ba</h2>
+    <p>Chúng tôi sử dụng các dịch vụ bên thứ ba sau:</p>
+    <ul>
+      <li><strong>OpenAI (Whisper):</strong> Chuyển giọng nói thành văn bản. Dữ liệu audio được gửi tới API của OpenAI để xử lý.</li>
+      <li><strong>Anthropic (Claude):</strong> Phân tích nội dung tư vấn và cung cấp AI coaching. Transcript được gửi tới API của Anthropic.</li>
+      <li><strong>Supabase:</strong> Lưu trữ dữ liệu tài khoản, sessions, khách hàng trên cloud.</li>
+    </ul>
+    <p>Chúng tôi KHÔNG bán, cho thuê, hoặc chia sẻ dữ liệu cá nhân với bất kỳ bên nào khác ngoài mục đích vận hành ứng dụng.</p>
+
+    <h2>5. Bảo mật dữ liệu</h2>
+    <ul>
+      <li>Mật khẩu được mã hóa bởi Supabase Auth</li>
+      <li>Dữ liệu truyền tải qua HTTPS</li>
+      <li>Row Level Security (RLS) đảm bảo chỉ bạn và team của bạn truy cập được dữ liệu</li>
+      <li>File ghi âm chỉ lưu trên thiết bị, không upload lên server</li>
+    </ul>
+
+    <h2>6. Quyền của bạn</h2>
+    <ul>
+      <li><strong>Truy cập:</strong> Bạn có thể xem toàn bộ dữ liệu của mình trong app</li>
+      <li><strong>Chỉnh sửa:</strong> Bạn có thể sửa thông tin cá nhân, khách hàng bất kỳ lúc nào</li>
+      <li><strong>Xóa:</strong> Bạn có thể xóa tài khoản và toàn bộ dữ liệu trong Cài Đặt</li>
+      <li><strong>Xuất dữ liệu:</strong> Bạn có thể xuất báo cáo qua tính năng Chia sẻ</li>
+    </ul>
+
+    <h2>7. Lưu trữ và thời gian giữ dữ liệu</h2>
+    <p>Dữ liệu được lưu trữ cho đến khi bạn xóa tài khoản. Khi xóa tài khoản, toàn bộ dữ liệu sẽ bị xóa vĩnh viễn trong vòng 30 ngày.</p>
+
+    <h2>8. Trẻ em</h2>
+    <p>Ứng dụng không dành cho người dưới 16 tuổi. Chúng tôi không cố ý thu thập thông tin của trẻ em.</p>
+
+    <h2>9. Thay đổi chính sách</h2>
+    <p>Chúng tôi có thể cập nhật chính sách này theo thời gian. Thay đổi quan trọng sẽ được thông báo trong ứng dụng.</p>
+
+    <h2>10. Liên hệ</h2>
+    <p>Nếu có câu hỏi về chính sách bảo mật, vui lòng liên hệ:</p>
+    <p><strong>Coach Duy Nguyen</strong><br>
+    Email: <a href="mailto:coachduynguyen@gmail.com">coachduynguyen@gmail.com</a><br>
+    Facebook: <a href="https://www.facebook.com/coachduynguyen">@coachduynguyen</a></p>
+
+    <div class="footer">
+      &copy; 2024 Coach Duy Nguyen. Mọi quyền được bảo lưu.<br>
+      Sales Coach App | THE TRUSTED ADVISOR
+    </div>
+  </div>
+</body>
+</html>

@@ -91,6 +91,7 @@ export default function HomeScreen() {
             <View>
               <Text style={styles.heroGreeting}>Chào mừng trở lại</Text>
               <Text style={styles.heroTitle}>Sales Coach</Text>
+              <Text style={styles.heroTagline}>AI Coaching cho Sales | by Coach Duy Nguyễn</Text>
             </View>
             <TouchableOpacity
               style={styles.heroAvatar}
@@ -322,6 +323,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     marginTop: 2,
+  },
+  heroTagline: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
   },
   heroAvatar: {
     width: 44,

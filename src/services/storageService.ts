@@ -1,5 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AnalysisResult } from './aiService';
+import { pushSession, pushCustomer, pushConversation, pushLessonProgress, pushSessionOutcome } from './syncService';
+
+// ─── Sync Helper: lấy userId/teamId hiện tại ────────────────────────────────
+let _syncUserId: string | null = null;
+let _syncTeamId: string | null = null;
+
+export function setSyncContext(userId: string | null, teamId: string | null) {
+  _syncUserId = userId;
+  _syncTeamId = teamId;
+}
 
 const KEYS = {
   CLAUDE_API_KEY: '@salescoach_claude_key',
@@ -134,6 +144,7 @@ export const addSession = async (session: Omit<Session, 'id'>): Promise<Session>
   const sessions = await loadSessions();
   const newSession: Session = { ...session, id: Date.now().toString() };
   await saveSessions([newSession, ...sessions]);
+  if (_syncUserId && _syncTeamId) pushSession(newSession, _syncUserId, _syncTeamId);
   return newSession;
 };
 
@@ -148,6 +159,7 @@ export const updateSessionOutcome = async (id: string, outcome: SessionOutcome):
   if (idx === -1) return;
   sessions[idx].outcome = outcome;
   await saveSessions(sessions);
+  if (_syncTeamId) pushSessionOutcome(sessions[idx].date, sessions[idx].customerName, outcome, _syncTeamId);
 };
 
 // ─── Lesson Progress ─────────────────────────────────────────────────────────
@@ -163,6 +175,7 @@ export const markLessonComplete = async (lessonId: string): Promise<string[]> =>
   if (!progress.includes(lessonId)) {
     progress.push(lessonId);
     await AsyncStorage.setItem(KEYS.LESSON_PROGRESS, JSON.stringify(progress));
+    if (_syncUserId) pushLessonProgress(lessonId, _syncUserId);
   }
   return progress;
 };
@@ -238,6 +251,7 @@ export const addConversation = async (title: string): Promise<Conversation> => {
     messages: [],
   };
   await saveConversations([newConv, ...conversations]);
+  if (_syncUserId) pushConversation(newConv, _syncUserId, _syncTeamId);
   return newConv;
 };
 
@@ -260,6 +274,7 @@ export const updateConversation = async (
     conversations[idx].title = title;
   }
   await saveConversations(conversations);
+  if (_syncUserId) pushConversation(conversations[idx], _syncUserId, _syncTeamId);
 };
 
 export const deleteConversation = async (id: string): Promise<void> => {
@@ -384,6 +399,7 @@ export interface CustomerProfile {
   company: string;
   phone: string;
   email: string;
+  photoUri?: string;           // Ảnh khách hàng (local file URI)
   // AI-extracted core fields
   needs: string;
   budget: string;
@@ -435,6 +451,7 @@ export const addCustomer = async (customer: Omit<CustomerProfile, 'id' | 'create
     updatedAt: now,
   };
   await saveCustomers([newCustomer, ...customers]);
+  if (_syncUserId && _syncTeamId) pushCustomer(newCustomer, _syncUserId, _syncTeamId);
   return newCustomer;
 };
 
@@ -444,6 +461,7 @@ export const updateCustomer = async (id: string, updates: Partial<CustomerProfil
   if (idx === -1) return;
   customers[idx] = { ...customers[idx], ...updates, updatedAt: new Date().toISOString() };
   await saveCustomers(customers);
+  if (_syncUserId && _syncTeamId) pushCustomer(customers[idx], _syncUserId, _syncTeamId);
 };
 
 export const findCustomerByName = async (name: string): Promise<CustomerProfile | undefined> => {

@@ -2,33 +2,54 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'SalesCoachApp',
+  name: 'Sales Coach',
   slug: 'SalesCoachApp',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',
   newArchEnabled: true,
+  scheme: 'salescoach',
   splash: {
     image: './assets/splash-icon.png',
     resizeMode: 'contain',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#1A7F64',
   },
   ios: {
     supportsTablet: true,
+    bundleIdentifier: 'com.coachduynguyen.salescoach',
+    infoPlist: {
+      NSMicrophoneUsageDescription: 'Sales Coach cần quyền ghi âm để ghi lại buổi tư vấn bán hàng và phân tích bằng AI.',
+      NSCameraUsageDescription: 'Sales Coach cần quyền camera để chụp ảnh đại diện và ảnh khách hàng.',
+      NSPhotoLibraryUsageDescription: 'Sales Coach cần quyền thư viện ảnh để chọn ảnh đại diện và ảnh khách hàng.',
+    },
   },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#1A7F64',
     },
     edgeToEdgeEnabled: true,
     package: 'com.coachduynguyen.SalesCoachApp',
+    permissions: [
+      'RECORD_AUDIO',
+      'CAMERA',
+      'READ_EXTERNAL_STORAGE',
+      'WRITE_EXTERNAL_STORAGE',
+      'INTERNET',
+      'ACCESS_NETWORK_STATE',
+    ],
   },
   web: {
     favicon: './assets/favicon.png',
   },
-  // EAS Update config
+  plugins: [
+    ['expo-notifications'],
+    ['expo-image-picker', {
+      photosPermission: 'Sales Coach cần quyền thư viện ảnh để chọn ảnh đại diện.',
+      cameraPermission: 'Sales Coach cần quyền camera để chụp ảnh.',
+    }],
+  ],
   updates: {
     url: 'https://u.expo.dev/4c77992d-b9c4-4a58-b1a9-71bac1dcf2ed',
   },

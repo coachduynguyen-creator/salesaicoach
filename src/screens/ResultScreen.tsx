@@ -348,6 +348,7 @@ export default function ResultScreen() {
               phone: '', email: '',
               needs: info.needs, budget: info.budget,
               concerns: info.concerns, stage: info.stage,
+              statusId: 'new',
               decisionFactors: info.decisionFactors,
               personality: info.personality, nextStep: info.nextStep,
               icp: icpData,

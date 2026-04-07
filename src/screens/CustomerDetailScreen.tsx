@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Share, Modal, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Share, Modal, RefreshControl, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import {
   loadCustomerStatuses, CustomerStatus,
 } from '../services/storageService';
 import { scoreCustomerWithAI } from '../services/aiService';
+import { pickFromGallery, takePhoto, saveCustomerPhoto } from '../services/imageService';
 
 type RouteParams = { CustomerDetail: { customerId: string } };
 
@@ -145,6 +146,7 @@ export default function CustomerDetailScreen() {
   const [dmAttitude, setDmAttitude] = useState('trung lập');
 
   const [isScoring, setIsScoring] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   const loadData = useCallback(async () => {
     loadCustomerStatuses().then(setStatuses);
@@ -203,6 +205,24 @@ export default function CustomerDetailScreen() {
     await loadData();
     setRefreshing(false);
   }, [loadData]);
+
+  const handleCustomerPhoto = async (mode: 'gallery' | 'camera') => {
+    if (!customer) return;
+    setShowPhotoModal(false);
+    const uri = mode === 'gallery' ? await pickFromGallery() : await takePhoto();
+    if (uri) {
+      const saved = await saveCustomerPhoto(customer.id, uri);
+      await updateCustomer(customer.id, { photoUri: saved } as any);
+      setCustomer(prev => prev ? { ...prev, photoUri: saved } : prev);
+    }
+  };
+
+  const handleRemoveCustomerPhoto = async () => {
+    if (!customer) return;
+    setShowPhotoModal(false);
+    await updateCustomer(customer.id, { photoUri: '' } as any);
+    setCustomer(prev => prev ? { ...prev, photoUri: '' } : prev);
+  };
 
   const saveField = async (field: string, value: string) => {
     if (!customer) return;
@@ -276,9 +296,18 @@ export default function CustomerDetailScreen() {
         {/* Hero + Score */}
         <View style={styles.heroCard}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <View style={[styles.avatar, { backgroundColor: C.PRIMARY + '14' }]}>
-              <Text style={[styles.avatarText, { color: C.PRIMARY }]}>{customer.name.charAt(0).toUpperCase()}</Text>
-            </View>
+            <TouchableOpacity onPress={() => setShowPhotoModal(true)} activeOpacity={0.7}>
+              <View style={[styles.avatar, { backgroundColor: C.PRIMARY + '14', overflow: 'hidden' }]}>
+                {customer.photoUri ? (
+                  <Image source={{ uri: customer.photoUri }} style={{ width: 48, height: 48, borderRadius: 24 }} />
+                ) : (
+                  <Text style={[styles.avatarText, { color: C.PRIMARY }]}>{customer.name.charAt(0).toUpperCase()}</Text>
+                )}
+              </View>
+              <View style={[styles.photoBadge, { backgroundColor: C.PRIMARY }]}>
+                <Ionicons name="camera" size={10} color="#fff" />
+              </View>
+            </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroName}>{customer.name}</Text>
               {customer.company ? <Text style={styles.heroCompany}>{customer.company}</Text> : null}
@@ -552,6 +581,32 @@ export default function CustomerDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Photo Picker Modal */}
+      <Modal visible={showPhotoModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowPhotoModal(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Ảnh khách hàng</Text>
+            <TouchableOpacity style={styles.photoOption} onPress={() => handleCustomerPhoto('gallery')}>
+              <Ionicons name="images-outline" size={22} color={C.PRIMARY} />
+              <Text style={styles.photoOptionText}>Chọn từ thư viện</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoOption} onPress={() => handleCustomerPhoto('camera')}>
+              <Ionicons name="camera-outline" size={22} color={C.PRIMARY} />
+              <Text style={styles.photoOptionText}>Chụp ảnh mới</Text>
+            </TouchableOpacity>
+            {customer?.photoUri ? (
+              <TouchableOpacity style={styles.photoOption} onPress={handleRemoveCustomerPhoto}>
+                <Ionicons name="trash-outline" size={22} color={COLORS.DANGER} />
+                <Text style={[styles.photoOptionText, { color: COLORS.DANGER }]}>Xóa ảnh</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity style={[styles.modalCancelBtn, { marginTop: 12 }]} onPress={() => setShowPhotoModal(false)}>
+              <Text style={styles.modalCancelText}>Hủy</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -583,6 +638,17 @@ const styles = StyleSheet.create({
   heroCard: { backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
   avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 22, fontWeight: '800' },
+  photoBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: COLORS.CARD,
+  },
+  photoOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+  },
+  photoOptionText: { fontSize: 15, fontWeight: '500', color: COLORS.TEXT },
   heroName: { fontSize: 18, fontWeight: '800', color: COLORS.TEXT },
   heroCompany: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 1 },
   stageBadgeSmall: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, marginTop: 4 },
