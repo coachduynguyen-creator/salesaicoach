@@ -19,6 +19,7 @@ import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from './src/config/defaultKeys
 import { migrateLocalToCloud } from './src/services/syncService';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import OfflineBanner from './src/components/OfflineBanner';
+import FloatingBugReport from './src/components/FloatingBugReport';
 import FirstExperienceScreen, { shouldShowFirstExperience } from './src/screens/FirstExperienceScreen';
 
 const ONBOARDING_KEY = '@salescoach_onboarding_done';
@@ -95,6 +96,7 @@ function AppContent() {
           <StatusBar style="dark" />
           <OfflineBanner />
           <AppNavigator />
+          <FloatingBugReport />
         </NavigationContainer>
       </BusinessProvider>
     </KnowledgeProvider>

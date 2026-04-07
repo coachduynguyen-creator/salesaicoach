@@ -223,6 +223,7 @@ export interface Conversation {
   createdAt: string;  // ISO string
   updatedAt: string;  // ISO string
   messages: ConversationMessage[];
+  customerId?: string;  // Liên kết với khách hàng CRM
 }
 
 export const loadConversations = async (): Promise<Conversation[]> => {
@@ -239,7 +240,7 @@ export const saveConversations = async (conversations: Conversation[]): Promise<
   await AsyncStorage.setItem(KEYS.CONVERSATIONS, JSON.stringify(conversations));
 };
 
-export const addConversation = async (title: string): Promise<Conversation> => {
+export const addConversation = async (title: string, customerId?: string): Promise<Conversation> => {
   const conversations = await loadConversations();
   const now = new Date().toISOString();
   const newConv: Conversation = {
@@ -249,6 +250,7 @@ export const addConversation = async (title: string): Promise<Conversation> => {
     createdAt: now,
     updatedAt: now,
     messages: [],
+    customerId,
   };
   await saveConversations([newConv, ...conversations]);
   if (_syncUserId) pushConversation(newConv, _syncUserId, _syncTeamId);

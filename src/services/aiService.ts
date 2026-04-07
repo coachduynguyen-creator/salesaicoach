@@ -298,6 +298,17 @@ GIỌNG VĂN:
 - Dùng từ ngữ bán hàng thực tế tại Việt Nam.
 - KHÔNG dùng emoji, KHÔNG sáo rỗng.
 
+QUY TẮC NGÔN NGỮ (BẮT BUỘC):
+- 100% TIẾNG VIỆT. TUYỆT ĐỐI KHÔNG dùng từ tiếng Anh.
+- Thay "trigger" bằng "yếu tố thúc đẩy". Thay "pain point" bằng "vấn đề đang gặp".
+- Thay "awareness" bằng "nhận thức". Thay "objection" bằng "phản đối/từ chối".
+- Thay "follow-up" bằng "theo dõi sau". Thay "closing" bằng "chốt deal/chốt giao dịch".
+- Thay "pipeline" bằng "phễu bán hàng". Thay "lead" bằng "khách tiềm năng".
+- Thay "insight" bằng "góc nhìn". Thay "feedback" bằng "phản hồi".
+- Thay "script" bằng "kịch bản". Thay "roleplay" bằng "luyện đối đáp".
+- Nếu BUỘC phải dùng thuật ngữ chuyên môn quốc tế, viết tiếng Việt trước rồi ghi chú trong ngoặc.
+- Kịch bản mẫu PHẢI theo phong cách 3 Điểm Chạm: Chạm Động Lực → Chạm Điểm Nghẽn → Chạm Con Đường.
+
 TRÌNH BÀY: Dùng markdown nhẹ: **in đậm** cho ý chính, xuống dòng cho dễ đọc. Hạn chế dùng heading ##.`;
 
 export const chatWithCoach = async (

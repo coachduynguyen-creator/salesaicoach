@@ -14,7 +14,7 @@ import { SALES_KNOWLEDGE_BASE } from '../constants/knowledgeBase';
 
 const SCENARIOS = [
   { key: 'cold_call', label: 'Gọi lạnh', icon: 'call-outline' },
-  { key: 'follow_up', label: 'Follow-up', icon: 'refresh-outline' },
+  { key: 'follow_up', label: 'Theo dõi sau', icon: 'refresh-outline' },
   { key: 'objection', label: 'Xử lý từ chối', icon: 'shield-outline' },
   { key: 'closing', label: 'Chốt deal', icon: 'checkmark-done-outline' },
   { key: 'referral', label: 'Xin giới thiệu', icon: 'people-outline' },

@@ -76,9 +76,9 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 function MainTabs() {
   const { theme, isDark } = useTheme();
-  const bgCard = isDark ? '#1E293B' : COLORS.CARD;
-  const bgBorder = isDark ? '#334155' : COLORS.DIVIDER;
-  const inactiveColor = isDark ? '#64748B' : COLORS.TEXT_LIGHT;
+  const bgCard = isDark ? '#0D1117' : COLORS.CARD;
+  const bgBorder = isDark ? '#21262D' : COLORS.DIVIDER;
+  const inactiveColor = isDark ? '#B0BAC5' : COLORS.TEXT_LIGHT;
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({

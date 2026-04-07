@@ -54,7 +54,7 @@ export default function ConversationListScreen() {
   const handleCreate = async () => {
     const selected = customers.find(c => c.id === selectedCustomerId);
     const title = newTitle.trim() || (selected ? `Tư vấn: ${selected.name}` : `Cuộc trò chuyện ${conversations.length + 1}`);
-    const conv = await addConversation(title);
+    const conv = await addConversation(title, selectedCustomerId || undefined);
     setShowNewModal(false);
     setNewTitle('');
     setSelectedCustomerId(null);
@@ -101,7 +101,7 @@ export default function ConversationListScreen() {
   const renderItem = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: C.CARD }]}
-      onPress={() => navigation.navigate('AiCoachChat', { conversationId: item.id, title: item.title })}
+      onPress={() => navigation.navigate('AiCoachChat', { conversationId: item.id, title: item.title, customerId: item.customerId })}
       onLongPress={() => handleDelete(item.id, item.title)}
     >
       <View style={[styles.cardIcon, { backgroundColor: C.PRIMARY + '12' }]}>

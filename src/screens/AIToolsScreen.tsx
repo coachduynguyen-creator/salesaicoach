@@ -40,8 +40,8 @@ Thông tin khách:`,
 1. Tóm tắt 3-5 điểm chính
 2. Điểm Chạm nào đã hoàn thành, điểm nào chưa
 3. Nỗi sợ/rào cản khách đang có
-4. 3 action items cụ thể (ai làm gì, deadline)
-5. Nội dung tin nhắn follow-up 24h
+4. 3 việc cần làm tiếp theo cụ thể (ai làm gì, khi nào)
+5. Nội dung tin nhắn theo dõi sau 24 giờ
 
 Nội dung buổi tư vấn:`,
   },

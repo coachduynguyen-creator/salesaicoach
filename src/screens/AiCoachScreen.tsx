@@ -27,6 +27,7 @@ import {
   loadConversations,
   updateConversation,
   loadCustomers,
+  loadSessions,
   CustomerProfile,
 } from '../services/storageService';
 
@@ -162,9 +163,38 @@ export default function AiCoachScreen() {
 
   // Load customer profile nếu có
   useEffect(() => {
-    if (!customerId) return;
-    loadCustomers().then(all => {
-      const customer = all.find(c => c.id === customerId);
+    // Tìm customerId từ: route params → conversation data → title matching
+    const resolveCustomer = async () => {
+      const all = await loadCustomers();
+
+      // 1. Từ route params
+      if (customerId) {
+        const found = all.find(c => c.id === customerId);
+        if (found) return found;
+      }
+
+      // 2. Từ conversation data
+      if (conversationId) {
+        const convs = await loadConversations();
+        const conv = convs.find(c => c.id === conversationId);
+        if (conv?.customerId) {
+          const found = all.find(c => c.id === conv.customerId);
+          if (found) return found;
+        }
+      }
+
+      // 3. Từ title matching (fallback)
+      if (conversationTitle) {
+        const titleLower = conversationTitle.toLowerCase();
+        const found = all.find(c => titleLower.includes(c.name.toLowerCase()));
+        if (found) return found;
+      }
+
+      return null;
+    };
+
+    resolveCustomer().then(async (customer) => {
+      if (!customer) return;
       if (!customer) return;
 
       const parts: string[] = [
@@ -179,11 +209,43 @@ export default function AiCoachScreen() {
       if (customer.decisionFactors) parts.push(`Yếu tố quyết định: ${customer.decisionFactors}`);
       if (customer.personality) parts.push(`Tính cách giao tiếp: ${customer.personality}`);
       if (customer.nextStep) parts.push(`Bước tiếp theo: ${customer.nextStep}`);
+      // Chân dung khách hàng
+      const icp = customer.icp || {};
+      if (icp.painPoints) parts.push(`Vấn đề đang gặp: ${icp.painPoints}`);
+      if (icp.buyingTriggers) parts.push(`Yếu tố thúc đẩy mua: ${icp.buyingTriggers}`);
+      if (icp.buyingBarriers) parts.push(`Rào cản mua hàng: ${icp.buyingBarriers}`);
+      if (icp.awarenessLevel) parts.push(`Mức độ nhận thức: ${icp.awarenessLevel}/5`);
+      if (icp.fitLevel) parts.push(`Mức độ phù hợp: ${icp.fitLevel}`);
+
+      // Decision makers
+      if (customer.decisionMakers?.length) {
+        parts.push(`\nNGƯỜI RA QUYẾT ĐỊNH:`);
+        customer.decisionMakers.forEach(d => parts.push(`- ${d.name} (${d.role}) - ${d.attitude}`));
+      }
+
+      // Ghi chú
       if (customer.notes?.length) {
         parts.push(`\nLỊCH SỬ GHI CHÚ:`);
         customer.notes.slice(-5).forEach(n => parts.push(`[${n.date}] ${n.content}`));
       }
-      parts.push(`\nHãy tư vấn dựa trên thông tin khách hàng này. Nếu sales hỏi về khách, trả lời dựa trên dữ liệu trên.`);
+
+      // Transcripts từ sessions
+      const allSessions = await loadSessions();
+      const custSessions = allSessions.filter(s => (customer.sessionIds || []).includes(s.id));
+      if (custSessions.length) {
+        parts.push(`\nLỊCH SỬ CUỘC GỌI (${custSessions.length} buổi):`);
+        custSessions.slice(-3).forEach(s => {
+          parts.push(`[${s.date}] Điểm: ${s.score}/10`);
+          if (s.analysis?.transcript) {
+            parts.push(`Nội dung: ${s.analysis.transcript.slice(0, 500)}`);
+          }
+          if (s.analysis?.improvements?.length) {
+            parts.push(`Cần cải thiện: ${(s.analysis.improvements as string[]).slice(0, 3).join('; ')}`);
+          }
+        });
+      }
+
+      parts.push(`\nHãy tư vấn dựa trên TOÀN BỘ thông tin khách hàng ở trên. Khi sales hỏi về khách, trả lời chi tiết dựa trên dữ liệu thật. Nếu thiếu thông tin, gợi ý sales hỏi thêm khách điều gì.`);
       setCustomerContext(parts.join('\n'));
 
       // Thay welcome message cho phù hợp
@@ -194,7 +256,7 @@ export default function AiCoachScreen() {
         timestamp: new Date(),
       }]);
     });
-  }, [customerId]);
+  }, [customerId, conversationId, conversationTitle]);
 
   // Load tin nhắn cũ khi mở conversation
   useEffect(() => {
