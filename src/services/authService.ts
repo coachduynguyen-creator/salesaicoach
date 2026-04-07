@@ -1,11 +1,29 @@
 import { supabase } from './supabaseClient';
 import { Profile, Team } from '../types/database';
 
-export async function signUp(email: string, password: string, fullName: string) {
+export async function verifyInviteCode(code: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('invite_code', code.trim().toLowerCase())
+    .single();
+  return !!data;
+}
+
+export async function signUp(email: string, password: string, fullName: string, inviteCode?: string) {
+  // Invite-only: phải có mã mời hợp lệ
+  if (!inviteCode?.trim()) {
+    throw new Error('Cần có mã mời để đăng ký. Liên hệ quản lý team để nhận mã.');
+  }
+  const valid = await verifyInviteCode(inviteCode);
+  if (!valid) {
+    throw new Error('Mã mời không hợp lệ. Vui lòng kiểm tra lại hoặc liên hệ quản lý team.');
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName } },
+    options: { data: { full_name: fullName, invite_code: inviteCode.trim().toLowerCase() } },
   });
   if (error) throw error;
   return data;

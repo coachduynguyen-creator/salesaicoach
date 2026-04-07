@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
-import { loadSessions, deleteSession, Session } from '../services/storageService';
+import { loadSessions, deleteSession, loadCustomers, Session } from '../services/storageService';
 import { useAlert } from '../contexts/AlertContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -64,7 +64,7 @@ const OUTCOME_CONFIG: Record<string, { label: string; color: string }> = {
 
 // ─── Stats Summary ────────────────────────────────────────────────────────────
 
-function StatsSummary({ sessions, colors }: { sessions: Session[]; colors: ReturnType<typeof useColors> }) {
+function StatsSummary({ sessions, colors, nameMap }: { sessions: Session[]; colors: ReturnType<typeof useColors>; nameMap?: Record<string, string> }) {
   const totalSessions = sessions.length;
 
   const bestSession = useMemo(() => {
@@ -114,7 +114,7 @@ function StatsSummary({ sessions, colors }: { sessions: Session[]; colors: Retur
             </View>
             <Text style={[statStyles.statValue, { color: colors.TEXT }]}>{bestSession.score.toFixed(1)}</Text>
             <Text style={[statStyles.statLabel, { color: colors.TEXT_LIGHT }]} numberOfLines={1}>
-              {bestSession.customerName}
+              {(nameMap && nameMap[bestSession.id]) || bestSession.customerName}
             </Text>
           </View>
         )}
@@ -174,13 +174,13 @@ const statStyles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   statCard: {
     flex: 1,
     backgroundColor: COLORS.CARD,
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.BORDER,
@@ -346,7 +346,7 @@ const chartStyles = StyleSheet.create({
     marginRight: 6,
   },
   yLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: COLORS.TEXT_LIGHT,
     fontWeight: '500',
   },
@@ -416,10 +416,11 @@ const chartStyles = StyleSheet.create({
 
 // ─── Session Card ─────────────────────────────────────────────────────────────
 
-function SessionCard({ session, onPress, onDelete }: {
+function SessionCard({ session, onPress, onDelete, displayName }: {
   session: Session;
   onPress: () => void;
   onDelete: () => void;
+  displayName?: string;
 }) {
   const C = useColors();
   const scoreColor = getScoreColor(session.score);
@@ -433,7 +434,7 @@ function SessionCard({ session, onPress, onDelete }: {
 
       <View style={styles.sessionInfo}>
         <View style={styles.nameRow}>
-          <Text style={[styles.customerName, { color: C.TEXT }]}>{session.customerName}</Text>
+          <Text style={[styles.customerName, { color: C.TEXT }]}>{displayName || session.customerName}</Text>
           {outcomeInfo && (
             <View style={[styles.outcomeBadge, { backgroundColor: outcomeInfo.color + '18' }]}>
               <View style={[styles.outcomeDot, { backgroundColor: outcomeInfo.color }]} />
@@ -478,18 +479,30 @@ export default function HistoryScreen() {
   const { showAlert } = useAlert();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [nameMap, setNameMap] = useState<Record<string, string>>({});
+
+  const loadData = useCallback(async () => {
+    const [allSessions, customers] = await Promise.all([loadSessions(), loadCustomers()]);
+    // Map sessionId → tên khách hàng mới nhất
+    const map: Record<string, string> = {};
+    customers.forEach(c => {
+      (c.sessionIds || []).forEach(sid => { map[sid] = c.name; });
+    });
+    setNameMap(map);
+    setSessions(allSessions);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadSessions().then(setSessions);
-    }, [])
+      loadData();
+    }, [loadData])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadSessions().then(setSessions);
+    await loadData();
     setRefreshing(false);
-  }, []);
+  }, [loadData]);
 
   const handleDelete = (id: string, name: string) => {
     showAlert({
@@ -514,7 +527,7 @@ export default function HistoryScreen() {
     if (sessions.length === 0) return null;
     return (
       <View>
-        <StatsSummary sessions={sessions} colors={C} />
+        <StatsSummary sessions={sessions} colors={C} nameMap={nameMap} />
         <ScoreBarChart sessions={sessions} colors={C} />
         <Text style={[styles.listSectionTitle, { color: C.TEXT }]}>Tất cả phiên tư vấn</Text>
       </View>
@@ -538,8 +551,9 @@ export default function HistoryScreen() {
             renderItem={({ item }) => (
               <SessionCard
                 session={item}
+                displayName={nameMap[item.id]}
                 onPress={() => navigation.navigate('SessionDetail', { session: item })}
-                onDelete={() => handleDelete(item.id, item.customerName)}
+                onDelete={() => handleDelete(item.id, nameMap[item.id] || item.customerName)}
               />
             )}
             showsVerticalScrollIndicator={false}
@@ -584,13 +598,13 @@ const styles = StyleSheet.create({
   sessionCard: {
     backgroundColor: COLORS.CARD,
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -620,7 +634,7 @@ const styles = StyleSheet.create({
   scoreLabel: { fontSize: 11, fontWeight: '600' },
   deleteBtn: { marginTop: 4 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT, marginTop: 16, marginBottom: 8 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: COLORS.TEXT, marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: COLORS.TEXT_LIGHT, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
   emptyBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

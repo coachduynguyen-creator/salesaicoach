@@ -96,12 +96,13 @@ export default function LessonDetailScreen() {
           <TouchableOpacity
             style={[styles.completeBtn, { backgroundColor: C.PRIMARY }]}
             onPress={handleComplete}
+            activeOpacity={0.7}
           >
             <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
             <Text style={styles.completeBtnText}>Đã hiểu, hoàn thành bài này</Text>
           </TouchableOpacity>
         ) : (
-          <View style={[styles.completeBtn, { backgroundColor: COLORS.SUCCESS }]}>
+          <View style={[styles.completeBtn, { backgroundColor: COLORS.SUCCESS, opacity: 0.5 }]}>
             <Ionicons name="checkmark-circle" size={20} color="#fff" />
             <Text style={styles.completeBtnText}>Đã hoàn thành</Text>
           </View>
@@ -131,10 +132,10 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: COLORS.SURFACE },
   topBarTitle: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT, flex: 1, textAlign: 'center' },
-  scroll: { padding: 20, paddingBottom: 40 },
+  scroll: { padding: 16, paddingBottom: 40 },
 
   hero: { alignItems: 'center', marginBottom: 24 },
-  heroEmoji: { width: 80, height: 80, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  heroEmoji: { width: 80, height: 80, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   emojiText: { fontSize: 40 },
   tagBadge: { paddingHorizontal: 14, paddingVertical: 4, borderRadius: 12, marginBottom: 10 },
   tagBadgeText: { fontSize: 12, fontWeight: '700' },
@@ -142,22 +143,22 @@ const styles = StyleSheet.create({
   heroMeta: { fontSize: 13, color: COLORS.TEXT_LIGHT },
 
   contentCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
 
-  keyLessonBox: { borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1 },
+  keyLessonBox: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1 },
   keyLessonTitle: { fontSize: 15, fontWeight: '700', marginBottom: 8 },
   keyLessonText: { fontSize: 14, color: COLORS.TEXT, lineHeight: 22, fontWeight: '600' },
 
   completeBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderRadius: 12, paddingVertical: 14, marginBottom: 12,
+    borderRadius: 16, paddingVertical: 14, marginBottom: 12,
   },
   completeBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   practiceBox: {
-    borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1,
+    borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1,
   },
   practiceTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
   practiceText: { fontSize: 12, color: COLORS.TEXT_LIGHT, textAlign: 'center' },

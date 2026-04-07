@@ -20,6 +20,7 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [experience, setExperience] = useState<string>('');
+  const [inviteCode, setInviteCode] = useState('');
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -30,6 +31,10 @@ export default function AuthScreen() {
       showAlert({ title: 'Thiếu thông tin', message: 'Vui lòng nhập tên của bạn.', type: 'warning' });
       return;
     }
+    if (mode === 'signup' && !inviteCode.trim()) {
+      showAlert({ title: 'Cần mã mời', message: 'Vui lòng nhập mã mời từ quản lý team để đăng ký.', type: 'warning' });
+      return;
+    }
     if (password.length < 6) {
       showAlert({ title: 'Mật khẩu yếu', message: 'Mật khẩu cần ít nhất 6 ký tự.', type: 'warning' });
       return;
@@ -38,7 +43,7 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       if (mode === 'signup') {
-        await signUp(email.trim(), password, fullName.trim());
+        await signUp(email.trim(), password, fullName.trim(), inviteCode.trim());
         showAlert({ title: 'Đăng ký thành công', message: 'Kiểm tra email để xác nhận tài khoản. Sau đó đăng nhập lại.', type: 'success' });
         setMode('login');
       } else {
@@ -121,6 +126,19 @@ export default function AuthScreen() {
                       </Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+
+                <View style={[styles.inputWrap, { backgroundColor: C.SURFACE, borderColor: C.BORDER }]}>
+                  <Ionicons name="ticket-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mã mời từ quản lý team"
+                    placeholderTextColor={C.TEXT_LIGHT}
+                    value={inviteCode}
+                    onChangeText={setInviteCode}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
                 </View>
               </>
             )}

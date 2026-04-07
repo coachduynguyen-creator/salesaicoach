@@ -11,10 +11,14 @@ import { useAlert } from '../contexts/AlertContext';
 import {
   loadCustomers, updateCustomer, loadSessions, calculateLeadScore, autoUpdateEngagement,
   CustomerProfile, Session, DecisionMaker, LeadScoring, EMPTY_SCORING, addConversation,
-  loadCustomerStatuses, CustomerStatus,
+  loadCustomerStatuses, CustomerStatus, addCustomerNote,
 } from '../services/storageService';
-import { scoreCustomerWithAI, extractCustomerInfo } from '../services/aiService';
+import { scoreCustomerWithAI, extractCustomerInfo, generateDetailedRecommendation } from '../services/aiService';
+import { exportCustomerPDF } from '../services/pdfReportService';
 import { pickFromGallery, takePhoto, saveCustomerPhoto } from '../services/imageService';
+import { useKnowledge } from '../contexts/KnowledgeContext';
+import { useBusiness } from '../contexts/BusinessContext';
+import Markdown from 'react-native-markdown-display';
 
 type RouteParams = { CustomerDetail: { customerId: string } };
 
@@ -130,6 +134,8 @@ export default function CustomerDetailScreen() {
   const route = useRoute<RouteProp<RouteParams, 'CustomerDetail'>>();
   const C = useColors();
   const { showAlert } = useAlert();
+  const { knowledgeBase } = useKnowledge();
+  const { businessContext } = useBusiness();
   const { customerId } = route.params;
 
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
@@ -147,7 +153,14 @@ export default function CustomerDetailScreen() {
 
   const [isScoring, setIsScoring] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isGeneratingRec, setIsGeneratingRec] = useState(false);
+  const [recExpanded, setRecExpanded] = useState(false);
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [editNameField, setEditNameField] = useState<'name' | 'company'>('name');
+  const [editNameValue, setEditNameValue] = useState('');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [noteType, setNoteType] = useState<string>('Ghi chú');
 
   const loadData = useCallback(async () => {
     loadCustomerStatuses().then(setStatuses);
@@ -173,6 +186,7 @@ export default function CustomerDetailScreen() {
     setIsScoring(true);
     const summary = [
       `Tên: ${customer.name}`, customer.company ? `Công ty: ${customer.company}` : '',
+      customer.productOffered ? `Sản phẩm tư vấn: ${customer.productOffered}` : '',
       customer.needs ? `Nhu cầu: ${customer.needs}` : '', customer.budget ? `Ngân sách: ${customer.budget}` : '',
       customer.concerns ? `Lo ngại: ${customer.concerns}` : '', customer.stage ? `Giai đoạn: ${customer.stage}` : '',
       customer.decisionFactors ? `Yếu tố QĐ: ${customer.decisionFactors}` : '',
@@ -334,6 +348,57 @@ export default function CustomerDetailScreen() {
     navigation.navigate('AiCoachChat', { conversationId: conv.id, title: conv.title, customerId: customer.id });
   };
 
+  const generateRec = useCallback(async () => {
+    if (!customer) return;
+    setIsGeneratingRec(true);
+
+    const parts = [
+      `THÔNG TIN KHÁCH HÀNG:`,
+      `Tên: ${customer.name}`,
+      customer.company ? `Công ty: ${customer.company}` : '',
+      customer.productOffered ? `Sản phẩm đang tư vấn: ${customer.productOffered}` : '',
+      customer.needs ? `Nhu cầu: ${customer.needs}` : '',
+      customer.budget ? `Ngân sách: ${customer.budget}` : '',
+      customer.concerns ? `Lo ngại/phản đối: ${customer.concerns}` : '',
+      customer.stage ? `Giai đoạn: ${customer.stage}` : '',
+      customer.decisionFactors ? `Yếu tố quyết định: ${customer.decisionFactors}` : '',
+      customer.personality ? `Tính cách: ${customer.personality}` : '',
+      customer.nextStep ? `Bước tiếp theo dự kiến: ${customer.nextStep}` : '',
+      customer.icp?.painPoints ? `Nỗi đau: ${customer.icp.painPoints}` : '',
+      customer.icp?.desires ? `Mong muốn: ${customer.icp.desires}` : '',
+      customer.icp?.deepFears ? `Nỗi sợ sâu: ${customer.icp.deepFears}` : '',
+      customer.icp?.buyingTriggers ? `Trigger mua: ${customer.icp.buyingTriggers}` : '',
+      customer.icp?.buyingBarriers ? `Rào cản mua: ${customer.icp.buyingBarriers}` : '',
+      customer.decisionMakers?.length ? `\nNGƯỜI RA QUYẾT ĐỊNH:\n${customer.decisionMakers.map(d => `- ${d.name} (${d.role}, ${d.attitude})`).join('\n')}` : '',
+    ];
+
+    // Add notes
+    if (customer.notes?.length) {
+      parts.push(`\nLỊCH SỬ TƯƠNG TÁC (${customer.notes.length} ghi chú):`);
+      customer.notes.slice(0, 10).forEach(n => parts.push(`[${n.date}] ${n.content}`));
+    }
+
+    // Add session transcripts
+    if (sessions.length) {
+      parts.push(`\nCÁC CUỘC GỌI (${sessions.length} buổi):`);
+      sessions.slice(0, 3).forEach(s => {
+        parts.push(`[${s.date}] Điểm: ${s.score}/10`);
+        if (s.analysis?.transcript) parts.push(`Nội dung: ${s.analysis.transcript.slice(0, 800)}`);
+        if (s.analysis?.improvements?.length) parts.push(`Cần cải thiện: ${s.analysis.improvements.join('; ')}`);
+      });
+    }
+
+    const summary = parts.filter(Boolean).join('\n');
+    const rec = await generateDetailedRecommendation(summary, knowledgeBase + businessContext);
+
+    if (rec) {
+      await updateCustomer(customer.id, { aiRecommendation: rec });
+      setCustomer(prev => prev ? { ...prev, aiRecommendation: rec } : prev);
+      setRecExpanded(true);
+    }
+    setIsGeneratingRec(false);
+  }, [customer, sessions, knowledgeBase, businessContext]);
+
   if (!customer) return null;
 
   const icp = customer.icp || {};
@@ -359,6 +424,11 @@ export default function CustomerDetailScreen() {
         }} style={styles.topBtn}>
           <Ionicons name="share-outline" size={20} color={COLORS.TEXT} />
         </TouchableOpacity>
+        <TouchableOpacity onPress={async () => {
+          if (customer) await exportCustomerPDF(customer, sessions);
+        }} style={styles.topBtn}>
+          <Ionicons name="document-text-outline" size={20} color={COLORS.TEXT} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}
@@ -380,8 +450,28 @@ export default function CustomerDetailScreen() {
               </View>
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroName}>{customer.name}</Text>
-              {customer.company ? <Text style={styles.heroCompany}>{customer.company}</Text> : null}
+              <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                setEditNameField('name');
+                setEditNameValue(customer.name);
+                setShowEditNameModal(true);
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.heroName}>{customer.name}</Text>
+                  <Ionicons name="pencil" size={14} color={C.TEXT_LIGHT} />
+                </View>
+              </TouchableOpacity>
+              {customer.company ? (
+                <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                  setEditNameField('company');
+                  setEditNameValue(customer.company);
+                  setShowEditNameModal(true);
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={styles.heroCompany}>{customer.company}</Text>
+                    <Ionicons name="pencil" size={11} color={C.TEXT_LIGHT} />
+                  </View>
+                </TouchableOpacity>
+              ) : null}
               {(() => {
                 const currentStatus = statuses.find(s => s.id === customer.statusId);
                 const statusColor = currentStatus?.color || COLORS.TEXT_LIGHT;
@@ -461,18 +551,66 @@ export default function CustomerDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* AI RECOMMENDATION */}
-        {customer.aiRecommendation ? (
-          <View style={[styles.section, { borderLeftColor: '#8B5CF6' }]}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="bulb" size={18} color="#8B5CF6" />
-              <Text style={[styles.sectionTitle, { color: '#8B5CF6' }]}>Đề xuất AI</Text>
+        {/* ĐỀ XUẤT AI COACH DUY NGUYỄN */}
+        <View style={[styles.section, { borderLeftColor: C.PRIMARY }]}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => customer.aiRecommendation && setRecExpanded(!recExpanded)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="sparkles" size={18} color={C.PRIMARY} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionTitle, { color: C.PRIMARY }]}>
+                Đề xuất từ Trợ lý AI của Coach Duy Nguyễn
+              </Text>
+              <Text style={{ fontSize: 11, color: C.TEXT_LIGHT, marginTop: 2 }}>
+                Phương pháp Bán bằng Vị thế — THE TRUSTED ADVISOR
+              </Text>
             </View>
+            {customer.aiRecommendation ? (
+              <Ionicons name={recExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={C.TEXT_LIGHT} />
+            ) : null}
+          </TouchableOpacity>
+
+          {customer.aiRecommendation && recExpanded && (
             <View style={styles.sectionBody}>
-              <Text style={{ fontSize: 14, color: COLORS.TEXT, lineHeight: 22 }}>{customer.aiRecommendation}</Text>
+              <Markdown style={getMdStyles(C)}>{customer.aiRecommendation}</Markdown>
             </View>
+          )}
+
+          {customer.aiRecommendation && !recExpanded && (
+            <View style={styles.sectionBody}>
+              <Text style={{ fontSize: 13, color: C.TEXT_LIGHT, fontStyle: 'italic' }} numberOfLines={3}>
+                {customer.aiRecommendation.replace(/[#*>_\-]/g, '').slice(0, 150)}...
+              </Text>
+              <TouchableOpacity onPress={() => setRecExpanded(true)}>
+                <Text style={{ fontSize: 13, color: C.PRIMARY, fontWeight: '600', marginTop: 6 }}>Xem đầy đủ</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.aiScoreBtn, { backgroundColor: C.PRIMARY }, isGeneratingRec && { opacity: 0.6 }]}
+              onPress={generateRec}
+              disabled={isGeneratingRec}
+            >
+              <Ionicons name="sparkles" size={16} color="#fff" />
+              <Text style={styles.aiScoreBtnText}>
+                {isGeneratingRec ? 'Đang phân tích...' : customer.aiRecommendation ? 'Cập nhật đề xuất' : 'Tạo đề xuất chi tiết'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.aiScoreBtn, { backgroundColor: C.CARD, borderWidth: 1.5, borderColor: C.PRIMARY }]}
+              onPress={async () => {
+                if (customer) await exportCustomerPDF(customer, sessions);
+              }}
+            >
+              <Ionicons name="document-text" size={16} color={C.PRIMARY} />
+              <Text style={[styles.aiScoreBtnText, { color: C.PRIMARY }]}>Xuất báo cáo PDF</Text>
+            </TouchableOpacity>
           </View>
-        ) : null}
+        </View>
 
         {/* I. Liên hệ */}
         <ICPSection title="Liên hệ" icon="call-outline" color={C.PRIMARY}>
@@ -487,6 +625,7 @@ export default function CustomerDetailScreen() {
           <EditableField label="Lo ngại / phản đối" value={customer.concerns} icon="alert-circle-outline" onSave={v => saveField('concerns', v)} />
           <EditableField label="Yếu tố quyết định" value={customer.decisionFactors} icon="key-outline" onSave={v => saveField('decisionFactors', v)} />
           <EditableField label="Bước tiếp theo" value={customer.nextStep} icon="arrow-forward-outline" onSave={v => saveField('nextStep', v)} />
+          <EditableField label="Sản phẩm đang tư vấn" value={customer.productOffered || ''} icon="bag-outline" onSave={v => saveField('productOffered', v)} />
         </ICPSection>
 
         {/* III. Tâm lý & Động lực */}
@@ -549,14 +688,68 @@ export default function CustomerDetailScreen() {
 
         {/* VIII. Ghi chú lịch sử */}
         <ICPSection title={`Ghi chú (${customer.notes?.length || 0})`} icon="document-text-outline" color="#6366F1">
+          <View style={styles.noteInputWrap}>
+            {/* Note type selector - horizontal chips */}
+            <View style={styles.noteTypeRow}>
+              {['Ghi chú', 'Nhắn tin', 'Gặp mặt', 'Email', 'Gọi điện'].map(type => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.noteTypeChip, noteType === type && { backgroundColor: C.PRIMARY }]}
+                  onPress={() => setNoteType(type)}
+                >
+                  <Text style={[styles.noteTypeText, noteType === type && { color: '#fff' }]}>{type}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Text input */}
+            <View style={styles.noteInputRow}>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Ghi nhanh tình trạng khách hàng..."
+                placeholderTextColor={COLORS.TEXT_LIGHT}
+                value={noteText}
+                onChangeText={setNoteText}
+                multiline
+                maxLength={500}
+              />
+              <TouchableOpacity
+                style={[styles.noteAddBtn, { backgroundColor: C.PRIMARY }, !noteText.trim() && { opacity: 0.5 }]}
+                onPress={async () => {
+                  if (!noteText.trim() || !customer) return;
+                  await addCustomerNote(customer.id, noteText.trim(), noteType);
+                  // Reload customer
+                  const customers = await loadCustomers();
+                  const updated = customers.find(c => c.id === customer.id);
+                  if (updated) setCustomer(updated);
+                  setNoteText('');
+                }}
+                disabled={!noteText.trim()}
+              >
+                <Ionicons name="add" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {(customer.notes || []).map((note, i) => (
             <View key={i} style={styles.noteItem}>
-              <Text style={styles.noteDate}>{note.date}</Text>
-              <Text style={styles.noteContent}>{note.content}</Text>
+              <View style={styles.noteHeader}>
+                <Text style={styles.noteDate}>{note.date}</Text>
+                {note.content.startsWith('[') && (
+                  <View style={[styles.noteTypeBadge, { backgroundColor: C.PRIMARY + '15' }]}>
+                    <Text style={[styles.noteTypeBadgeText, { color: C.PRIMARY }]}>
+                      {note.content.match(/^\[([^\]]+)\]/)?.[1] || ''}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.noteContent}>
+                {note.content.replace(/^\[[^\]]+\]\s*/, '')}
+              </Text>
             </View>
           ))}
           {(!customer.notes || customer.notes.length === 0) && (
-            <Text style={styles.fieldEmpty}>Ghi âm cuộc gọi để tạo ghi chú tự động</Text>
+            <Text style={styles.fieldEmpty}>Thêm ghi chú về tình trạng khách hàng sau mỗi lần tương tác</Text>
           )}
         </ICPSection>
 
@@ -686,8 +879,68 @@ export default function CustomerDetailScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      {/* Edit Name/Company Modal */}
+      <Modal visible={showEditNameModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowEditNameModal(false)}>
+          <View style={[styles.modalContent, { backgroundColor: C.CARD }]}>
+            <Text style={[styles.modalTitle, { color: C.TEXT }]}>
+              {editNameField === 'name' ? 'Đổi tên khách hàng' : 'Đổi tên công ty'}
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { color: C.TEXT, borderColor: C.BORDER, backgroundColor: C.SURFACE }]}
+              value={editNameValue}
+              onChangeText={setEditNameValue}
+              autoFocus
+              placeholder={editNameField === 'name' ? 'Tên khách hàng' : 'Tên công ty'}
+              placeholderTextColor={COLORS.TEXT_LIGHT}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={[styles.modalCancelBtn, { backgroundColor: C.SURFACE }]} onPress={() => setShowEditNameModal(false)}>
+                <Text style={{ color: C.TEXT, fontWeight: '600' }}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, { backgroundColor: C.PRIMARY }, !editNameValue.trim() && { opacity: 0.5 }]}
+                disabled={!editNameValue.trim()}
+                onPress={async () => {
+                  if (editNameValue.trim() && customer) {
+                    await saveField(editNameField, editNameValue.trim());
+                    setShowEditNameModal(false);
+                  }
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Lưu</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
+}
+
+function getMdStyles(colors: any) {
+  return StyleSheet.create({
+    body: { fontSize: 14, lineHeight: 22, color: colors.TEXT },
+    heading1: { fontSize: 17, fontWeight: '800', color: colors.PRIMARY, marginBottom: 6, marginTop: 10 },
+    heading2: { fontSize: 15, fontWeight: '700', color: colors.PRIMARY, marginBottom: 4, marginTop: 8 },
+    heading3: { fontSize: 14, fontWeight: '700', color: colors.TEXT, marginBottom: 4, marginTop: 6 },
+    strong: { fontWeight: '700', color: colors.TEXT },
+    em: { fontStyle: 'italic' },
+    paragraph: { marginBottom: 6, marginTop: 0 },
+    bullet_list: { marginBottom: 4 },
+    ordered_list: { marginBottom: 4 },
+    list_item: { marginBottom: 2 },
+    blockquote: {
+      backgroundColor: colors.PRIMARY + '10',
+      borderLeftWidth: 3,
+      borderLeftColor: colors.PRIMARY,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginVertical: 6,
+      borderRadius: 8,
+    },
+    hr: { backgroundColor: colors.BORDER, height: 1, marginVertical: 10 },
+  });
 }
 
 const styles = StyleSheet.create({
@@ -765,6 +1018,16 @@ const styles = StyleSheet.create({
   noteItem: { borderLeftWidth: 3, borderLeftColor: COLORS.PRIMARY, paddingLeft: 12, paddingVertical: 8, marginBottom: 8 },
   noteDate: { fontSize: 11, fontWeight: '600', color: COLORS.TEXT_LIGHT },
   noteContent: { fontSize: 13, color: COLORS.TEXT, lineHeight: 19, marginTop: 2 },
+  noteInputWrap: { marginBottom: 16 },
+  noteTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  noteTypeChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: COLORS.SURFACE, borderWidth: 1, borderColor: COLORS.BORDER },
+  noteTypeText: { fontSize: 12, fontWeight: '600', color: COLORS.TEXT_SECONDARY },
+  noteInputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
+  noteInput: { flex: 1, backgroundColor: COLORS.SURFACE, borderRadius: 12, padding: 12, fontSize: 14, color: COLORS.TEXT, minHeight: 44, maxHeight: 100, borderWidth: 1, borderColor: COLORS.BORDER },
+  noteAddBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  noteHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  noteTypeBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
+  noteTypeBadgeText: { fontSize: 11, fontWeight: '600' },
   // Session
   sessionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.BORDER },
   sessionDot: { width: 8, height: 8, borderRadius: 4 },

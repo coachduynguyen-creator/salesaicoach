@@ -212,7 +212,7 @@ export default function ProfileScreen() {
                   <TouchableOpacity
                     key={mode}
                     style={[{
-                      flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center',
+                      flex: 1, paddingVertical: 8, borderRadius: 12, alignItems: 'center',
                       borderWidth: 1, borderColor: darkMode === mode ? C.PRIMARY : COLORS.BORDER,
                       backgroundColor: darkMode === mode ? C.PRIMARY : 'transparent',
                     }]}
@@ -631,10 +631,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 26, fontWeight: '800', color: COLORS.TEXT },
   headerSubtitle: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 2 },
   profileCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 18,
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16,
     flexDirection: 'row', alignItems: 'center', marginBottom: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07, shadowRadius: 6, elevation: 3,
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   avatarCircle: {
     width: 64, height: 64, borderRadius: 32,
@@ -664,9 +664,9 @@ const styles = StyleSheet.create({
   stripLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 3 },
   stripDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
   sectionCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 16, marginBottom: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.TEXT },
@@ -714,18 +714,18 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT, marginBottom: 16 },
   modalInput: {
-    backgroundColor: COLORS.BACKGROUND, borderRadius: 10, padding: 14,
+    backgroundColor: COLORS.BACKGROUND, borderRadius: 12, padding: 14,
     fontSize: 15, color: COLORS.TEXT, marginBottom: 12,
     borderWidth: 1, borderColor: COLORS.BORDER,
   },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   modalCancelBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 10,
+    flex: 1, paddingVertical: 14, borderRadius: 12,
     borderWidth: 1, borderColor: COLORS.BORDER, alignItems: 'center',
   },
   modalCancelText: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT_LIGHT },
   modalSaveBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center',
+    flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center',
   },
   modalSaveText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });

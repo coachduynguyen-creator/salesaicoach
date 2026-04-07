@@ -240,14 +240,14 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 13, color: COLORS.TEXT_LIGHT, marginTop: 2 },
   newButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    marginHorizontal: 16, marginBottom: 12, paddingVertical: 14, borderRadius: 14, gap: 8,
+    marginHorizontal: 16, marginBottom: 12, paddingVertical: 14, borderRadius: 16, gap: 8,
   },
   newButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  listContent: { padding: 16, paddingTop: 4, gap: 10, paddingBottom: 30 },
+  listContent: { padding: 16, paddingTop: 4, gap: 12, paddingBottom: 30 },
   card: {
-    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 14,
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16,
     flexDirection: 'row', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   cardIcon: {
     width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
@@ -272,13 +272,13 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT, marginBottom: 16 },
   modalInput: {
-    backgroundColor: COLORS.BACKGROUND, borderRadius: 10, padding: 14,
+    backgroundColor: COLORS.BACKGROUND, borderRadius: 12, padding: 16,
     fontSize: 15, color: COLORS.TEXT, marginBottom: 16, borderWidth: 1, borderColor: COLORS.BORDER,
   },
   pickerLabel: { fontSize: 13, fontWeight: '600', color: COLORS.TEXT_SECONDARY, marginBottom: 10 },
   customerOption: {
     flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12,
-    borderRadius: 10, marginBottom: 6, borderWidth: 1, borderColor: COLORS.BORDER,
+    borderRadius: 12, marginBottom: 6, borderWidth: 1, borderColor: COLORS.BORDER,
   },
   customerAvatar: {
     width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
@@ -288,14 +288,14 @@ const styles = StyleSheet.create({
   customerStage: { fontSize: 11, color: COLORS.TEXT_LIGHT, fontStyle: 'italic' },
   noCustomerHint: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: COLORS.BACKGROUND, borderRadius: 10, padding: 12,
+    backgroundColor: COLORS.BACKGROUND, borderRadius: 12, padding: 16,
   },
   noCustomerText: { flex: 1, fontSize: 13, color: COLORS.TEXT_LIGHT, lineHeight: 19 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 16 },
   modalCancelBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, borderColor: COLORS.BORDER, alignItems: 'center',
+    flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: COLORS.BORDER, alignItems: 'center',
   },
   modalCancelText: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT_LIGHT },
-  modalSaveBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+  modalSaveBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   modalSaveText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });

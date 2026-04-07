@@ -22,6 +22,7 @@ import CustomerDetailScreen from '../screens/CustomerDetailScreen';
 import AboutScreen from '../screens/AboutScreen';
 import TeamManageScreen from '../screens/TeamManageScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import BugReportsScreen from '../screens/BugReportsScreen';
 import PaywallScreen from '../screens/PaywallScreen';
 import ScriptGeneratorScreen from '../screens/ScriptGeneratorScreen';
 import AIToolsScreen from '../screens/AIToolsScreen';
@@ -58,6 +59,7 @@ export type RootStackParamList = {
   About: undefined;
   TeamManage: undefined;
   AdminDashboard: undefined;
+  BugReports: undefined;
   Paywall: undefined;
   ScriptGenerator: undefined;
   AITools: { tool: string };
@@ -221,6 +223,7 @@ export default function AppNavigator() {
         component={AdminDashboardScreen}
         options={{ presentation: 'card' }}
       />
+      <Stack.Screen name="BugReports" component={BugReportsScreen} options={{ presentation: 'card' }} />
       <Stack.Screen
         name="LichSu"
         component={HistoryScreen}

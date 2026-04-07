@@ -26,18 +26,24 @@ export default function CustomerListScreen() {
   const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [funnelExpanded, setFunnelExpanded] = useState(true);
+  const [funnelExpanded, setFunnelExpanded] = useState(false);
 
   const syncCustomersFromSessions = useCallback(async () => {
     loadCustomerStatuses().then(setStatuses);
     const [existingCustomers, sessions] = await Promise.all([loadCustomers(), loadSessions()]);
 
+    // Tập hợp tất cả sessionId đã thuộc khách nào đó — tránh tạo trùng
+    const allAssignedSessionIds = new Set(existingCustomers.flatMap(c => c.sessionIds || []));
     const customerNames = new Set(existingCustomers.map(c => c.name.toLowerCase().trim()));
     const toCreate: Record<string, { name: string; company: string; sessionIds: string[]; dates: string[]; scores: number[] }> = {};
 
     for (const s of sessions) {
       const name = s.customerName?.trim();
       if (!name) continue;
+
+      // Nếu session đã thuộc 1 khách nào rồi → skip (không tạo mới dù tên khác)
+      if (allAssignedSessionIds.has(s.id)) continue;
+
       const key = name.toLowerCase();
       if (customerNames.has(key)) {
         const existing = existingCustomers.find(c => c.name.toLowerCase().trim() === key);
@@ -81,15 +87,27 @@ export default function CustomerListScreen() {
     setRefreshing(false);
   }, [syncCustomersFromSessions]);
 
+  const getLastContactInfo = (c: CustomerProfile) => {
+    const lastContact = c.lastContactAt ? new Date(c.lastContactAt) : (c.notes?.[0] ? new Date(c.notes[0].date.split('/').reverse().join('-')) : null);
+    const daysSince = lastContact ? Math.floor((Date.now() - lastContact.getTime()) / 86400000) : null;
+    const needsAttention = daysSince === null || daysSince > 7;
+    const timeAgoText = daysSince === null ? 'Chưa liên hệ' : daysSince === 0 ? 'Hôm nay' : daysSince === 1 ? 'Hôm qua' : `${daysSince} ngày trước`;
+    return { daysSince, needsAttention, timeAgoText };
+  };
+
+  const attentionCount = customers.filter(c => getLastContactInfo(c).needsAttention).length;
+
   const searchFiltered = search.trim()
     ? customers.filter(c =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.company.toLowerCase().includes(search.toLowerCase()))
     : customers;
 
-  const filtered = activeFilter === 'all'
-    ? searchFiltered
-    : searchFiltered.filter(c => c.statusId === activeFilter);
+  const filtered = activeFilter === 'attention'
+    ? searchFiltered.filter(c => getLastContactInfo(c).needsAttention)
+    : activeFilter === 'all'
+      ? searchFiltered
+      : searchFiltered.filter(c => c.statusId === activeFilter);
 
   const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order);
   const activeStatusObj = sortedStatuses.find(s => s.id === activeFilter);
@@ -118,6 +136,7 @@ export default function CustomerListScreen() {
     const stageLabel = statusObj?.label || item.stage || '';
     const sessionCount = item.sessionIds?.length || 0;
     const score = item.leadScore || 0;
+    const { needsAttention, timeAgoText } = getLastContactInfo(item);
 
     return (
       <TouchableOpacity
@@ -138,7 +157,17 @@ export default function CustomerListScreen() {
         </View>
 
         <View style={styles.info}>
-          <Text style={[styles.name, { color: C.TEXT }]} numberOfLines={1}>{item.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.name, { color: C.TEXT, flex: 1 }]} numberOfLines={1}>{item.name}</Text>
+            {needsAttention && (
+              <View style={styles.attentionBadge}>
+                <Ionicons name="alert-circle" size={14} color="#EF4444" />
+              </View>
+            )}
+          </View>
+          <Text style={[styles.lastContact, needsAttention && styles.lastContactWarning]}>
+            {timeAgoText}
+          </Text>
           {item.company ? <Text style={styles.company} numberOfLines={1}>{item.company}</Text> : null}
           <View style={styles.metaRow}>
             {stageLabel ? (
@@ -168,6 +197,15 @@ export default function CustomerListScreen() {
         <Text style={[styles.headerTitle, { color: C.TEXT }]}>Khách Hàng</Text>
         <Text style={[styles.headerSub, { color: C.TEXT_LIGHT }]}>{customers.length} khách hàng</Text>
       </View>
+
+      {/* Attention Banner */}
+      {attentionCount > 0 && (
+        <TouchableOpacity style={styles.attentionBanner} onPress={() => setActiveFilter(activeFilter === 'attention' ? 'all' : 'attention')}>
+          <Ionicons name="warning" size={16} color="#EF4444" />
+          <Text style={styles.attentionText}>{attentionCount} khách hàng cần chăm lại ({'>'}7 ngày)</Text>
+          {activeFilter === 'attention' && <Ionicons name="checkmark-circle" size={16} color="#EF4444" />}
+        </TouchableOpacity>
+      )}
 
       {/* Sales Funnel */}
       {customers.length > 0 && sortedStatuses.length > 0 && (() => {
@@ -235,16 +273,16 @@ export default function CustomerListScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.filterBtn, activeFilter !== 'all' && { borderColor: activeStatusObj?.color || C.PRIMARY }]}
+          style={[styles.filterBtn, activeFilter !== 'all' && { borderColor: activeFilter === 'attention' ? '#EF4444' : (activeStatusObj?.color || C.PRIMARY) }]}
           onPress={() => setShowDropdown(true)}
         >
           {activeFilter !== 'all' && (
             <View style={[styles.filterDot, { backgroundColor: activeStatusObj?.color }]} />
           )}
-          <Text style={[styles.filterBtnText, activeFilter !== 'all' && { color: activeStatusObj?.color }]} numberOfLines={1}>
-            {activeFilter === 'all' ? 'Tất cả' : activeStatusObj?.label || 'Lọc'}
+          <Text style={[styles.filterBtnText, activeFilter !== 'all' && { color: activeFilter === 'attention' ? '#EF4444' : activeStatusObj?.color }]} numberOfLines={1}>
+            {activeFilter === 'all' ? 'Tất cả' : activeFilter === 'attention' ? 'Cần chăm' : activeStatusObj?.label || 'Lọc'}
           </Text>
-          <Ionicons name="chevron-down" size={14} color={activeFilter !== 'all' ? activeStatusObj?.color : COLORS.TEXT_LIGHT} />
+          <Ionicons name="chevron-down" size={14} color={activeFilter === 'attention' ? '#EF4444' : activeFilter !== 'all' ? activeStatusObj?.color : COLORS.TEXT_LIGHT} />
         </TouchableOpacity>
       </View>
 
@@ -263,7 +301,7 @@ export default function CustomerListScreen() {
               {search || activeFilter !== 'all' ? 'Không tìm thấy' : 'Chưa có khách hàng'}
             </Text>
             <Text style={styles.emptyDesc}>
-              {search ? 'Thử từ khóa khác' : activeFilter !== 'all' ? 'Không có khách ở giai đoạn này' : 'Ghi âm cuộc gọi đầu tiên, AI sẽ tự tạo profile khách'}
+              {search ? 'Thử từ khóa khác' : activeFilter === 'attention' ? 'Không có khách cần chăm lại' : activeFilter !== 'all' ? 'Không có khách ở giai đoạn này' : 'Ghi âm cuộc gọi đầu tiên, AI sẽ tự tạo profile khách'}
             </Text>
           </View>
         }
@@ -283,6 +321,17 @@ export default function CustomerListScreen() {
                 Tất cả ({customers.length})
               </Text>
               {activeFilter === 'all' && <Ionicons name="checkmark" size={18} color={C.PRIMARY} />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.dropdownItem, activeFilter === 'attention' && styles.dropdownItemActive]}
+              onPress={() => { setActiveFilter('attention'); setShowDropdown(false); }}
+            >
+              <Ionicons name="alert-circle" size={14} color="#EF4444" />
+              <Text style={[styles.dropdownItemText, activeFilter === 'attention' && { color: '#EF4444', fontWeight: '700' }]}>
+                Cần chăm lại ({attentionCount})
+              </Text>
+              {activeFilter === 'attention' && <Ionicons name="checkmark" size={18} color="#EF4444" />}
             </TouchableOpacity>
 
             {sortedStatuses.map(status => {
@@ -322,9 +371,9 @@ const styles = StyleSheet.create({
   // Funnel
   funnelCard: {
     marginHorizontal: 16, marginBottom: 10, backgroundColor: COLORS.CARD,
-    borderRadius: 14, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+    borderRadius: 16, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   funnelHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14,
@@ -346,14 +395,14 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 8 },
   searchWrap: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: COLORS.CARD, borderRadius: 10,
+    backgroundColor: COLORS.CARD, borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: 10,
     borderWidth: 1, borderColor: COLORS.BORDER,
   },
   searchInput: { flex: 1, fontSize: 13, color: COLORS.TEXT },
   filterBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: COLORS.CARD, borderRadius: 10,
+    backgroundColor: COLORS.CARD, borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: 10,
     borderWidth: 1, borderColor: COLORS.BORDER, minWidth: 80,
   },
@@ -361,15 +410,15 @@ const styles = StyleSheet.create({
   filterBtnText: { fontSize: 12, fontWeight: '600', color: COLORS.TEXT_SECONDARY },
 
   // List
-  listContent: { padding: 16, paddingTop: 4, gap: 6, paddingBottom: 30 },
+  listContent: { padding: 16, paddingTop: 4, gap: 12, paddingBottom: 30 },
   customerCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 12, padding: 12,
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16,
     flexDirection: 'row', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
     overflow: 'hidden',
   },
-  cardLeft: { width: 3, height: '100%', position: 'absolute', left: 0, top: 0, bottom: 0, borderTopLeftRadius: 12, borderBottomLeftRadius: 12 },
+  cardLeft: { width: 3, height: '100%', position: 'absolute', left: 0, top: 0, bottom: 0, borderTopLeftRadius: 16, borderBottomLeftRadius: 16 },
   avatar: {
     width: 42, height: 42, borderRadius: 21,
     alignItems: 'center', justifyContent: 'center', marginRight: 10, overflow: 'hidden',
@@ -388,6 +437,14 @@ const styles = StyleSheet.create({
   stageText: { fontSize: 9, fontWeight: '700' },
   scoreVal: { fontSize: 10, fontWeight: '800' },
   metaText: { fontSize: 10, color: COLORS.TEXT_LIGHT },
+  lastContact: { fontSize: 11, color: COLORS.TEXT_LIGHT },
+  lastContactWarning: { color: '#EF4444', fontWeight: '600' },
+  attentionBadge: { marginLeft: 4 },
+  attentionBanner: {
+    flexDirection: 'row', backgroundColor: '#FEE2E2', borderRadius: 12,
+    padding: 12, marginHorizontal: 16, marginBottom: 12, gap: 8, alignItems: 'center',
+  },
+  attentionText: { fontSize: 13, color: '#EF4444', fontWeight: '600', flex: 1 },
 
   // Dropdown
   dropdownOverlay: {
@@ -405,13 +462,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
   },
-  dropdownItemActive: { backgroundColor: COLORS.SURFACE, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: 10 },
+  dropdownItemActive: { backgroundColor: COLORS.SURFACE, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: 12 },
   dropdownDot: { width: 10, height: 10, borderRadius: 5 },
   dropdownItemText: { fontSize: 14, color: COLORS.TEXT, flex: 1 },
   dropdownClose: { alignItems: 'center', paddingVertical: 14, marginTop: 8 },
   dropdownCloseText: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT_LIGHT },
 
   emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: COLORS.TEXT },
+  emptyTitle: { fontSize: 17, fontWeight: '600', color: COLORS.TEXT },
   emptyDesc: { fontSize: 13, color: COLORS.TEXT_LIGHT, textAlign: 'center', paddingHorizontal: 40 },
 });

@@ -267,6 +267,16 @@ export default function AdminDashboardScreen() {
           )}
         </View>
 
+        {/* Bug Reports */}
+        <TouchableOpacity
+          style={[styles.bugReportBtn, { borderColor: '#EF4444' }]}
+          onPress={() => navigation.navigate('BugReports' as any)}
+        >
+          <Ionicons name="bug" size={18} color="#EF4444" />
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#EF4444', flex: 1 }}>Xem báo lỗi & Crash</Text>
+          <Ionicons name="chevron-forward" size={16} color="#EF4444" />
+        </TouchableOpacity>
+
         <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>
@@ -328,4 +338,8 @@ const styles = StyleSheet.create({
   progressPct: { fontSize: 12, fontWeight: '600', color: COLORS.TEXT_SECONDARY, width: 40, textAlign: 'right' },
 
   emptyText: { fontSize: 13, color: COLORS.TEXT_LIGHT, textAlign: 'center', paddingVertical: 20 },
+  bugReportBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16,
+    borderRadius: 16, borderWidth: 1.5, marginTop: 12,
+  },
 });

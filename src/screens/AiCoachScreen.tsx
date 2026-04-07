@@ -94,7 +94,7 @@ function MessageBubble({ message, streaming }: { message: Message; streaming?: b
             {message.content}
           </Text>
         ) : streaming ? (
-          <Text style={[styles.bubbleText, styles.bubbleTextAI]}>
+          <Text style={[styles.bubbleText, styles.bubbleTextAI, { color: C.TEXT }]}>
             {message.content}
             <Text style={{ color: C.PRIMARY }}>{'▍'}</Text>
           </Text>
@@ -473,7 +473,7 @@ export default function AiCoachScreen() {
               <Text style={styles.recordingHint}>Đang nghe... Nhấn nút đỏ để dừng</Text>
             ) : (
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: C.TEXT }]}
                 placeholder="Nhắn tin hoặc nhấn mic để nói..."
                 placeholderTextColor={COLORS.TEXT_LIGHT}
                 value={inputText}
@@ -569,7 +569,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.TEXT, // TODO: use C.TEXT
   },
   onlineRow: {
     flexDirection: 'row',
@@ -629,7 +628,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -641,7 +640,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   bubbleTextAI: {
-    color: COLORS.TEXT, // TODO: use C.TEXT
   },
   bubbleTime: {
     fontSize: 10,
@@ -688,7 +686,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.PRIMARY + '10',
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: COLORS.PRIMARY + '20',
   },
@@ -721,7 +719,6 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 15,
-    color: COLORS.TEXT, // TODO: use C.TEXT
     lineHeight: 20,
   },
   sendBtn: {
@@ -734,6 +731,7 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     backgroundColor: COLORS.BORDER,
+    opacity: 0.5,
   },
   micBtn: {
     width: 44,

@@ -164,7 +164,7 @@ function ManualInputScreen({ onSubmit }: { onSubmit: (text: string) => void }) {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={{ flex: 1, padding: 20 }}>
+        <View style={{ flex: 1, padding: 16 }}>
           <Text style={[styles.manualTitle, { color: C.PRIMARY }]}>Nhập nội dung cuộc tư vấn</Text>
           <Text style={styles.manualSub}>
             Tóm tắt hoặc chép lại những gì sales và khách đã nói. AI sẽ phân tích dựa trên nội dung này.
@@ -179,7 +179,7 @@ function ManualInputScreen({ onSubmit }: { onSubmit: (text: string) => void }) {
             textAlignVertical="top"
           />
           <TouchableOpacity
-            style={[styles.manualBtn, { backgroundColor: C.PRIMARY }, !text.trim() && { opacity: 0.4 }]}
+            style={[styles.manualBtn, { backgroundColor: C.PRIMARY }, !text.trim() && { opacity: 0.5 }]}
             onPress={() => onSubmit(text.trim())}
             disabled={!text.trim()}
           >
@@ -445,13 +445,13 @@ export default function ResultScreen() {
           emoji="📋"
           title="Tóm tắt"
           items={result.summary}
-          backgroundColor={COLORS.CARD}
+          backgroundColor={C.CARD}
           accentColor={C.PRIMARY}
         />
 
         {/* Communication Skills */}
         {result.communication && (
-          <View style={[styles.sectionCard, { backgroundColor: '#F5F3FF' }]}>
+          <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionEmoji}>🎙️</Text>
               <Text style={[styles.sectionTitle, { color: '#7C3AED' }]}>Tác phong & Giao tiếp</Text>
@@ -478,7 +478,7 @@ export default function ResultScreen() {
           emoji="💪"
           title="Điểm mạnh"
           items={result.strengths}
-          backgroundColor="#F0FFF4"
+          backgroundColor={C.SUCCESS_LIGHT}
           accentColor={COLORS.SUCCESS}
         />
 
@@ -487,13 +487,13 @@ export default function ResultScreen() {
           emoji="⚠️"
           title="Cần cải thiện"
           items={result.improvements}
-          backgroundColor="#FFFAF0"
+          backgroundColor={C.WARNING_LIGHT}
           accentColor={COLORS.WARNING}
         />
 
         {/* Scenario - Kịch bản mẫu */}
         {result.scenario && (
-          <View style={[styles.sectionCard, { backgroundColor: '#FFF5F5' }]}>
+          <View style={[styles.sectionCard, { backgroundColor: C.DANGER_LIGHT }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionEmoji}>🎬</Text>
               <Text style={[styles.sectionTitle, { color: '#E53E3E' }]}>Kịch bản cải thiện</Text>
@@ -515,8 +515,8 @@ export default function ResultScreen() {
             emoji="✅"
             title="Việc cần làm ngay"
             items={result.nextActions}
-            backgroundColor="#F0FFF4"
-            accentColor="#2B6CB0"
+            backgroundColor={C.SUCCESS_LIGHT}
+            accentColor={C.PRIMARY}
           />
         )}
 
@@ -525,18 +525,18 @@ export default function ResultScreen() {
           emoji="🎯"
           title="Chiến lược lần sau"
           items={result.strategies}
-          backgroundColor="#EBF8FF"
+          backgroundColor={C.CARD}
           accentColor={C.PRIMARY}
         />
 
         {/* Action Buttons */}
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
           <TouchableOpacity style={[styles.saveButton, { backgroundColor: C.PRIMARY, shadowColor: C.PRIMARY, flex: 1 }]} onPress={handleSave}>
             <Ionicons name="save-outline" size={18} color="#FFFFFF" />
             <Text style={styles.saveButtonText}>Lưu kết quả</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: '#4A5568', shadowColor: '#4A5568', flex: 1 }]}
+            style={[styles.saveButton, { backgroundColor: C.TEXT_SECONDARY, shadowColor: C.TEXT_SECONDARY, flex: 1 }]}
             onPress={handleShare}
           >
             <Ionicons name="share-outline" size={18} color="#FFFFFF" />
@@ -643,16 +643,16 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: COLORS.CARD,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     alignItems: 'center',
     marginTop: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
   scoreRing: {
     width: 110,
@@ -702,14 +702,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   sectionCard: {
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -779,18 +779,18 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: COLORS.PRIMARY,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     marginTop: 4,
-    shadowColor: COLORS.PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 2,
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
   manualInput: {
     flex: 1,
     backgroundColor: COLORS.CARD,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     padding: 16,
@@ -823,7 +823,7 @@ const styles = StyleSheet.create({
   },
   manualBtn: {
     backgroundColor: COLORS.PRIMARY,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',

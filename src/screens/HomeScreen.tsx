@@ -84,7 +84,12 @@ export default function HomeScreen() {
       loadUserAvatar().then(setAvatarUri);
       loadCustomers().then(customers => {
         const map: Record<string, string> = {};
+        // Map theo tên (fallback)
         customers.forEach(c => { map[c.name.toLowerCase().trim()] = c.id; });
+        // Map theo sessionId → customer name (ưu tiên, tên luôn mới nhất)
+        customers.forEach(c => {
+          (c.sessionIds || []).forEach(sid => { map['__sid__' + sid] = c.id; map['__sname__' + sid] = c.name; });
+        });
         setCustomerMap(map);
       });
       getDailyInsight().then(setDailyInsight);
@@ -197,11 +202,11 @@ export default function HomeScreen() {
         {/* Cảnh báo khi dùng kiến thức cũ */}
         {isStaleCache && (
           <TouchableOpacity
-            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', marginHorizontal: 16, marginTop: 12, padding: 12, borderRadius: 10, gap: 8 }}
+            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', marginHorizontal: 16, marginTop: 12, padding: 16, borderRadius: 16, gap: 8 }}
             onPress={reload}
           >
             <Ionicons name="warning-outline" size={18} color="#D97706" />
-            <Text style={{ flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17 }}>
+            <Text style={{ flex: 1, fontSize: 13, color: '#92400E', lineHeight: 20 }}>
               Kiến thức AI đang dùng bản cũ (không có mạng). Nhấn để thử tải lại.
             </Text>
           </TouchableOpacity>
@@ -270,7 +275,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Công cụ AI</Text>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 16, marginBottom: 16 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16, marginBottom: 16 }}>
           {[
             { key: 'script', label: 'Tạo kịch bản', icon: 'document-text', color: '#E67E22', nav: 'ScriptGenerator' },
             { key: 'precall', label: 'Chuẩn bị gặp', icon: 'clipboard', color: '#2563EB', nav: 'AITools', params: { tool: 'precall' } },
@@ -334,9 +339,9 @@ export default function HomeScreen() {
                   color={challengeProgress.tasksCompleted[i] ? '#10B981' : C.TEXT_LIGHT}
                 />
                 <Text style={{
-                  fontSize: 12, color: challengeProgress.tasksCompleted[i] ? C.TEXT_LIGHT : C.TEXT_SECONDARY,
+                  fontSize: 13, color: challengeProgress.tasksCompleted[i] ? C.TEXT_LIGHT : C.TEXT_SECONDARY,
                   textDecorationLine: challengeProgress.tasksCompleted[i] ? 'line-through' : 'none',
-                  flex: 1, lineHeight: 18,
+                  flex: 1, lineHeight: 20,
                 }}>{task}</Text>
               </TouchableOpacity>
             ))}
@@ -411,7 +416,8 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ) : (
           recent.map(session => {
-            const custId = customerMap[session.customerName?.toLowerCase().trim()];
+            const custId = customerMap['__sid__' + session.id] || customerMap[session.customerName?.toLowerCase().trim()];
+            const displayName = customerMap['__sname__' + session.id] || session.customerName;
             return (
               <TouchableOpacity
                 key={session.id}
@@ -426,7 +432,7 @@ export default function HomeScreen() {
                     onPress={() => custId && navigation.navigate('CustomerDetail', { customerId: custId })}
                     disabled={!custId}
                   >
-                    <Text style={[styles.sessionName, { color: custId ? C.PRIMARY : C.TEXT }]}>{session.customerName}</Text>
+                    <Text style={[styles.sessionName, { color: custId ? C.PRIMARY : C.TEXT }]}>{displayName}</Text>
                   </TouchableOpacity>
                   <Text style={styles.sessionMeta}>{session.date}  •  {formatTime(session.duration)}</Text>
                 </View>
@@ -451,16 +457,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: COLORS.CARD, marginHorizontal: 16, marginTop: 12,
     paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   searchPlaceholder: { fontSize: 14, color: COLORS.TEXT_LIGHT },
 
   // AI Tools
   toolCard: {
-    width: 90, borderRadius: 12, padding: 12, alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+    width: 90, borderRadius: 16, padding: 12, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   toolIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   toolLabel: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
@@ -468,9 +474,9 @@ const styles = StyleSheet.create({
   // Streak + Badges
   streakCard: {
     marginHorizontal: 16, marginTop: 12, marginBottom: 2,
-    paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14,
+    padding: 16, borderRadius: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   streakTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   streakFireWrap: {
@@ -509,7 +515,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   heroTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: '#fff',
     marginTop: 2,
@@ -564,7 +570,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     marginTop: 12,
-    gap: 10,
+    gap: 12,
   },
   actionCard: {
     flex: 1,
@@ -574,9 +580,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
   actionIcon: {
     width: 48,
@@ -600,16 +606,16 @@ const styles = StyleSheet.create({
   // Tip
   tipCard: {
     marginHorizontal: 16,
-    marginTop: 20,
+    marginTop: 12,
     backgroundColor: COLORS.CARD,
     borderRadius: 16,
     padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: COLORS.ACCENT,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   tipHeader: {
@@ -622,7 +628,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.WARNING_LIGHT,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 20,
   },
   tipBadgeText: {
     fontSize: 10,
@@ -634,6 +640,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.TEXT,
+    flex: 1,
   },
   tipText: {
     fontSize: 13,
@@ -651,7 +658,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.TEXT,
   },
@@ -682,7 +689,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: COLORS.TEXT,
     marginBottom: 4,
@@ -690,27 +697,28 @@ const styles = StyleSheet.create({
   emptyDesc: {
     fontSize: 13,
     color: COLORS.TEXT_LIGHT,
+    lineHeight: 20,
   },
 
   // Session Cards
   sessionCard: {
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 12,
     backgroundColor: COLORS.CARD,
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   sessionScore: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -736,18 +744,18 @@ const styles = StyleSheet.create({
   // Chart styles
   chartCard: {
     marginHorizontal: 16,
-    marginTop: 16,
+    marginTop: 12,
     backgroundColor: COLORS.CARD,
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   chartTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.TEXT,
     marginBottom: 12,

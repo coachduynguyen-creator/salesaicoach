@@ -4,6 +4,7 @@ import {
   PanResponder, Animated, Dimensions, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -49,6 +50,16 @@ export default function FloatingBugReport() {
           timestamp: new Date().toISOString(),
           platform: Platform.OS,
         },
+      });
+      // Gửi local notification cho admin (owner của team)
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Báo lỗi mới',
+          body: `${profile?.full_name || 'User'}: ${description.trim().slice(0, 100)}`,
+          sound: true,
+          data: { type: 'bug_report' },
+        },
+        trigger: null, // Gửi ngay lập tức
       });
       setSent(true);
       setDescription('');

@@ -306,7 +306,7 @@ export default function SessionDetailScreen() {
         {/* Next Actions */}
         {analysis.nextActions && analysis.nextActions.length > 0 && (
           <SectionCard emoji="✅" title="Việc cần làm ngay" items={analysis.nextActions}
-            backgroundColor={C.CARD} accentColor="#2B6CB0" textColor={C.TEXT} />
+            backgroundColor={C.CARD} accentColor={C.PRIMARY} textColor={C.TEXT} />
         )}
 
         <SectionCard emoji="🎯" title="Chiến lược lần sau" items={analysis.strategies}
@@ -342,10 +342,10 @@ const styles = StyleSheet.create({
   topBarTitle: { fontSize: 16, fontWeight: '700', color: COLORS.TEXT, flex: 1, textAlign: 'center' },
   scrollView: { flex: 1, paddingHorizontal: 16 },
   heroCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 24,
+    backgroundColor: COLORS.CARD, borderRadius: 20, padding: 24,
     alignItems: 'center', marginTop: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   scoreRing: {
     width: 110, height: 110, borderRadius: 55, borderWidth: 6,
@@ -360,7 +360,11 @@ const styles = StyleSheet.create({
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   heroMetaText: { fontSize: 13, color: COLORS.TEXT_LIGHT },
   heroDivider: { width: 1, height: 12, backgroundColor: COLORS.BORDER, marginHorizontal: 4 },
-  sectionCard: { borderRadius: 14, padding: 16, marginBottom: 12, elevation: 1 },
+  sectionCard: {
+    borderRadius: 16, padding: 16, marginBottom: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionEmoji: { fontSize: 18 },
   sectionTitle: { fontSize: 15, fontWeight: '700' },
@@ -370,16 +374,16 @@ const styles = StyleSheet.create({
   transcriptText: { fontSize: 13, color: COLORS.TEXT, lineHeight: 21 },
   outcomeCard: {
     backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   outcomeTitle: { fontSize: 15, fontWeight: '700', color: COLORS.TEXT, marginBottom: 14 },
-  outcomeRow: { flexDirection: 'row', gap: 10 },
+  outcomeRow: { flexDirection: 'row', gap: 12 },
   outcomeBtn: {
-    flex: 1, borderRadius: 14,
+    flex: 1, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center', justifyContent: 'center', gap: 6,
   },
   outcomeBtnActive: {
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   outcomeBtnText: { fontSize: 13, fontWeight: '700' },
 });

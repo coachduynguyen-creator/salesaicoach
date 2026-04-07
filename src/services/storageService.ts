@@ -411,6 +411,7 @@ export interface CustomerProfile {
   decisionFactors: string;
   personality: string;
   nextStep: string;
+  productOffered: string;    // Sản phẩm/dịch vụ đang tư vấn cho khách này
   // ICP mở rộng
   icp: Partial<ICPProfile>;
   decisionMakers: DecisionMaker[];
@@ -421,6 +422,7 @@ export interface CustomerProfile {
   // Metadata
   notes: CustomerNote[];
   sessionIds: string[];
+  lastContactAt?: string;  // ISO string — lần tương tác gần nhất (gọi, ghi chú, chat)
   createdAt: string;
   updatedAt: string;
 }
@@ -464,6 +466,33 @@ export const updateCustomer = async (id: string, updates: Partial<CustomerProfil
   customers[idx] = { ...customers[idx], ...updates, updatedAt: new Date().toISOString() };
   await saveCustomers(customers);
   if (_syncUserId && _syncTeamId) pushCustomer(customers[idx], _syncUserId, _syncTeamId);
+};
+
+// Thêm ghi chú thủ công + cập nhật lastContactAt
+export const addCustomerNote = async (id: string, content: string, type?: string): Promise<void> => {
+  const customers = await loadCustomers();
+  const idx = customers.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  const now = new Date();
+  const note: CustomerNote = {
+    date: now.toLocaleDateString('vi-VN'),
+    content: type ? `[${type}] ${content}` : content,
+  };
+  customers[idx].notes = [note, ...(customers[idx].notes || [])];
+  customers[idx].lastContactAt = now.toISOString();
+  customers[idx].updatedAt = now.toISOString();
+  await saveCustomers(customers);
+  if (_syncUserId && _syncTeamId) pushCustomer(customers[idx], _syncUserId, _syncTeamId);
+};
+
+// Cập nhật lastContactAt khi có bất kỳ tương tác nào
+export const touchCustomerContact = async (id: string): Promise<void> => {
+  const customers = await loadCustomers();
+  const idx = customers.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  customers[idx].lastContactAt = new Date().toISOString();
+  customers[idx].updatedAt = new Date().toISOString();
+  await saveCustomers(customers);
 };
 
 export const findCustomerByName = async (name: string): Promise<CustomerProfile | undefined> => {
