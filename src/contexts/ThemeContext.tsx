@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from 'react-native';
+import { applyDarkMode } from '../constants/colors';
 
 const THEME_KEY = '@salescoach_theme';
 const DARK_MODE_KEY = '@salescoach_dark_mode';
@@ -77,14 +78,14 @@ const LIGHT_COLORS = {
 };
 
 const DARK_COLORS = {
-  BACKGROUND: '#0B1120',
-  CARD: '#162032',
-  SURFACE: '#1E2D42',
-  TEXT: '#F8FAFC',
-  TEXT_SECONDARY: '#E2E8F0',
-  TEXT_LIGHT: '#8B9DB8',
-  BORDER: '#253548',
-  DIVIDER: '#1A2536',
+  BACKGROUND: '#0D1117',
+  CARD: '#161B22',
+  SURFACE: '#21262D',
+  TEXT: '#F0F6FC',
+  TEXT_SECONDARY: '#C9D1D9',
+  TEXT_LIGHT: '#8B949E',
+  BORDER: '#30363D',
+  DIVIDER: '#21262D',
 };
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -138,6 +139,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [darkMode, setDarkModeState] = useState<DarkModeSetting>('light');
 
   const isDark = darkMode === 'dark' || (darkMode === 'system' && systemScheme === 'dark');
+
+  // Sync COLORS object cho StyleSheet.create() references
+  applyDarkMode(isDark);
 
   useEffect(() => {
     AsyncStorage.getItem(THEME_KEY).then(id => {

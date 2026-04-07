@@ -181,8 +181,8 @@ export default function CustomerListScreen() {
           <View style={[styles.funnelCard, { backgroundColor: C.CARD }]}>
             <TouchableOpacity style={styles.funnelHeader} onPress={() => setFunnelExpanded(!funnelExpanded)} activeOpacity={0.7}>
               <Ionicons name="funnel" size={16} color={C.PRIMARY} />
-              <Text style={styles.funnelTitle}>Sales Funnel</Text>
-              <Text style={styles.funnelTotal}>{customers.length} khách</Text>
+              <Text style={[styles.funnelTitle, { color: C.TEXT }]}>Sales Funnel</Text>
+              <Text style={[styles.funnelTotal, { color: C.TEXT_LIGHT }]}>{customers.length} khách</Text>
               <Ionicons name={funnelExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.TEXT_LIGHT} />
             </TouchableOpacity>
             {funnelExpanded && funnelData.map((stage, idx) => {
@@ -200,7 +200,7 @@ export default function CustomerListScreen() {
                   onPress={() => setActiveFilter(activeFilter === stage.id ? 'all' : stage.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.funnelLabel} numberOfLines={1}>{stage.label}</Text>
+                  <Text style={[styles.funnelLabel, { color: C.TEXT_SECONDARY }]} numberOfLines={1}>{stage.label}</Text>
                   <View style={styles.funnelBarWrap}>
                     <View style={[styles.funnelBar, { width: `${barWidth}%`, backgroundColor: stage.color + '35' }]}>
                       {stage.count > 0 && (
