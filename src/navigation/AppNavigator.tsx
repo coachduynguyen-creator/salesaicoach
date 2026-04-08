@@ -28,6 +28,7 @@ import ScriptGeneratorScreen from '../screens/ScriptGeneratorScreen';
 import AIToolsScreen from '../screens/AIToolsScreen';
 import GoalSettingScreen from '../screens/GoalSettingScreen';
 import CommissionScreen from '../screens/CommissionScreen';
+import UserGuideScreen from '../screens/UserGuideScreen';
 
 export type RootTabParamList = {
   TrangChu: undefined;
@@ -65,6 +66,7 @@ export type RootStackParamList = {
   AITools: { tool: string };
   GoalSetting: undefined;
   Commission: undefined;
+  UserGuide: undefined;
   LichSu: undefined;
   AiCoachChat: {
     conversationId: string;
@@ -218,6 +220,7 @@ export default function AppNavigator() {
       <Stack.Screen name="AITools" component={AIToolsScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="GoalSetting" component={GoalSettingScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="Commission" component={CommissionScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="UserGuide" component={UserGuideScreen} options={{ presentation: 'card' }} />
       <Stack.Screen
         name="AdminDashboard"
         component={AdminDashboardScreen}

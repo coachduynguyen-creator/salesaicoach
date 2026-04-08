@@ -419,6 +419,19 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* User Guide */}
+        <TouchableOpacity
+          style={[styles.sectionCard, { backgroundColor: C.CARD }]}
+          onPress={() => navigation.navigate('UserGuide')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.sectionTitleRow, { marginBottom: 0 }]}>
+            <Ionicons name="book-outline" size={18} color={C.PRIMARY} />
+            <Text style={[styles.sectionTitle, { color: C.TEXT, flex: 1 }]}>Hướng dẫn sử dụng</Text>
+            <Ionicons name="chevron-forward" size={16} color={C.TEXT_LIGHT} />
+          </View>
+        </TouchableOpacity>
+
         {/* About */}
         <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
           <View style={styles.sectionTitleRow}>
