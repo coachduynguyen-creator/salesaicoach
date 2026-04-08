@@ -162,14 +162,15 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
-        {/* Quick Search */}
+        {/* Hướng dẫn sử dụng */}
         <TouchableOpacity
           style={[styles.searchBar, { backgroundColor: C.CARD }]}
-          onPress={() => navigation.navigate('DaoTao')}
+          onPress={() => navigation.navigate('UserGuide' as never)}
           activeOpacity={0.7}
         >
-          <Ionicons name="search-outline" size={18} color={C.TEXT_LIGHT} />
-          <Text style={[styles.searchPlaceholder, { color: C.TEXT_LIGHT }]}>Tìm bài học, kỹ năng, tình huống...</Text>
+          <Ionicons name="book-outline" size={18} color={C.PRIMARY} />
+          <Text style={[styles.searchPlaceholder, { color: C.TEXT }]}>Hướng dẫn sử dụng app</Text>
+          <Ionicons name="chevron-forward" size={16} color={C.TEXT_LIGHT} style={{ marginLeft: 'auto' }} />
         </TouchableOpacity>
 
         {/* Streak + Badges */}
