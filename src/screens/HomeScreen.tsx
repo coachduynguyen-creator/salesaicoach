@@ -21,6 +21,7 @@ import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
 import { loadSessions, Session, loadCustomers } from '../services/storageService';
 import { useKnowledge } from '../contexts/KnowledgeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -64,6 +65,7 @@ const TIPS = [
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const C = useColors();
+  const { profile } = useAuth();
   const { isStaleCache, reload } = useKnowledge();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,7 +123,7 @@ export default function HomeScreen() {
           <View style={styles.heroTop}>
             <View>
               <Text style={styles.heroGreeting}>Chào mừng trở lại</Text>
-              <Text style={styles.heroTitle}>Sales Coach</Text>
+              <Text style={styles.heroTitle}>{profile?.full_name || 'Sales Coach'}</Text>
               <Text style={styles.heroTagline}>AI Coaching cho Sales | by Coach Duy Nguyễn</Text>
             </View>
             <TouchableOpacity
