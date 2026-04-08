@@ -17,6 +17,7 @@ import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
 import { startRecording, stopRecording, pauseRecording, resumeRecording } from '../services/audioService';
 import { useAlert } from '../contexts/AlertContext';
+import * as DocumentPicker from 'expo-document-picker';
 
 type RecordingState = 'idle' | 'recording' | 'paused';
 
@@ -179,6 +180,23 @@ export default function RecordScreen() {
     setRecordedDuration(0);
   };
 
+  const handleUploadFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['audio/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const file = result.assets[0];
+      setAudioUri(file.uri);
+      setRecordedDuration(0); // Không biết duration, để ResultScreen xử lý
+      setReviewMode(true);
+      showAlert({ title: 'Đã tải file', message: `${file.name} sẵn sàng phân tích.`, type: 'success' });
+    } catch {
+      showAlert({ title: 'Lỗi', message: 'Không thể tải file. Thử lại.', type: 'error' });
+    }
+  };
+
   const isRecording = recordingState !== 'idle';
 
   const formatPlaybackTime = (ms: number) => formatTime(Math.floor(ms / 1000));
@@ -206,6 +224,22 @@ export default function RecordScreen() {
               <TextInput style={[styles.input, { color: C.TEXT }]} placeholder="Tên công ty (không bắt buộc)" placeholderTextColor={C.TEXT_LIGHT} value={companyName} onChangeText={setCompanyName} />
             </View>
           </View>
+        )}
+
+        {/* Upload file — chỉ khi idle */}
+        {!isRecording && !reviewMode && (
+          <TouchableOpacity
+            style={[styles.uploadBtn, { backgroundColor: C.CARD, borderColor: C.BORDER }]}
+            onPress={handleUploadFile}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color={C.PRIMARY} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.uploadTitle, { color: C.TEXT }]}>Tải file ghi âm có sẵn</Text>
+              <Text style={[styles.uploadDesc, { color: C.TEXT_LIGHT }]}>Hỗ trợ MP3, M4A, WAV, AAC</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={C.TEXT_LIGHT} />
+          </TouchableOpacity>
         )}
 
         {/* Review Mode */}
@@ -351,6 +385,13 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 14, color: COLORS.TEXT_LIGHT, marginTop: 2 },
 
   inputGroup: { gap: 12, marginBottom: 8 },
+  uploadBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12,
+    borderWidth: 1, marginBottom: 16,
+  },
+  uploadTitle: { fontSize: 14, fontWeight: '600' },
+  uploadDesc: { fontSize: 11, marginTop: 2 },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: COLORS.CARD, borderRadius: 12, borderWidth: 1, borderColor: COLORS.BORDER,
