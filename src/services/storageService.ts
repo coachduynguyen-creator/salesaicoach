@@ -411,7 +411,7 @@ export interface CustomerProfile {
   decisionFactors: string;
   personality: string;
   nextStep: string;
-  productOffered: string;    // Sản phẩm/dịch vụ đang tư vấn cho khách này
+  productOffered?: string;    // Sản phẩm/dịch vụ đang tư vấn cho khách này
   // ICP mở rộng
   icp: Partial<ICPProfile>;
   decisionMakers: DecisionMaker[];

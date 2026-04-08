@@ -2,9 +2,13 @@
 import { Platform } from 'react-native';
 import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from '../config/defaultKeys';
 import { logAIUsage, checkAIQuota } from './databaseService';
+import { supabase } from './supabaseClient';
 
-let OPENAI_API_KEY = DEFAULT_OPENAI_KEY;    // Dùng cho Whisper (speech-to-text)
-let CLAUDE_API_KEY = DEFAULT_CLAUDE_KEY;    // Dùng cho phân tích coaching
+const EDGE_FUNCTION_URL = 'https://zylhbymktdtmitxsunqv.supabase.co/functions/v1/ai-proxy';
+
+let OPENAI_API_KEY = DEFAULT_OPENAI_KEY;    // Fallback khi chưa login
+let CLAUDE_API_KEY = DEFAULT_CLAUDE_KEY;    // Fallback khi chưa login
+let USE_PROXY = false;                       // Dùng Edge Function proxy khi có auth
 
 // Sync context cho AI usage logging
 let _aiUserId: string | null = null;
@@ -13,6 +17,7 @@ let _aiTeamId: string | null = null;
 export const setAISyncContext = (userId: string | null, teamId: string | null) => {
   _aiUserId = userId;
   _aiTeamId = teamId;
+  USE_PROXY = !!userId; // Dùng proxy khi đã login
 };
 
 const checkQuota = async () => {
@@ -34,6 +39,28 @@ const logUsage = (action: string, model: string, durationMs: number, inputTokens
     output_tokens: outputTokens,
     duration_ms: durationMs,
   }).catch(() => {});
+};
+
+/** Gọi Claude qua Edge Function proxy (bảo mật, key trên server) */
+const callClaudeProxy = async (payload: any): Promise<any> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Chưa đăng nhập');
+
+  const response = await fetch(EDGE_FUNCTION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ action: payload.action || 'chat', payload: payload.body }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text().catch(() => '');
+    throw new Error(`Proxy error ${response.status}: ${err}`);
+  }
+  return response.json();
 };
 
 const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 2): Promise<Response> => {
@@ -315,6 +342,25 @@ export const chatWithCoach = async (
   messages: ChatMessage[],
   knowledgeBase: string
 ): Promise<string> => {
+  // Thử proxy trước (bảo mật), fallback sang direct
+  if (USE_PROXY) {
+    try {
+      const data = await callClaudeProxy({
+        action: 'chat',
+        body: {
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1024,
+          system: COACH_SYSTEM(knowledgeBase),
+          messages: messages.map(m => ({ role: m.role, content: m.content })),
+        },
+      });
+      logUsage('chat', 'claude-haiku-4-5-20251001', 0, data.usage?.input_tokens || 0, data.usage?.output_tokens || 0);
+      return data.content[0].text as string;
+    } catch {
+      // Fallback sang direct nếu proxy lỗi
+    }
+  }
+
   if (!CLAUDE_API_KEY) {
     throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
   }

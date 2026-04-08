@@ -270,7 +270,7 @@ export default function AdminDashboardScreen() {
         {/* Bug Reports */}
         <TouchableOpacity
           style={[styles.bugReportBtn, { borderColor: '#EF4444' }]}
-          onPress={() => navigation.navigate('BugReports' as any)}
+          onPress={() => (navigation as any).navigate('BugReports')}
         >
           <Ionicons name="bug" size={18} color="#EF4444" />
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#EF4444', flex: 1 }}>Xem báo lỗi & Crash</Text>
