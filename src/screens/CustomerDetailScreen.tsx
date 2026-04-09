@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Share, Modal, RefreshControl, Image,
   KeyboardAvoidingView, Platform,
@@ -14,7 +14,8 @@ import {
   CustomerProfile, Session, DecisionMaker, LeadScoring, EMPTY_SCORING, addConversation,
   loadCustomerStatuses, CustomerStatus, addCustomerNote,
 } from '../services/storageService';
-import { scoreCustomerWithAI, extractCustomerInfo, generateDetailedRecommendation } from '../services/aiService';
+import { scoreCustomerWithAI, extractCustomerInfo, generateDetailedRecommendation, transcribeAudio } from '../services/aiService';
+import { startRecording, stopRecording } from '../services/audioService';
 import { exportCustomerPDF } from '../services/pdfReportService';
 import { pickFromGallery, takePhoto, saveCustomerPhoto } from '../services/imageService';
 import { useKnowledge } from '../contexts/KnowledgeContext';
@@ -154,6 +155,9 @@ export default function CustomerDetailScreen() {
 
   const [isScoring, setIsScoring] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isVoiceNote, setIsVoiceNote] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const voiceRecRef = useRef<any>(null);
   const [isGeneratingRec, setIsGeneratingRec] = useState(false);
   const [recExpanded, setRecExpanded] = useState(false);
   const [showEditNameModal, setShowEditNameModal] = useState(false);
@@ -723,11 +727,11 @@ export default function CustomerDetailScreen() {
               ))}
             </View>
 
-            {/* Text input */}
+            {/* Text input + voice */}
             <View style={styles.noteInputRow}>
               <TextInput
-                style={styles.noteInput}
-                placeholder="Ghi nhanh tình trạng khách hàng..."
+                style={[styles.noteInput, { color: C.TEXT, flex: 1 }]}
+                placeholder={isTranscribing ? 'Đang chuyển giọng nói...' : 'Ghi nhanh hoặc nhấn mic để nói...'}
                 placeholderTextColor={COLORS.TEXT_LIGHT}
                 value={noteText}
                 onChangeText={setNoteText}
@@ -736,17 +740,47 @@ export default function CustomerDetailScreen() {
                 onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
               />
               <TouchableOpacity
-                style={[styles.noteAddBtn, { backgroundColor: C.PRIMARY }, !noteText.trim() && { opacity: 0.5 }]}
+                style={[styles.noteVoiceBtn, { backgroundColor: isVoiceNote ? '#EF4444' : C.SURFACE }]}
+                onPress={async () => {
+                  if (isVoiceNote) {
+                    // Dừng ghi → transcribe
+                    try {
+                      const uri = await stopRecording(voiceRecRef.current);
+                      voiceRecRef.current = null;
+                      setIsVoiceNote(false);
+                      setIsTranscribing(true);
+                      const text = await transcribeAudio(uri);
+                      setNoteText(prev => prev ? prev + ' ' + text : text);
+                    } catch {
+                      showAlert({ title: 'Lỗi', message: 'Không thể chuyển giọng nói.', type: 'error' });
+                    } finally {
+                      setIsTranscribing(false);
+                    }
+                  } else {
+                    // Bắt đầu ghi
+                    try {
+                      voiceRecRef.current = await startRecording();
+                      setIsVoiceNote(true);
+                    } catch {
+                      showAlert({ title: 'Lỗi', message: 'Không thể ghi âm. Kiểm tra quyền microphone.', type: 'error' });
+                    }
+                  }
+                }}
+                disabled={isTranscribing}
+              >
+                <Ionicons name={isVoiceNote ? 'stop' : isTranscribing ? 'hourglass' : 'mic'} size={18} color={isVoiceNote ? '#fff' : C.PRIMARY} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.noteAddBtn, { backgroundColor: C.PRIMARY }, (!noteText.trim() || isTranscribing) && { opacity: 0.5 }]}
                 onPress={async () => {
                   if (!noteText.trim() || !customer) return;
                   await addCustomerNote(customer.id, noteText.trim(), noteType);
-                  // Reload customer
                   const customers = await loadCustomers();
                   const updated = customers.find(c => c.id === customer.id);
                   if (updated) setCustomer(updated);
                   setNoteText('');
                 }}
-                disabled={!noteText.trim()}
+                disabled={!noteText.trim() || isTranscribing}
               >
                 <Ionicons name="add" size={20} color="#fff" />
               </TouchableOpacity>
@@ -1053,6 +1087,7 @@ const styles = StyleSheet.create({
   noteTypeText: { fontSize: 12, fontWeight: '600', color: COLORS.TEXT_SECONDARY },
   noteInputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   noteInput: { flex: 1, backgroundColor: COLORS.SURFACE, borderRadius: 12, padding: 12, fontSize: 14, color: COLORS.TEXT, minHeight: 44, maxHeight: 100, borderWidth: 1, borderColor: COLORS.BORDER },
+  noteVoiceBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   noteAddBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   noteHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   noteTypeBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
