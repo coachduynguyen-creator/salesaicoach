@@ -133,6 +133,22 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
     throw new Error('Không có file ghi âm. Vui lòng thử ghi âm lại.');
   }
 
+  // Kiểm tra file tồn tại
+  try {
+    const { getInfoAsync } = require('expo-file-system/legacy');
+    const fileInfo = await getInfoAsync(audioUri);
+    if (!fileInfo.exists) {
+      throw new Error('File ghi âm không còn tồn tại (có thể đã bị xóa khi cài lại app). Vui lòng ghi âm mới.');
+    }
+    // Kiểm tra file size
+    if (fileInfo.size && fileInfo.size > 25 * 1024 * 1024) {
+      throw new Error(`File ghi âm quá lớn (${Math.round(fileInfo.size / 1024 / 1024)}MB, tối đa 25MB). Thử ghi âm ngắn hơn.`);
+    }
+  } catch (e: any) {
+    if (e.message.includes('không còn tồn tại') || e.message.includes('quá lớn')) throw e;
+    // Nếu không check được file, tiếp tục thử upload
+  }
+
   const formData = new FormData();
   formData.append('file', {
     uri: audioUri,
