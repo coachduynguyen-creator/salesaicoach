@@ -22,6 +22,8 @@ import { useColors } from '../contexts/ThemeContext';
 import { loadSessions, Session, loadCustomers } from '../services/storageService';
 import { useKnowledge } from '../contexts/KnowledgeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getSubscription, PlanTier } from '../services/subscriptionService';
+import { getTierLabel } from '../config/systemPrompts';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -74,6 +76,7 @@ export default function HomeScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [dailyInsight, setDailyInsight] = useState<DailyInsight | null>(null);
   const [customerMap, setCustomerMap] = useState<Record<string, string>>({});
+  const [userTier, setUserTier] = useState<PlanTier>('free');
   const [challenge, setChallenge] = useState<WeeklyChallenge | null>(null);
   const [challengeProgress, setChallengeProgress] = useState<SavedChallenge | null>(null);
   const tip = TIPS[new Date().getDay() % TIPS.length];
@@ -95,6 +98,7 @@ export default function HomeScreen() {
         setCustomerMap(map);
       });
       getDailyInsight().then(setDailyInsight);
+      getSubscription().then(sub => setUserTier(sub.tier));
       setChallenge(getCurrentChallenge());
       getChallengeProgress().then(setChallengeProgress);
     }, [])
@@ -123,7 +127,21 @@ export default function HomeScreen() {
           <View style={styles.heroTop}>
             <View>
               <Text style={styles.heroGreeting}>Chào mừng trở lại</Text>
-              <Text style={styles.heroTitle}>{profile?.full_name || 'Sales Coach'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.heroTitle}>{profile?.full_name || 'Sales Coach'}</Text>
+                <View style={[styles.tierBadge, {
+                  backgroundColor: userTier === 'bds_pro' ? '#F59E0B' : userTier === 'pro' ? '#7C3AED' : 'rgba(255,255,255,0.2)',
+                }]}>
+                  <Ionicons
+                    name={userTier === 'bds_pro' ? 'diamond' : userTier === 'pro' ? 'star' : 'person'}
+                    size={10}
+                    color="#fff"
+                  />
+                  <Text style={styles.tierBadgeText}>
+                    {userTier === 'bds_pro' ? 'BĐS' : userTier === 'pro' || userTier === 'team' ? 'PRO' : 'FREE'}
+                  </Text>
+                </View>
+              </View>
               <Text style={styles.heroTagline}>AI Coaching cho Sales | by Coach Duy Nguyễn</Text>
             </View>
             <TouchableOpacity
@@ -523,6 +541,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 2,
   },
+  tierBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+  },
+  tierBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 1 },
   heroTagline: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.7)',
