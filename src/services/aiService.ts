@@ -129,19 +129,26 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
   const formData = new FormData();
   formData.append('file', {
     uri: audioUri,
-    type: 'audio/mp4',
+    type: 'audio/m4a',
     name: 'recording.m4a',
   } as any);
   formData.append('model', 'whisper-1');
   formData.append('language', 'vi');
 
-  const response = await fetchWithRetry('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: formData,
-  });
+  // Timeout dài hơn cho file lớn (5 phút)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
 
   if (!response.ok) {
     if (response.status === 429) {
@@ -150,6 +157,9 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
     if (response.status === 401) {
       throw new Error('OpenAI API key không hợp lệ. Vui lòng liên hệ admin.');
     }
+    if (response.status === 413) {
+      throw new Error('File ghi âm quá lớn (tối đa 25MB). Thử ghi âm ngắn hơn hoặc tải file nhỏ hơn.');
+    }
     const err = await response.text();
     throw new Error(`Lỗi chuyển giọng nói (${response.status}). Vui lòng thử lại.`);
   }
@@ -157,6 +167,14 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
   const data = await response.json();
   logUsage('transcribe', 'whisper-1', 0);
   return data.text as string;
+
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Ghi âm quá dài, hệ thống hết thời gian xử lý. Thử ghi âm ngắn hơn (dưới 10 phút).');
+    }
+    throw err;
+  }
 };
 
 // ─── Step 2: Claude Haiku — phân tích transcript ─────────────────────────────
