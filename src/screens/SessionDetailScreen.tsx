@@ -58,6 +58,10 @@ export default function SessionDetailScreen() {
   const scoreColor = getScoreColor(session.score);
   const [outcome, setOutcome] = useState<SessionOutcome | undefined>(session.outcome);
 
+  // Kiểm tra analysis có đầy đủ không
+  const hasFullAnalysis = analysis && analysis.summary?.length > 0 && analysis.strengths?.length > 0;
+  const canReanalyze = session.audioUri && !hasFullAnalysis;
+
   // Audio player
   const soundRef = useRef<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -213,6 +217,42 @@ export default function SessionDetailScreen() {
               </View>
             </View>
           </View>
+        )}
+
+        {/* Phân tích lại */}
+        {canReanalyze && (
+          <TouchableOpacity
+            style={[styles.reanalyzeBtn, { backgroundColor: C.PRIMARY }]}
+            onPress={() => {
+              navigation.navigate('ResultScreen', {
+                audioUri: session.audioUri,
+                duration: session.duration,
+                customerName: session.customerName,
+                companyName: session.companyName,
+              });
+            }}
+          >
+            <Ionicons name="sparkles" size={18} color="#fff" />
+            <Text style={styles.reanalyzeBtnText}>Phân tích lại bằng AI</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Nút phân tích lại khi đã có analysis (để cập nhật) */}
+        {session.audioUri && hasFullAnalysis && (
+          <TouchableOpacity
+            style={[styles.reanalyzeBtnSmall, { borderColor: C.PRIMARY }]}
+            onPress={() => {
+              navigation.navigate('ResultScreen', {
+                audioUri: session.audioUri,
+                duration: session.duration,
+                customerName: session.customerName,
+                companyName: session.companyName,
+              });
+            }}
+          >
+            <Ionicons name="refresh" size={16} color={C.PRIMARY} />
+            <Text style={[styles.reanalyzeBtnSmallText, { color: C.PRIMARY }]}>Phân tích lại</Text>
+          </TouchableOpacity>
         )}
 
         {/* Outcome */}
@@ -372,6 +412,16 @@ const styles = StyleSheet.create({
   bullet: { width: 6, height: 6, borderRadius: 3, marginTop: 7, marginRight: 10, flexShrink: 0 },
   bulletText: { fontSize: 13, color: COLORS.TEXT, flex: 1, lineHeight: 20 },
   transcriptText: { fontSize: 13, color: COLORS.TEXT, lineHeight: 21 },
+  reanalyzeBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 16, borderRadius: 14, marginBottom: 12,
+  },
+  reanalyzeBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  reanalyzeBtnSmall: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1,
+  },
+  reanalyzeBtnSmallText: { fontSize: 13, fontWeight: '600' },
   outcomeCard: {
     backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
