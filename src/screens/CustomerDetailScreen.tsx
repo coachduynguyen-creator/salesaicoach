@@ -238,10 +238,52 @@ export default function CustomerDetailScreen() {
         .filter(t => t.length > 20)
         .join('\n\n---\n\n');
 
+      // Nếu không có transcript, dùng ghi chú để AI phân tích
       if (!transcripts) {
-        // Không có transcript nhưng vẫn sync notes + sessions lên cloud
-        await updateCustomer(customer.id, { updatedAt: new Date().toISOString() });
-        showAlert({ title: 'Đã đồng bộ', message: 'Hồ sơ và ghi chú đã được đồng bộ lên cloud. (Cuộc gọi chưa có nội dung để AI phân tích)', type: 'info' });
+        const notesText = (customer.notes || [])
+          .map(n => `[${n.date}] ${n.content}`)
+          .join('\n');
+
+        if (!notesText || notesText.length < 10) {
+          await updateCustomer(customer.id, { updatedAt: new Date().toISOString() });
+          showAlert({ title: 'Đã đồng bộ', message: 'Hồ sơ đã sync lên cloud. Thêm ghi chú hoặc ghi âm cuộc gọi để AI phân tích chân dung khách.', type: 'info' });
+          setIsSyncing(false);
+          return;
+        }
+
+        // Dùng ghi chú thay transcript
+        const info = await extractCustomerInfo(notesText);
+        const updates: any = {};
+        if (info.needs) updates.needs = info.needs;
+        if (info.budget) updates.budget = info.budget;
+        if (info.concerns) updates.concerns = info.concerns;
+        if (info.stage) updates.stage = info.stage;
+        if (info.decisionFactors) updates.decisionFactors = info.decisionFactors;
+        if (info.personality) updates.personality = info.personality;
+        if (info.nextStep) updates.nextStep = info.nextStep;
+
+        const newIcp = { ...(customer.icp || {}) };
+        const icpData = info.icp || {};
+        for (const [key, val] of Object.entries(icpData)) {
+          if (val) (newIcp as any)[key] = val;
+        }
+        updates.icp = newIcp;
+
+        if (info.decisionMaker?.name) {
+          const existing = customer.decisionMakers || [];
+          if (!existing.some(d => d.name.toLowerCase() === info.decisionMaker!.name.toLowerCase())) {
+            updates.decisionMakers = [...existing, { ...info.decisionMaker, notes: '' }];
+          }
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await updateCustomer(customer.id, updates);
+          setCustomer(prev => prev ? { ...prev, ...updates } : prev);
+          showAlert({ title: 'Đồng bộ thành công', message: `AI đã phân tích ghi chú và cập nhật ${Object.keys(updates).length} trường thông tin.`, type: 'success' });
+        } else {
+          await updateCustomer(customer.id, { updatedAt: new Date().toISOString() });
+          showAlert({ title: 'Đã đồng bộ', message: 'Không tìm thấy thông tin mới từ ghi chú. Thêm chi tiết hơn về khách.', type: 'info' });
+        }
         setIsSyncing(false);
         return;
       }
