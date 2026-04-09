@@ -220,12 +220,18 @@ export default function CustomerDetailScreen() {
   }, [customer]);
 
   const syncFromCalls = useCallback(async () => {
-    if (!customer || !sessions.length) {
-      showAlert({ title: 'Không có cuộc gọi', message: 'Chưa có cuộc gọi nào để đồng bộ.', type: 'warning' });
-      return;
-    }
+    if (!customer) return;
     setIsSyncing(true);
     try {
+      // Nếu không có cuộc gọi, vẫn sync ghi chú + profile lên cloud
+      if (!sessions.length) {
+        // Push customer hiện tại lên cloud (bao gồm notes)
+        await updateCustomer(customer.id, { updatedAt: new Date().toISOString() });
+        showAlert({ title: 'Đã đồng bộ', message: 'Hồ sơ và ghi chú đã được đồng bộ lên cloud.', type: 'success' });
+        setIsSyncing(false);
+        return;
+      }
+
       // Gom tất cả transcripts
       const transcripts = sessions
         .map(s => s.analysis?.transcript || '')
@@ -233,7 +239,9 @@ export default function CustomerDetailScreen() {
         .join('\n\n---\n\n');
 
       if (!transcripts) {
-        showAlert({ title: 'Không có nội dung', message: 'Các cuộc gọi chưa có transcript để phân tích.', type: 'warning' });
+        // Không có transcript nhưng vẫn sync notes + sessions lên cloud
+        await updateCustomer(customer.id, { updatedAt: new Date().toISOString() });
+        showAlert({ title: 'Đã đồng bộ', message: 'Hồ sơ và ghi chú đã được đồng bộ lên cloud. (Cuộc gọi chưa có nội dung để AI phân tích)', type: 'info' });
         setIsSyncing(false);
         return;
       }
