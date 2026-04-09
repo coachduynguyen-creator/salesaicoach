@@ -249,7 +249,7 @@ export default function ResultScreen() {
       }
       // Cho phép thử lại
       buttons.push({ text: 'Thử lại', onPress: () => runAnalysis(transcript) });
-      showAlert({ title: 'Lỗi phân tích', message: msg, type: 'error', buttons });
+      showAlert({ title: 'Lỗi phân tích', message: `${msg}\n\n(Chi tiết kỹ thuật cho hỗ trợ)`, type: 'error', buttons });
     } finally {
       setLoading(false);
     }
