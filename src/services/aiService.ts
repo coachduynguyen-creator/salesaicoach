@@ -876,9 +876,9 @@ export const analyzeRecording = async (audioUri: string, knowledgeBase?: string)
     transcript = rawTranscript;
   }
 
-  // Giới hạn transcript gửi Claude (tối đa 8000 ký tự ≈ 2000 tokens input)
-  const trimmedTranscript = transcript.length > 8000
-    ? transcript.slice(0, 4000) + '\n\n[... phần giữa được lược bỏ ...]\n\n' + transcript.slice(-4000)
+  // Giới hạn transcript gửi Claude (tối đa 15000 ký tự ≈ 4000 tokens input)
+  const trimmedTranscript = transcript.length > 15000
+    ? transcript.slice(0, 8000) + '\n\n[... phần giữa được lược bỏ ...]\n\n' + transcript.slice(-7000)
     : transcript;
 
   const analysis = await analyzeTranscript(trimmedTranscript, knowledgeBase);
