@@ -267,9 +267,22 @@ export default function CustomerDetailScreen() {
         }
       }
 
+      // Luôn cập nhật notes từ sessions vào profile
+      const sessionNotes = sessions.map(s => ({
+        date: s.date,
+        content: `[Cuộc gọi] Điểm: ${s.score}/10${s.analysis?.summary?.[0] ? ' - ' + s.analysis.summary[0] : ''}`,
+        sessionId: s.id,
+      }));
+      const existingNoteIds = new Set((customer.notes || []).map(n => n.sessionId).filter(Boolean));
+      const newNotes = sessionNotes.filter(n => !existingNoteIds.has(n.sessionId));
+      if (newNotes.length > 0) {
+        updates.notes = [...newNotes, ...(customer.notes || [])];
+      }
+
       if (Object.keys(updates).length > 0) {
         await updateCustomer(customer.id, updates);
-        setCustomer(prev => prev ? { ...prev, ...updates } : prev);
+        const updatedCustomer = { ...customer, ...updates };
+        setCustomer(updatedCustomer);
         showAlert({
           title: 'Đồng bộ thành công',
           message: `Đã cập nhật ${Object.keys(updates).length} trường thông tin từ ${sessions.length} cuộc gọi.`,
