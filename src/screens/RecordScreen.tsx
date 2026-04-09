@@ -170,7 +170,7 @@ export default function RecordScreen() {
     navigation.navigate('ResultScreen', {
       audioUri,
       duration: recordedDuration,
-      customerName: customerName || 'Khách hàng',
+      customerName: customerName || `Khách ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
       companyName: companyName || '',
     });
   };
