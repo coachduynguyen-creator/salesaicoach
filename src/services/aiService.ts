@@ -17,7 +17,7 @@ let _aiTeamId: string | null = null;
 export const setAISyncContext = (userId: string | null, teamId: string | null) => {
   _aiUserId = userId;
   _aiTeamId = teamId;
-  USE_PROXY = !!userId; // Dùng proxy khi đã login
+  USE_PROXY = false; // Tạm tắt proxy — dùng direct API key cho ổn định
 };
 
 const checkQuota = async () => {
@@ -349,7 +349,7 @@ export const chatWithCoach = async (
         action: 'chat',
         body: {
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1024,
+          max_tokens: 4096,
           system: COACH_SYSTEM(knowledgeBase),
           messages: messages.map(m => ({ role: m.role, content: m.content })),
         },
@@ -365,7 +365,7 @@ export const chatWithCoach = async (
     throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
   }
 
-  const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -375,20 +375,16 @@ export const chatWithCoach = async (
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 4096,
       system: COACH_SYSTEM(knowledgeBase),
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     }),
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Claude API key không hợp lệ. Vui lòng liên hệ admin.');
-    }
-    if (response.status === 429) {
-      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
-    }
-    throw new Error('Lỗi phân tích. Vui lòng thử lại.');
+    const errText = await response.text().catch(() => '');
+    console.error('Claude API error:', response.status, errText);
+    throw new Error(`Lỗi API (${response.status}). Vui lòng thử lại.`);
   }
 
   const data = await response.json();
@@ -651,10 +647,11 @@ export interface AIScoreResult {
   recommendation: string;
 }
 
-export const scoreCustomerWithAI = async (profileSummary: string): Promise<AIScoreResult | null> => {
+export const scoreCustomerWithAI = async (profileSummary: string, knowledgeBase?: string): Promise<AIScoreResult | null> => {
   if (!CLAUDE_API_KEY) return null;
 
   try {
+    const knowledgePrefix = knowledgeBase ? knowledgeBase + '\n\n---\n' : '';
     const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -665,11 +662,11 @@ export const scoreCustomerWithAI = async (profileSummary: string): Promise<AISco
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1500,
-        system: `Bạn là chuyên gia đánh giá khách hàng tiềm năng (lead scoring).
-Chấm điểm 4 tiêu chí (0-20 mỗi tiêu chí) dựa trên thông tin hồ sơ khách hàng.
+        max_tokens: 2048,
+        system: `${knowledgePrefix}Bạn là chuyên gia đánh giá khách hàng tiềm năng theo phương pháp "Bán bằng Vị thế" — THE TRUSTED ADVISOR.
+Chấm điểm 4 tiêu chí (0-20 mỗi tiêu chí) dựa trên thông tin hồ sơ khách hàng và kiến thức TTA.
 Mỗi tiêu chí có 4 mức: 0-5 (Chưa rõ), 6-10 (Thấp), 11-15 (Trung bình), 16-20 (Cao).
-Đưa ra đề xuất hành động cụ thể (2-3 câu, tiếng Việt tự nhiên).
+Đưa ra đề xuất hành động cụ thể theo phương pháp 3 Điểm Chạm (2-3 câu, tiếng Việt tự nhiên).
 CHỈ trả về JSON.`,
         messages: [
           { role: 'user', content: `Hồ sơ khách hàng:\n${profileSummary}\n\nJSON:

@@ -41,22 +41,20 @@ export const loadKnowledgeBase = async (): Promise<KnowledgeResult> => {
     // Cache lỗi thì tải mới
   }
 
-  // Tải từ Supabase
+  // Tải từ Supabase — dùng public URL (nhanh hơn, không cần auth)
   try {
     const contents: string[] = [];
+    const baseUrl = 'https://zylhbymktdtmitxsunqv.supabase.co/storage/v1/object/public/knowledge';
 
     for (const fileName of KNOWLEDGE_FILES) {
-      const { data, error } = await supabase.storage
-        .from('knowledge')
-        .download(fileName);
-
-      if (error) {
-        // Silent: file not found is expected during setup
+      try {
+        const response = await fetch(`${baseUrl}/${fileName}`);
+        if (!response.ok) continue;
+        const text = await response.text();
+        if (text && text.length > 100) contents.push(text);
+      } catch {
         continue;
       }
-
-      const text = await data.text();
-      contents.push(text);
     }
 
     if (contents.length === 0) {
@@ -69,6 +67,7 @@ export const loadKnowledgeBase = async (): Promise<KnowledgeResult> => {
     await AsyncStorage.setItem(CACHE_KEY, fullKnowledge);
     await AsyncStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
 
+    console.log(`Knowledge loaded from cloud: ${contents.length} files, ${fullKnowledge.length} chars`);
     return { content: fullKnowledge, source: 'cloud' };
   } catch (error) {
     // Fallback về cache cũ (hết hạn) — báo cho user biết

@@ -27,6 +27,9 @@ export default function CustomerListScreen() {
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showDropdown, setShowDropdown] = useState(false);
   const [funnelExpanded, setFunnelExpanded] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newCompany, setNewCompany] = useState('');
 
   const syncCustomersFromSessions = useCallback(async () => {
     loadCustomerStatuses().then(setStatuses);
@@ -194,8 +197,16 @@ export default function CustomerListScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: C.BACKGROUND }]}>
-        <Text style={[styles.headerTitle, { color: C.TEXT }]}>Khách Hàng</Text>
-        <Text style={[styles.headerSub, { color: C.TEXT_LIGHT }]}>{customers.length} khách hàng</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.headerTitle, { color: C.TEXT }]}>Khách Hàng</Text>
+          <Text style={[styles.headerSub, { color: C.TEXT_LIGHT }]}>{customers.length} khách hàng</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.addCustomerBtn, { backgroundColor: C.PRIMARY }]}
+          onPress={() => setShowAddModal(true)}
+        >
+          <Ionicons name="add" size={22} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       {/* Attention Banner */}
@@ -358,6 +369,63 @@ export default function CustomerListScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      {/* Add Customer Modal */}
+      <Modal visible={showAddModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAddModal(false)}>
+          <View style={[styles.addModalContent, { backgroundColor: C.CARD }]}>
+            <Text style={[styles.addModalTitle, { color: C.TEXT }]}>Thêm khách hàng mới</Text>
+
+            <Text style={[styles.addModalLabel, { color: C.TEXT_SECONDARY }]}>Tên khách hàng *</Text>
+            <TextInput
+              style={[styles.addModalInput, { color: C.TEXT, borderColor: C.BORDER, backgroundColor: C.SURFACE }]}
+              placeholder="VD: Anh Minh, Chị Lan..."
+              placeholderTextColor={COLORS.TEXT_LIGHT}
+              value={newName}
+              onChangeText={setNewName}
+              autoFocus
+            />
+
+            <Text style={[styles.addModalLabel, { color: C.TEXT_SECONDARY }]}>Công ty (không bắt buộc)</Text>
+            <TextInput
+              style={[styles.addModalInput, { color: C.TEXT, borderColor: C.BORDER, backgroundColor: C.SURFACE }]}
+              placeholder="VD: Công ty ABC"
+              placeholderTextColor={COLORS.TEXT_LIGHT}
+              value={newCompany}
+              onChangeText={setNewCompany}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <TouchableOpacity
+                style={[styles.addModalCancelBtn, { backgroundColor: C.SURFACE }]}
+                onPress={() => { setShowAddModal(false); setNewName(''); setNewCompany(''); }}
+              >
+                <Text style={{ color: C.TEXT, fontWeight: '600', fontSize: 15 }}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.addModalSaveBtn, { backgroundColor: C.PRIMARY }, !newName.trim() && { opacity: 0.5 }]}
+                disabled={!newName.trim()}
+                onPress={async () => {
+                  if (!newName.trim()) return;
+                  const newCustomer = await addCustomer({
+                    name: newName.trim(),
+                    company: newCompany.trim(),
+                    phone: '', email: '', needs: '', budget: '', concerns: '',
+                    stage: '', statusId: 'new', decisionFactors: '', personality: '', nextStep: '',
+                  });
+                  setShowAddModal(false);
+                  setNewName('');
+                  setNewCompany('');
+                  setCustomers(await loadCustomers());
+                  navigation.navigate('CustomerDetail', { customerId: newCustomer.id });
+                }}
+              >
+                <Ionicons name="add" size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Thêm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -471,4 +539,15 @@ const styles = StyleSheet.create({
   emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 17, fontWeight: '600', color: COLORS.TEXT },
   emptyDesc: { fontSize: 13, color: COLORS.TEXT_LIGHT, textAlign: 'center', paddingHorizontal: 40 },
+  addCustomerBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
+  addModalContent: { borderRadius: 16, padding: 24 },
+  addModalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  addModalLabel: { fontSize: 12, fontWeight: '600', marginBottom: 6, marginTop: 8 },
+  addModalInput: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15 },
+  addModalCancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  addModalSaveBtn: { flex: 1, borderRadius: 12, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
 });

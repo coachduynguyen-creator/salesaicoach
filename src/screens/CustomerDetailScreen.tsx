@@ -198,7 +198,7 @@ export default function CustomerDetailScreen() {
       `Số cuộc gọi: ${customer.sessionIds?.length || 0}`,
     ].filter(Boolean).join('\n');
 
-    const result = await scoreCustomerWithAI(summary);
+    const result = await scoreCustomerWithAI(summary, knowledgeBase);
     if (result) {
       const scoring = { ...(customer.scoring || EMPTY_SCORING) };
       scoring.productFit = result.productFit;

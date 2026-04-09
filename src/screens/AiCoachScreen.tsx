@@ -17,7 +17,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Markdown from 'react-native-markdown-display';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
-import { streamChatWithCoach, transcribeAudio, ChatMessage } from '../services/aiService';
+import { chatWithCoach, transcribeAudio, ChatMessage } from '../services/aiService';
 import { startRecording, stopRecording } from '../services/audioService';
 import { QUICK_SUGGESTIONS } from '../constants/knowledgeBase';
 import { useKnowledge } from '../contexts/KnowledgeContext';
@@ -141,7 +141,7 @@ const makeWelcome = (): Message => ({
 
 export default function AiCoachScreen() {
   const C = useColors();
-  const { knowledgeBase } = useKnowledge();
+  const { knowledgeBase, isFromCloud } = useKnowledge();
   const { businessContext } = useBusiness();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -292,18 +292,10 @@ export default function AiCoachScreen() {
     };
 
     const aiMsgId = (Date.now() + 1).toString();
-    const aiMsg: Message = {
-      id: aiMsgId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-    };
 
     const updatedWithUser = [...messages, userMsg];
-    setMessages([...updatedWithUser, aiMsg]);
+    setMessages(updatedWithUser);
     setIsTyping(true);
-    setIsStreaming(true);
-    streamingMsgId.current = aiMsgId;
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
@@ -312,29 +304,27 @@ export default function AiCoachScreen() {
         .slice(-10)
         .map(m => ({ role: m.role, content: m.content }));
 
-      const fullText = await streamChatWithCoach(
-        history,
-        knowledgeBase + businessContext + customerContext,
-        (textSoFar) => {
-          setMessages(prev =>
-            prev.map(m => m.id === aiMsgId ? { ...m, content: textSoFar } : m)
-          );
-          flatListRef.current?.scrollToEnd({ animated: false });
-        },
-      );
+      const reply = await chatWithCoach(history, knowledgeBase + businessContext + customerContext);
 
-      const finalMessages = updatedWithUser.concat({
-        ...aiMsg,
-        content: fullText,
-      });
+      const finalAiMsg: Message = {
+        id: aiMsgId,
+        role: 'assistant',
+        content: reply,
+        timestamp: new Date(),
+      };
+
+      const finalMessages = [...updatedWithUser, finalAiMsg];
       setMessages(finalMessages);
       await saveMessages(finalMessages);
-    } catch {
-      setMessages(prev =>
-        prev.map(m => m.id === aiMsgId
-          ? { ...m, content: 'Có lỗi xảy ra. Vui lòng kiểm tra kết nối mạng rồi thử lại nhé.' }
-          : m)
-      );
+    } catch (err: any) {
+      const errorDetail = err?.message || 'Không rõ lỗi';
+      const errMsg: Message = {
+        id: aiMsgId,
+        role: 'assistant',
+        content: `Không thể kết nối AI. Lỗi: ${errorDetail}\n\nVui lòng kiểm tra kết nối mạng rồi thử lại.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errMsg]);
     } finally {
       setIsTyping(false);
       setIsStreaming(false);
@@ -397,6 +387,15 @@ export default function AiCoachScreen() {
           </View>
         </View>
       </View>
+
+      {!isFromCloud && (
+        <View style={[styles.knowledgeWarning, { backgroundColor: C.WARNING + '15' }]}>
+          <Ionicons name="alert-circle" size={14} color={C.WARNING} />
+          <Text style={[styles.knowledgeWarningText, { color: C.WARNING }]}>
+            Đang dùng kiến thức rút gọn. Kết nối mạng để tải đầy đủ tài liệu TTA.
+          </Text>
+        </View>
+      )}
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -759,5 +758,17 @@ const styles = StyleSheet.create({
   transcribingText: {
     fontSize: 13,
     fontWeight: '600' as const,
+  },
+  knowledgeWarning: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  knowledgeWarningText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    flex: 1,
   },
 });
