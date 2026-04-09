@@ -1,19 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AITier } from '../config/systemPrompts';
 
 const SUB_KEY = '@salescoach_subscription';
 
-export type PlanTier = 'free' | 'pro' | 'team';
+export type PlanTier = 'free' | 'pro' | 'bds_pro' | 'team';
 
 export interface SubscriptionInfo {
   tier: PlanTier;
-  expiresAt: string | null; // ISO date, null = never (free)
+  expiresAt: string | null;
   trialEndsAt: string | null;
 }
 
 export const PLAN_LIMITS: Record<PlanTier, {
   recordingsPerMonth: number;
   aiChatsPerMonth: number;
-  lessonsAccess: number; // số bài học mở khóa
+  lessonsAccess: number;
   teamMembers: number;
   adminDashboard: boolean;
   exportReport: boolean;
@@ -34,6 +35,14 @@ export const PLAN_LIMITS: Record<PlanTier, {
     adminDashboard: false,
     exportReport: true,
   },
+  bds_pro: {
+    recordingsPerMonth: 999,
+    aiChatsPerMonth: 999,
+    lessonsAccess: 32,
+    teamMembers: 1,
+    adminDashboard: false,
+    exportReport: true,
+  },
   team: {
     recordingsPerMonth: 999,
     aiChatsPerMonth: 999,
@@ -45,7 +54,8 @@ export const PLAN_LIMITS: Record<PlanTier, {
 };
 
 export const PLAN_PRICES = {
-  pro: { monthly: 249000, yearly: 1990000 }, // VND
+  pro: { monthly: 249000, yearly: 1990000 },
+  bds_pro: { monthly: 499000, yearly: 3990000 },
   team: { monthly: 699000, yearly: 5990000 },
 };
 
@@ -60,13 +70,11 @@ export async function getSubscription(): Promise<SubscriptionInfo> {
   if (!raw) return DEFAULT_SUB;
   try {
     const sub = JSON.parse(raw) as SubscriptionInfo;
-    // Kiểm tra hết hạn
     if (sub.expiresAt && new Date(sub.expiresAt) < new Date()) {
       return { ...DEFAULT_SUB, trialEndsAt: sub.trialEndsAt };
     }
-    // Kiểm tra trial
     if (sub.trialEndsAt && new Date(sub.trialEndsAt) < new Date() && sub.tier !== 'free') {
-      if (!sub.expiresAt) return DEFAULT_SUB; // trial hết, chưa mua
+      if (!sub.expiresAt) return DEFAULT_SUB;
     }
     return sub;
   } catch {
@@ -74,32 +82,45 @@ export async function getSubscription(): Promise<SubscriptionInfo> {
   }
 }
 
+/** Lấy AI tier (map từ PlanTier sang AITier) */
+export async function getAITier(): Promise<AITier> {
+  const sub = await getSubscription();
+  if (sub.tier === 'bds_pro') return 'bds_pro';
+  if (sub.tier === 'pro' || sub.tier === 'team') return 'pro';
+  return 'free';
+}
+
 export async function startTrial(): Promise<void> {
   const existing = await getSubscription();
-  if (existing.trialEndsAt) return; // đã trial rồi
+  if (existing.trialEndsAt) return;
   const trialEnd = new Date();
   trialEnd.setDate(trialEnd.getDate() + 7);
-  const sub: SubscriptionInfo = {
-    tier: 'pro',
-    expiresAt: null,
-    trialEndsAt: trialEnd.toISOString(),
-  };
-  await AsyncStorage.setItem(SUB_KEY, JSON.stringify(sub));
+  await AsyncStorage.setItem(SUB_KEY, JSON.stringify({
+    tier: 'pro', expiresAt: null, trialEndsAt: trialEnd.toISOString(),
+  }));
 }
 
 export async function activateSubscription(tier: PlanTier, durationMonths: number): Promise<void> {
   const expires = new Date();
   expires.setMonth(expires.getMonth() + durationMonths);
-  const sub: SubscriptionInfo = {
-    tier,
-    expiresAt: expires.toISOString(),
+  await AsyncStorage.setItem(SUB_KEY, JSON.stringify({
+    tier, expiresAt: expires.toISOString(),
     trialEndsAt: (await getSubscription()).trialEndsAt,
-  };
-  await AsyncStorage.setItem(SUB_KEY, JSON.stringify(sub));
+  }));
+}
+
+/** Admin: chuyển tier để test (không cần thanh toán) */
+export async function adminSetTier(tier: PlanTier): Promise<void> {
+  const expires = new Date();
+  expires.setFullYear(expires.getFullYear() + 10); // 10 năm
+  await AsyncStorage.setItem(SUB_KEY, JSON.stringify({
+    tier, expiresAt: expires.toISOString(), trialEndsAt: null,
+  }));
 }
 
 export function isFeatureAvailable(tier: PlanTier, feature: keyof typeof PLAN_LIMITS.free): boolean {
-  const limit = PLAN_LIMITS[tier][feature];
+  const limits = PLAN_LIMITS[tier] || PLAN_LIMITS.free;
+  const limit = limits[feature];
   if (typeof limit === 'boolean') return limit;
   return true;
 }

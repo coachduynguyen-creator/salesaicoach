@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from '../config/defaultKeys';
 import { logAIUsage, checkAIQuota } from './databaseService';
 import { supabase } from './supabaseClient';
+import { AITier, getAnalysisPrompt, getCoachPrompt, getMaxTokens } from '../config/systemPrompts';
+import { getAITier } from './subscriptionService';
 
 const EDGE_FUNCTION_URL = 'https://zylhbymktdtmitxsunqv.supabase.co/functions/v1/ai-proxy';
 
@@ -159,27 +161,15 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
 
 // ─── Step 2: Claude Haiku — phân tích transcript ─────────────────────────────
 
-export const analyzeTranscript = async (transcript: string, knowledgeBase?: string): Promise<AnalysisResult> => {
+export const analyzeTranscript = async (transcript: string, knowledgeBase?: string, tier?: AITier): Promise<AnalysisResult> => {
   if (!CLAUDE_API_KEY) {
     throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
   }
 
-  const systemPrompt = `${knowledgeBase ? trimKnowledge(knowledgeBase) + '\n\n---\n' : ''}Bạn là Coach Duy Nguyễn, chuyên gia huấn luyện bán hàng theo phương pháp "Bán bằng vị thế" — THE TRUSTED ADVISOR.
-
-Phân tích chuyên sâu buổi tư vấn theo TTA, bao gồm:
-1. Vị thế cố vấn tin cậy (công thức Trust T=(C+R+E)/Sf)
-2. Tác phong, giọng nói, thái độ giao tiếp
-3. Kỹ năng lắng nghe (quy tắc 70/30, lắng nghe 3 tầng)
-4. Kỹ năng đặt câu hỏi (dẫn dắt vs thẩm vấn)
-5. Đọc tín hiệu tâm lý khách (6 nỗi sợ, 5 giai đoạn)
-6. Dẫn dắt qua 3 Điểm Chạm (nhận thức, cảm xúc, hành động)
-7. Xử lý tình huống và giữ vị thế
-
-YÊU CẦU:
-- 100% tiếng Việt tự nhiên, viết như người Việt nói chuyện.
-- Câu ngắn, rõ, dễ hiểu. Không sáo rỗng.
-- Kịch bản mẫu phải viết đúng giọng Việt Nam, dùng xưng hô "anh/chị", "em".
-- QUAN TRỌNG: Chỉ trả về JSON hợp lệ, không có text thừa.`;
+  // Lấy tier từ subscription nếu không truyền vào
+  const effectiveTier = tier || await getAITier();
+  const systemPrompt = getAnalysisPrompt(effectiveTier, knowledgeBase ? trimKnowledge(knowledgeBase) : undefined);
+  const maxTokens = getMaxTokens(effectiveTier, 'analysis');
 
   const userPrompt = `Phân tích buổi tư vấn sau và trả về JSON:
 
@@ -214,7 +204,7 @@ JSON (chỉ JSON, không giải thích):
     try {
       const data = await callClaudeProxy({
         action: 'analyze',
-        body: { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }, { role: 'assistant', content: '{' }] },
+        body: { model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }, { role: 'assistant', content: '{' }] },
       });
       logUsage('analyze', 'claude-haiku-4-5-20251001', 0);
       const rawText = '{' + (data.content[0].text as string);
@@ -242,7 +232,7 @@ JSON (chỉ JSON, không giải thích):
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [
         { role: 'user', content: userPrompt },
@@ -376,8 +366,13 @@ TRÌNH BÀY: Dùng markdown nhẹ: **in đậm** cho ý chính, xuống dòng ch
 
 export const chatWithCoach = async (
   messages: ChatMessage[],
-  knowledgeBase: string
+  knowledgeBase: string,
+  tier?: AITier
 ): Promise<string> => {
+  const effectiveTier = tier || await getAITier();
+  const coachSystemPrompt = getCoachPrompt(effectiveTier, trimKnowledge(knowledgeBase));
+  const chatMaxTokens = getMaxTokens(effectiveTier, 'chat');
+
   // Thử proxy trước (bảo mật), fallback sang direct
   if (USE_PROXY) {
     try {
@@ -385,8 +380,8 @@ export const chatWithCoach = async (
         action: 'chat',
         body: {
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 4096,
-          system: COACH_SYSTEM(knowledgeBase),
+          max_tokens: chatMaxTokens,
+          system: coachSystemPrompt,
           messages: messages.map(m => ({ role: m.role, content: m.content })),
         },
       });
@@ -411,8 +406,8 @@ export const chatWithCoach = async (
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
-      system: COACH_SYSTEM(knowledgeBase),
+      max_tokens: chatMaxTokens,
+      system: coachSystemPrompt,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     }),
   });

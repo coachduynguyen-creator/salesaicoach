@@ -21,6 +21,8 @@ import { useTheme, useColors, THEME_OPTIONS } from '../contexts/ThemeContext';
 import { loadSessions, Session, loadCustomerStatuses, saveCustomerStatuses, CustomerStatus, DEFAULT_STATUSES } from '../services/storageService';
 import { useAlert } from '../contexts/AlertContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getSubscription, adminSetTier, PlanTier } from '../services/subscriptionService';
+import { getTierLabel } from '../config/systemPrompts';
 import { signOut, deleteAccount } from '../services/authService';
 import { pickFromGallery, takePhoto, saveUserAvatar, loadUserAvatar, removeUserAvatar } from '../services/imageService';
 import { shareReferral } from '../services/referralService';
@@ -61,6 +63,7 @@ export default function ProfileScreen() {
   const [remindersOn, setRemindersOn] = useState(false);
   const [themeExpanded, setThemeExpanded] = useState(false);
   const [statusExpanded, setStatusExpanded] = useState(false);
+  const [currentTier, setCurrentTier] = useState<PlanTier>('free');
   // Status management
   const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
   const [showStatusManager, setShowStatusManager] = useState(false);
@@ -76,6 +79,7 @@ export default function ProfileScreen() {
       AsyncStorage.getItem(USER_ROLE_KEY).then(v => setUserRole(v || ''));
       loadUserAvatar().then(setAvatarUri);
       isRemindersEnabled().then(setRemindersOn);
+      getSubscription().then(sub => setCurrentTier(sub.tier));
     }, [])
   );
 
@@ -282,6 +286,38 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={16} color="#7C3AED" style={{ marginLeft: 'auto' }} />
           </View>
         </TouchableOpacity>
+
+        {/* Admin: Switch AI Tier */}
+        {authProfile?.role === 'admin' && (
+          <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="flask-outline" size={18} color="#E67E22" />
+              <Text style={[styles.sectionTitle, { color: C.TEXT }]}>AI Tier (Admin)</Text>
+            </View>
+            <Text style={[styles.sectionDesc, { color: C.TEXT_LIGHT }]}>Chuyển tier để test AI. Hiện tại: {getTierLabel(currentTier === 'team' ? 'pro' : currentTier === 'bds_pro' ? 'bds_pro' : currentTier as any)}</Text>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {([['free', 'Free'], ['pro', 'Pro'], ['bds_pro', 'BĐS Pro']] as const).map(([t, label]) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[{
+                    flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+                    borderWidth: 1, borderColor: currentTier === t ? C.PRIMARY : COLORS.BORDER,
+                    backgroundColor: currentTier === t ? C.PRIMARY : 'transparent',
+                  }]}
+                  onPress={async () => {
+                    await adminSetTier(t);
+                    setCurrentTier(t);
+                    showAlert({ title: 'Đã chuyển', message: `AI tier: ${label}. Tất cả AI call sẽ dùng prompt ${label}.`, type: 'success' });
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: currentTier === t ? '#fff' : C.TEXT_SECONDARY }}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Admin Dashboard - chỉ hiện cho admin/manager */}
         {(authProfile?.role === 'admin' || authProfile?.role === 'manager') && (
