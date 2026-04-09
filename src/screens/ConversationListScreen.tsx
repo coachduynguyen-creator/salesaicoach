@@ -8,6 +8,8 @@ import {
   TextInput,
   Modal,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -160,6 +162,7 @@ export default function ConversationListScreen() {
 
       {/* New Conversation Modal — chọn khách hàng */}
       <Modal visible={showNewModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: C.CARD }]}>
             <Text style={[styles.modalTitle, { color: C.TEXT }]}>Cuộc trò chuyện mới</Text>
@@ -228,6 +231,7 @@ export default function ConversationListScreen() {
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

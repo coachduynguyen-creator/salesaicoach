@@ -17,7 +17,7 @@ let _aiTeamId: string | null = null;
 export const setAISyncContext = (userId: string | null, teamId: string | null) => {
   _aiUserId = userId;
   _aiTeamId = teamId;
-  USE_PROXY = false; // Tạm tắt proxy — dùng direct API key cho ổn định
+  USE_PROXY = !!userId; // Dùng proxy khi đã login (bảo mật API key)
 };
 
 const checkQuota = async () => {
@@ -164,7 +164,7 @@ export const analyzeTranscript = async (transcript: string, knowledgeBase?: stri
     throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
   }
 
-  const systemPrompt = `${knowledgeBase ? knowledgeBase + '\n\n---\n' : ''}Bạn là Coach Duy Nguyễn, chuyên gia huấn luyện bán hàng theo phương pháp "Bán bằng vị thế" — THE TRUSTED ADVISOR.
+  const systemPrompt = `${knowledgeBase ? trimKnowledge(knowledgeBase) + '\n\n---\n' : ''}Bạn là Coach Duy Nguyễn, chuyên gia huấn luyện bán hàng theo phương pháp "Bán bằng vị thế" — THE TRUSTED ADVISOR.
 
 Phân tích chuyên sâu buổi tư vấn theo TTA, bao gồm:
 1. Vị thế cố vấn tin cậy (công thức Trust T=(C+R+E)/Sf)
@@ -208,6 +208,29 @@ JSON (chỉ JSON, không giải thích):
   ],
   "strategies": [<2 chiến lược cho buổi gặp tiếp theo, theo phương pháp 3 Điểm Chạm>]
 }`;
+
+  // Thử proxy trước
+  if (USE_PROXY) {
+    try {
+      const data = await callClaudeProxy({
+        action: 'analyze',
+        body: { model: 'claude-haiku-4-5-20251001', max_tokens: 4096, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }, { role: 'assistant', content: '{' }] },
+      });
+      logUsage('analyze', 'claude-haiku-4-5-20251001', 0);
+      const rawText = '{' + (data.content[0].text as string);
+      const cleaned = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+      const start = cleaned.indexOf('{'); const end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        const result = JSON.parse(cleaned.slice(start, end + 1)) as AnalysisResult;
+        if (!result.score) result.score = 5;
+        if (!result.summary) result.summary = [];
+        if (!result.strengths) result.strengths = [];
+        if (!result.improvements) result.improvements = [];
+        if (!result.strategies) result.strategies = [];
+        return result;
+      }
+    } catch { /* fallback to direct */ }
+  }
 
   const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -307,16 +330,23 @@ export interface ChatMessage {
   content: string;
 }
 
-const COACH_SYSTEM = (knowledgeBase: string) => `${knowledgeBase}
+// Giới hạn knowledge base tối đa ~120K chars (~30K tokens) để không vượt context window
+const trimKnowledge = (kb: string, maxChars = 120000): string => {
+  if (kb.length <= maxChars) return kb;
+  return kb.slice(0, maxChars) + '\n\n[... kiến thức đã được rút gọn để phù hợp giới hạn AI ...]';
+};
+
+const COACH_SYSTEM = (knowledgeBase: string) => `${trimKnowledge(knowledgeBase)}
 
 ---
 Bạn là Coach Duy Nguyễn — sáng lập phương pháp "Bán bằng vị thế" / THE TRUSTED ADVISOR. Xưng "Duy", gọi người hỏi "bạn".
 
 NGUYÊN TẮC:
 - Chỉ trả lời dựa trên kiến thức TTA ở trên. Ngoài phạm vi thì nói thẳng và kéo về bán hàng. KHÔNG bịa.
-- Trả lời NGẮN GỌN, đi thẳng vào vấn đề. Tối đa 150-200 từ.
-- Đưa ra định hướng và giải pháp cốt lõi trước. Cuối câu trả lời, hỏi người dùng có cần đi sâu hơn không (ví dụ: kịch bản mẫu, phân tích chi tiết, bước tiếp theo).
-- Chỉ khi người dùng yêu cầu thêm thì mới triển khai chi tiết.
+- Trả lời ĐẦY ĐỦ, CHI TIẾT theo phương pháp 3 Điểm Chạm (Chạm Động Lực → Chạm Điểm Nghẽn → Chạm Con Đường).
+- Mỗi câu trả lời bao gồm: phân tích gốc rễ vấn đề, hướng xử lý cụ thể, kịch bản mẫu (lời thoại thật giữa sales và khách), và bước tiếp theo.
+- Kịch bản mẫu PHẢI có: câu mở đầu, câu hỏi dẫn dắt, cách phản hồi, câu chốt — tất cả theo framework TTA.
+- Áp dụng công thức Trust: T = (Uy tín + Tin cậy + Kết nối cảm xúc) / Tập trung bản thân.
 
 GIỌNG VĂN:
 - Viết như người Việt nói chuyện thật — tự nhiên, gần gũi, dễ hiểu.
@@ -335,6 +365,12 @@ QUY TẮC NGÔN NGỮ (BẮT BUỘC):
 - Thay "script" bằng "kịch bản". Thay "roleplay" bằng "luyện đối đáp".
 - Nếu BUỘC phải dùng thuật ngữ chuyên môn quốc tế, viết tiếng Việt trước rồi ghi chú trong ngoặc.
 - Kịch bản mẫu PHẢI theo phong cách 3 Điểm Chạm: Chạm Động Lực → Chạm Điểm Nghẽn → Chạm Con Đường.
+
+CHÍNH TẢ TIẾNG VIỆT (RẤT QUAN TRỌNG):
+- Viết đúng dấu thanh: sắc (á), huyền (à), hỏi (ả), ngã (ã), nặng (ạ).
+- Phân biệt: "dẫn dắt" (không phải "dẩn dắt"), "quyết định" (không phải "quyết đính"), "phương pháp" (không phải "phương phát").
+- Phân biệt: d/gi/r, s/x, ch/tr, n/ng theo chuẩn chính tả miền Bắc.
+- Kiểm tra lại chính tả trước khi trả lời. Nếu không chắc chắn về 1 từ, dùng từ khác thay thế.
 
 TRÌNH BÀY: Dùng markdown nhẹ: **in đậm** cho ý chính, xuống dòng cho dễ đọc. Hạn chế dùng heading ##.`;
 
@@ -651,7 +687,7 @@ export const scoreCustomerWithAI = async (profileSummary: string, knowledgeBase?
   if (!CLAUDE_API_KEY) return null;
 
   try {
-    const knowledgePrefix = knowledgeBase ? knowledgeBase + '\n\n---\n' : '';
+    const knowledgePrefix = knowledgeBase ? trimKnowledge(knowledgeBase) + '\n\n---\n' : '';
     const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -719,7 +755,7 @@ export const generateDetailedRecommendation = async (
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
-        system: `${knowledgeBase}
+        system: `${trimKnowledge(knowledgeBase)}
 
 ---
 Bạn là Trợ lý AI của Coach Duy Nguyễn — người sáng lập phương pháp "Bán bằng vị thế" / THE TRUSTED ADVISOR.

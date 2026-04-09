@@ -40,21 +40,34 @@ export default function LessonDetailScreen() {
   };
 
   const mdStyles = StyleSheet.create({
-    body: { fontSize: 15, color: C.TEXT, lineHeight: 24 },
+    body: { fontSize: 15, color: C.TEXT, lineHeight: 26 },
+    heading1: { fontSize: 22, fontWeight: '800', color: cat.color, marginTop: 28, marginBottom: 12, lineHeight: 30 },
+    heading2: { fontSize: 18, fontWeight: '700', color: C.TEXT, marginTop: 24, marginBottom: 10, lineHeight: 26 },
+    heading3: { fontSize: 16, fontWeight: '700', color: C.TEXT_SECONDARY, marginTop: 18, marginBottom: 8, lineHeight: 22 },
     strong: { fontWeight: '700', color: C.TEXT },
-    paragraph: { marginBottom: 10 },
-    bullet_list: { marginBottom: 8 },
-    ordered_list: { marginBottom: 8 },
-    list_item: { marginBottom: 4 },
+    em: { fontStyle: 'italic' },
+    paragraph: { marginBottom: 12 },
+    bullet_list: { marginBottom: 10, paddingLeft: 4 },
+    ordered_list: { marginBottom: 10 },
+    list_item: { marginBottom: 6 },
     blockquote: {
-      backgroundColor: cat.color + '08',
+      backgroundColor: cat.color + '0A',
       borderLeftColor: cat.color,
       borderLeftWidth: 3,
-      paddingLeft: 12,
-      paddingVertical: 8,
-      marginVertical: 8,
-      borderRadius: 4,
+      paddingLeft: 16,
+      paddingRight: 16,
+      paddingVertical: 12,
+      marginVertical: 12,
+      borderRadius: 8,
     },
+    hr: { backgroundColor: C.BORDER, height: 1, marginVertical: 20 },
+    table: { borderWidth: 0, marginVertical: 12 },
+    thead: { backgroundColor: cat.color + '10' },
+    th: { padding: 10, fontSize: 13, fontWeight: '700', color: C.TEXT, borderWidth: 0 },
+    tr: { borderBottomWidth: 1, borderBottomColor: C.BORDER },
+    td: { padding: 10, fontSize: 13, color: C.TEXT_SECONDARY, borderWidth: 0, lineHeight: 20 },
+    link: { color: cat.color },
+    code_inline: { backgroundColor: C.SURFACE, color: cat.color, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, fontSize: 13 },
   });
 
   return (
@@ -68,17 +81,29 @@ export default function LessonDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Hero */}
-        <View style={styles.hero}>
-          <View style={[styles.heroEmoji, { backgroundColor: cat.color + '12' }]}>
-            <Ionicons name={(lesson.icon || 'book') as any} size={40} color={cat.color} />
+        {/* Hero — đặc biệt cho bài TTA intro */}
+        {lesson.id === 'tta-intro' ? (
+          <View style={[styles.ttaIntroHero, { backgroundColor: C.PRIMARY }]}>
+            <View style={styles.ttaIntroBadge}>
+              <Ionicons name="shield-checkmark" size={12} color={C.PRIMARY} />
+              <Text style={[styles.ttaIntroBadgeText, { color: C.PRIMARY }]}>ĐỘC QUYỀN — COACH DUY NGUYỄN</Text>
+            </View>
+            <Ionicons name="shield-checkmark" size={48} color="rgba(255,255,255,0.3)" style={{ marginBottom: 12 }} />
+            <Text style={styles.ttaIntroTitle}>{lesson.title}</Text>
+            <Text style={styles.ttaIntroMeta}>THE TRUSTED ADVISOR  •  {lesson.duration}</Text>
           </View>
-          <View style={[styles.tagBadge, { backgroundColor: cat.color + '18' }]}>
-            <Text style={[styles.tagBadgeText, { color: cat.color }]}>{cat.label}</Text>
+        ) : (
+          <View style={styles.hero}>
+            <View style={[styles.heroEmoji, { backgroundColor: cat.color + '12' }]}>
+              <Ionicons name={(lesson.icon || 'book') as any} size={40} color={cat.color} />
+            </View>
+            <View style={[styles.tagBadge, { backgroundColor: cat.color + '18' }]}>
+              <Text style={[styles.tagBadgeText, { color: cat.color }]}>{cat.label}</Text>
+            </View>
+            <Text style={[styles.heroTitle, { color: C.TEXT }]}>{lesson.title}</Text>
+            <Text style={styles.heroMeta}>{lesson.duration}</Text>
           </View>
-          <Text style={[styles.heroTitle, { color: C.TEXT }]}>{lesson.title}</Text>
-          <Text style={styles.heroMeta}>{lesson.duration}</Text>
-        </View>
+        )}
 
         {/* Content */}
         <View style={[styles.contentCard, { backgroundColor: C.CARD }]}>
@@ -143,8 +168,9 @@ const styles = StyleSheet.create({
   heroMeta: { fontSize: 13, color: COLORS.TEXT_LIGHT },
 
   contentCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 12,
+    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 20, marginBottom: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    overflow: 'hidden',
   },
 
   keyLessonBox: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1 },
@@ -162,4 +188,15 @@ const styles = StyleSheet.create({
   },
   practiceTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
   practiceText: { fontSize: 12, color: COLORS.TEXT_LIGHT, textAlign: 'center' },
+  ttaIntroHero: {
+    borderRadius: 20, padding: 24, marginBottom: 20, alignItems: 'center' as const,
+  },
+  ttaIntroBadge: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 5, marginBottom: 16,
+  },
+  ttaIntroBadgeText: { fontSize: 9, fontWeight: '800' as const, letterSpacing: 0.5 },
+  ttaIntroTitle: { fontSize: 20, fontWeight: '800' as const, color: '#fff', textAlign: 'center' as const, lineHeight: 28 },
+  ttaIntroMeta: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 8 },
 });

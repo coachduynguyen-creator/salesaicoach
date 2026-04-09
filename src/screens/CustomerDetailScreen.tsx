@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Share, Modal, RefreshControl, Image,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -161,6 +162,7 @@ export default function CustomerDetailScreen() {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [noteType, setNoteType] = useState<string>('Ghi chú');
+  const scrollRef = React.useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
     loadCustomerStatuses().then(setStatuses);
@@ -431,7 +433,13 @@ export default function CustomerDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}>
 
         {/* Hero + Score */}
@@ -712,6 +720,7 @@ export default function CustomerDetailScreen() {
                 onChangeText={setNoteText}
                 multiline
                 maxLength={500}
+                onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
               />
               <TouchableOpacity
                 style={[styles.noteAddBtn, { backgroundColor: C.PRIMARY }, !noteText.trim() && { opacity: 0.5 }]}
@@ -769,9 +778,11 @@ export default function CustomerDetailScreen() {
 
         <View style={{ height: 30 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Add Custom Field Modal */}
       <Modal visible={showAddFieldModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Thêm tiêu chí mới</Text>
@@ -789,6 +800,7 @@ export default function CustomerDetailScreen() {
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Status Picker Modal */}
@@ -825,6 +837,7 @@ export default function CustomerDetailScreen() {
 
       {/* Add Decision Maker Modal */}
       <Modal visible={showDMModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Thêm người ra quyết định</Text>
@@ -852,6 +865,7 @@ export default function CustomerDetailScreen() {
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Photo Picker Modal */}
@@ -881,6 +895,7 @@ export default function CustomerDetailScreen() {
       </Modal>
       {/* Edit Name/Company Modal */}
       <Modal visible={showEditNameModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowEditNameModal(false)}>
           <View style={[styles.modalContent, { backgroundColor: C.CARD }]}>
             <Text style={[styles.modalTitle, { color: C.TEXT }]}>
@@ -913,6 +928,7 @@ export default function CustomerDetailScreen() {
             </View>
           </View>
         </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

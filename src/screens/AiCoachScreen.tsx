@@ -258,16 +258,24 @@ export default function AiCoachScreen() {
     });
   }, [customerId, conversationId, conversationTitle]);
 
-  // Load tin nhắn cũ khi mở conversation
+  // Load tin nhắn cũ khi mở conversation — chạy SAU customer context
   useEffect(() => {
     if (!conversationId) return;
-    loadConversations().then(convs => {
-      const conv = convs.find(c => c.id === conversationId);
-      if (conv && conv.messages.length > 0) {
-        setMessages([makeWelcome(), ...conv.messages.map(fromStorageMsg)]);
-        setShowSuggestions(false);
-      }
-    });
+    // Delay nhỏ để customer useEffect set welcome trước, rồi mới load history ghi đè
+    const timer = setTimeout(() => {
+      loadConversations().then(convs => {
+        const conv = convs.find(c => c.id === conversationId);
+        if (conv && conv.messages.length > 0) {
+          setMessages(prev => {
+            // Giữ welcome message hiện tại (có thể đã được customer useEffect customize)
+            const welcome = prev.find(m => m.id === 'welcome') || makeWelcome();
+            return [welcome, ...conv.messages.map(fromStorageMsg)];
+          });
+          setShowSuggestions(false);
+        }
+      });
+    }, 500);
+    return () => clearTimeout(timer);
   }, [conversationId]);
 
   // Auto-save tin nhắn (bỏ welcome message)
@@ -416,6 +424,7 @@ export default function AiCoachScreen() {
           contentContainerStyle={styles.messageList}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          ListFooterComponent={isTyping ? <TypingIndicator /> : null}
         />
 
         {/* Quick Suggestions */}

@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -203,6 +205,11 @@ export default function RecordScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: C.BACKGROUND }]} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
@@ -373,6 +380,7 @@ export default function RecordScreen() {
           </View>
         )}
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

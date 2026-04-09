@@ -220,8 +220,8 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 30, fontWeight: '800', color: '#fff',
-    textAlign: 'center', marginBottom: 12, lineHeight: 38,
+    fontSize: 26, fontWeight: '800', color: '#fff',
+    textAlign: 'center', marginBottom: 12, lineHeight: 34,
   },
   subtitle: {
     fontSize: 15, color: 'rgba(255,255,255,0.75)',

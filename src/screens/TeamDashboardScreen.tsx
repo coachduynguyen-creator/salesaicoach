@@ -8,6 +8,7 @@ import {
   Platform,
   Modal,
   TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -187,6 +188,7 @@ export default function TeamDashboardScreen() {
 
       {/* Add Member Modal — hoạt động trên cả iOS và Android */}
       <Modal visible={showAddModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: C.CARD }]}>
             <Text style={[styles.modalTitle, { color: C.TEXT }]}>Thêm thành viên</Text>
@@ -222,6 +224,7 @@ export default function TeamDashboardScreen() {
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

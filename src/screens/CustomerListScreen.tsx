@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput,
   RefreshControl, Image, ScrollView, Modal, Dimensions,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -371,6 +372,7 @@ export default function CustomerListScreen() {
       </Modal>
       {/* Add Customer Modal */}
       <Modal visible={showAddModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAddModal(false)}>
           <View style={[styles.addModalContent, { backgroundColor: C.CARD }]}>
             <Text style={[styles.addModalTitle, { color: C.TEXT }]}>Thêm khách hàng mới</Text>
@@ -425,6 +427,7 @@ export default function CustomerListScreen() {
             </View>
           </View>
         </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

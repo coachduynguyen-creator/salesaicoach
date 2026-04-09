@@ -451,6 +451,7 @@ export const addCustomer = async (customer: Omit<CustomerProfile, 'id' | 'create
     customFields: {},
     notes: [],
     sessionIds: [],
+    lastContactAt: now,
     createdAt: now,
     updatedAt: now,
   };

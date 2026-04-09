@@ -10,6 +10,7 @@ import {
   Image,
   ActionSheetIOS,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -518,6 +519,7 @@ export default function ProfileScreen() {
 
       {/* Status Edit Modal */}
       <Modal visible={showStatusManager} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{editingStatusId ? 'Sửa trạng thái' : 'Thêm trạng thái'}</Text>
@@ -568,6 +570,7 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Avatar Picker Modal */}
@@ -598,6 +601,7 @@ export default function ProfileScreen() {
 
       {/* Edit Name Modal */}
       <Modal visible={showNameModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Thông tin cá nhân</Text>
@@ -632,6 +636,7 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

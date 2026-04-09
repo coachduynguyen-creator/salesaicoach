@@ -143,7 +143,63 @@ export default function TrainingCenterScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.PRIMARY} colors={[C.PRIMARY]} />}
         ListHeaderComponent={
-          skillProfile && skillProfile.recommendedLessons.length > 0 && activeFilter === 'all' ? (
+          <>
+          {/* Giới thiệu TTA — nổi bật nhất */}
+          {activeFilter === 'all' && (
+            <TouchableOpacity
+              style={[styles.ttaHero, { backgroundColor: C.PRIMARY }]}
+              onPress={() => {
+                const ttaLesson = ALL_LESSONS.find(l => l.id === 'tta-intro');
+                if (ttaLesson) navigation.navigate('LessonDetail', { lesson: ttaLesson });
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.ttaBadge}>
+                <Ionicons name="shield-checkmark" size={14} color={C.PRIMARY} />
+                <Text style={[styles.ttaBadgeText, { color: C.PRIMARY }]}>ĐỘC QUYỀN — COACH DUY NGUYỄN</Text>
+              </View>
+
+              <Text style={styles.ttaTitle}>Tư duy Bán bằng Vị Thế</Text>
+              <Text style={styles.ttaSubtitle}>& Phương pháp Dẫn Quyết Định 3 Điểm Chạm</Text>
+
+              <View style={styles.ttaDivider} />
+
+              <Text style={styles.ttaDesc}>
+                Nâng tầm người bán hàng thành Cố vấn Tin cậy. Không thuyết phục — dẫn dắt khách hàng tự ra quyết định qua 3 Điểm Chạm: Động Lực → Điểm Nghẽn → Con Đường.
+              </Text>
+
+              <View style={styles.ttaPoints}>
+                <View style={styles.ttaPoint}>
+                  <View style={styles.ttaPointDot}><Text style={styles.ttaPointNum}>1</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.ttaPointTitle}>Chạm Động Lực</Text>
+                    <Text style={styles.ttaPointDesc}>Khơi gợi mục tiêu thật sự của khách</Text>
+                  </View>
+                </View>
+                <View style={styles.ttaPoint}>
+                  <View style={styles.ttaPointDot}><Text style={styles.ttaPointNum}>2</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.ttaPointTitle}>Chạm Điểm Nghẽn</Text>
+                    <Text style={styles.ttaPointDesc}>Giúp khách nhận ra rào cản cốt lõi</Text>
+                  </View>
+                </View>
+                <View style={styles.ttaPoint}>
+                  <View style={styles.ttaPointDot}><Text style={styles.ttaPointNum}>3</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.ttaPointTitle}>Chạm Con Đường</Text>
+                    <Text style={styles.ttaPointDesc}>Đề xuất lộ trình phù hợp — khách tự chọn</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.ttaCta}>
+                <Text style={styles.ttaCtaText}>Tìm hiểu chi tiết</Text>
+                <Ionicons name="arrow-forward" size={16} color="#fff" />
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {skillProfile && skillProfile.recommendedLessons.length > 0 && activeFilter === 'all' ? (
             <View style={{ marginBottom: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                 <Ionicons name="sparkles" size={16} color={C.PRIMARY} />
@@ -171,7 +227,8 @@ export default function TrainingCenterScreen() {
                 })}
               </ScrollView>
             </View>
-          ) : null
+          ) : null}
+          </>
         }
       />
     </SafeAreaView>
@@ -221,4 +278,34 @@ const styles = StyleSheet.create({
   lessonTitle: { fontSize: 14, fontWeight: '700', color: COLORS.TEXT, lineHeight: 20, marginBottom: 4 },
   lessonDesc: { fontSize: 12, color: COLORS.TEXT_LIGHT, lineHeight: 17, marginBottom: 8 },
   lessonDuration: { fontSize: 12, color: COLORS.TEXT_LIGHT },
+  // TTA Hero
+  ttaHero: {
+    borderRadius: 20, padding: 20, marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15, shadowRadius: 12, elevation: 6,
+  },
+  ttaBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 14,
+  },
+  ttaBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  ttaTitle: { fontSize: 22, fontWeight: '900', color: '#fff', lineHeight: 28 },
+  ttaSubtitle: { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 21 },
+  ttaDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 16 },
+  ttaDesc: { fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 20, marginBottom: 16 },
+  ttaPoints: { gap: 12, marginBottom: 16 },
+  ttaPoint: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  ttaPointDot: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ttaPointNum: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  ttaPointTitle: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  ttaPointDesc: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
+  ttaCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, paddingVertical: 12,
+  },
+  ttaCtaText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

@@ -28,6 +28,148 @@ export const CATEGORY_INFO: Record<LessonCategory, { label: string; color: strin
 export const ALL_LESSONS: LessonItem[] = [
 
   // ═══════════════════════════════════════════════════════════
+  // BÀI GIỚI THIỆU: TƯ DUY BÁN BẰNG VỊ THẾ & 3 ĐIỂM CHẠM
+  // ═══════════════════════════════════════════════════════════
+
+  {
+    id: 'tta-intro',
+    category: 'tl1',
+    title: 'Tư duy Bán bằng Vị Thế & Phương pháp 3 Điểm Chạm',
+    description: 'Hiểu tổng quan về tư duy và phương pháp cốt lõi của THE TRUSTED ADVISOR',
+    duration: '15 phút đọc',
+    emoji: '',
+    icon: 'shield-checkmark',
+    keyLesson: 'Bán hàng không phải thuyết phục — mà là dẫn dắt khách hàng tự ra quyết định thông qua vị thế cố vấn tin cậy.',
+    content: `# Tư duy Bán bằng Vị Thế
+
+## Phương pháp độc quyền của Coach Duy Nguyễn
+
+**"Bán bằng Vị Thế"** là tư duy bán hàng hiện đại được xây dựng bởi Coach Duy Nguyễn, dựa trên 20 năm kinh nghiệm đào tạo hơn 5.000 chuyên viên tư vấn tại các tập đoàn lớn như Mobifone, ACB, AIA, Prudential.
+
+Tư duy này thay đổi hoàn toàn cách tiếp cận bán hàng:
+
+### Bán hàng truyền thống vs Bán bằng Vị Thế
+
+- **Truyền thống:** Thuyết phục khách mua → **Vị Thế:** Dẫn dắt khách tự quyết định
+- **Truyền thống:** Tập trung vào sản phẩm → **Vị Thế:** Tập trung vào con người
+- **Truyền thống:** Liệt kê tính năng → **Vị Thế:** Kết nối với con đường khách đang đi
+- **Truyền thống:** Sales là người bán → **Vị Thế:** Sales là cố vấn tin cậy
+- **Truyền thống:** Đẩy thông tin → **Vị Thế:** Lắng nghe và đặt câu hỏi
+- **Truyền thống:** Chốt bằng áp lực → **Vị Thế:** Khách tự chốt vì thấy phù hợp
+
+---
+
+## Nền tảng: Công thức Niềm Tin (Trust Formula)
+
+Toàn bộ phương pháp dựa trên một công thức cốt lõi:
+
+> **Trust = (Uy tín + Độ tin cậy + Kết nối cảm xúc) / Tập trung vào bản thân**
+
+### Ba yếu tố ở tử số (cần TĂNG):
+
+**Uy tín (Credibility)** — Khách tin rằng bạn có năng lực:
+- Kiến thức chuyên sâu về ngành, sản phẩm, thị trường
+- Kinh nghiệm thực tế, không lý thuyết suông
+- Bằng chứng: case study, kết quả đã đạt
+
+**Độ tin cậy (Reliability)** — Khách tin rằng bạn đáng tin:
+- Nói gì làm nấy, giữ đúng cam kết
+- Nhất quán trong hành vi, không "nói một đằng làm một nẻo"
+- Minh bạch, kể cả khi sự thật không có lợi cho mình
+
+**Kết nối cảm xúc (Emotional Connection)** — Khách cảm thấy được thấu hiểu:
+- Lắng nghe thật sự, không chỉ chờ đến lượt nói
+- Hiểu nỗi đau, mong muốn, nỗi sợ của khách
+- Đồng cảm chân thành, không giả tạo
+
+### Yếu tố ở mẫu số (cần GIẢM):
+
+**Tập trung vào bản thân (Self-Focus)** — Càng ít càng tốt:
+- Nói về "tôi", "công ty tôi", "sản phẩm tôi" quá nhiều
+- Chỉ nghĩ đến doanh số, KPI, hoa hồng
+- Không quan tâm khách thật sự cần gì
+
+> Khi mẫu số nhỏ (Self-Focus thấp), niềm tin tăng vọt. Khi mẫu số lớn, dù tử số cao bao nhiêu, niềm tin vẫn thấp.
+
+---
+
+## Phương pháp Dẫn Quyết Định: 3 Điểm Chạm
+
+Đây là phương pháp cốt lõi để dẫn dắt khách hàng tự ra quyết định, không cần thuyết phục hay gây áp lực.
+
+### Điểm Chạm 1: Chạm Động Lực
+
+**Mục đích:** Giúp khách nhận ra và nói thành lời MỤC TIÊU THẬT SỰ mà họ đang hướng tới.
+
+**Nguyên tắc:**
+- Khách thường nói nhu cầu bề mặt, không phải động lực thật
+- Sales cần đặt câu hỏi để đào sâu: "Điều gì quan trọng nhất với anh/chị trong quyết định này?"
+- Lắng nghe 70%, nói 30%
+- GHI LẠI ngôn ngữ khách dùng — sẽ dùng lại ở Điểm Chạm 3
+
+**Dấu hiệu thành công:** Khách tự nói ra mục tiêu sâu, chia sẻ câu chuyện cá nhân, giọng nói thay đổi (chậm hơn, trầm hơn).
+
+---
+
+### Điểm Chạm 2: Chạm Điểm Nghẽn
+
+**Mục đích:** Giúp khách TỰ NHẬN RA rào cản cốt lõi đang ngăn họ đạt mục tiêu.
+
+**Nguyên tắc:**
+- Không CHỈ RA vấn đề — để khách TỰ PHÁT HIỆN
+- Dùng câu hỏi phản chiếu: "Theo anh/chị, điều gì đang cản trở việc đạt được [mục tiêu ở ĐC1]?"
+- Khi khách nhận ra điểm nghẽn, năng lượng thay đổi sẽ tăng mạnh
+- KHÔNG vội đưa giải pháp ở bước này
+
+**Dấu hiệu thành công:** Khách nói "Đúng rồi, đây chính là vấn đề", im lặng suy ngẫm, hoặc hỏi "Vậy phải làm sao?"
+
+---
+
+### Điểm Chạm 3: Chạm Con Đường
+
+**Mục đích:** Đề xuất giải pháp như một CON ĐƯỜNG PHÙ HỢP — có bản đồ, có người dẫn đường.
+
+**Nguyên tắc:**
+- Kiểm tra FIT trước khi trình bày:
+  - FIT với động lực (ĐC1): Con đường này phục vụ đúng mục tiêu khách?
+  - FIT với điểm nghẽn (ĐC2): Con đường này giải quyết đúng rào cản?
+  - FIT với bối cảnh: Không vượt quá nguồn lực, thời gian, cam kết khách sẵn sàng?
+
+- 3 bước trình bày:
+  1. **Kết nối lại:** "Dựa trên những gì anh/chị chia sẻ về [dùng đúng từ khách nói ở ĐC1] và [ĐC2]..."
+  2. **Đề xuất con đường:** "Hướng tiếp cận phù hợp nhất là..."
+  3. **Để khách tự đánh giá:** "Anh/chị thấy hướng này có phù hợp không?"
+
+**Nguyên tắc Loại trừ (Disqualification):**
+> Nếu sau khi đánh giá FIT, con đường không phù hợp với khách ở thời điểm này → phải nói thẳng. Đây là ranh giới quan trọng nhất giữa Cố vấn Tin cậy và Người bán hàng. Cố vấn có can đảm từ chối khi không phù hợp.
+
+**Dấu hiệu thành công:** Khách nói "Cái này phù hợp với tôi" hoặc bắt đầu hỏi về chi tiết triển khai. Quyết định đến một cách chủ động, tự nhiên.
+
+---
+
+## Công thức Giá trị
+
+Khi trình bày giải pháp, áp dụng:
+
+> **Giá trị = (Kết quả đạt được × Khả năng thành công) / (Thời gian × Rủi ro × Công sức)**
+
+- **Tăng tử số:** Làm rõ kết quả cụ thể + tăng niềm tin vào khả năng thành công
+- **Giảm mẫu số:** Giảm cảm nhận về thời gian, rủi ro, và công sức cần bỏ ra
+
+---
+
+## Tại sao phương pháp này khác biệt?
+
+1. **Không bán — dẫn dắt.** Khách tự ra quyết định, không bị ép.
+2. **Dựa trên tâm lý học.** Hiểu cách con người thật sự ra quyết định.
+3. **Xây dựng quan hệ dài hạn.** Khách quay lại và giới thiệu người khác.
+4. **Phù hợp thời đại.** Khách hàng ngày nay thông minh, ghét bị bán.
+5. **Đo lường được.** Trust Formula + 3 Điểm Chạm = framework rõ ràng.
+
+> *"Khi con đường phù hợp, quyết định đến tự nhiên. Khách không cảm thấy bị bán — họ cảm thấy được dẫn dắt để tự chọn."* — Coach Duy Nguyễn`,
+  },
+
+  // ═══════════════════════════════════════════════════════════
   // TÀI LIỆU 1: NỀN TẢNG — CỐ VẤN TIN CẬY LÀ GÌ
   // ═══════════════════════════════════════════════════════════
 

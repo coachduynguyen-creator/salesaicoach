@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,6 +75,11 @@ export default function GoalSettingScreen() {
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       <ScrollView contentContainerStyle={styles.scroll}>
         {goals.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 60 }}>
@@ -109,8 +115,10 @@ export default function GoalSettingScreen() {
           })
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal visible={showModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: C.CARD }]}>
             <Text style={[styles.modalTitle, { color: C.TEXT }]}>Mục tiêu mới</Text>
@@ -130,6 +138,7 @@ export default function GoalSettingScreen() {
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
