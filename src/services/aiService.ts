@@ -68,13 +68,20 @@ const callClaudeProxy = async (payload: any): Promise<any> => {
 const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 2): Promise<Response> => {
   for (let i = 0; i <= maxRetries; i++) {
     try {
-      const response = await fetch(url, options);
+      // Timeout 3 phút cho mỗi request (ghi âm dài cần thời gian)
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 180000);
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeout);
       if (response.status === 429 && i < maxRetries) {
         await new Promise(r => setTimeout(r, Math.pow(2, i) * 1500));
         continue;
       }
       return response;
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        throw new Error('Xử lý quá lâu. Thử ghi âm ngắn hơn hoặc kiểm tra kết nối mạng.');
+      }
       if (i === maxRetries) throw err;
       await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
     }
@@ -859,9 +866,23 @@ QUAN TRỌNG: Sử dụng thông tin THỰC TẾ về khách hàng và sản ph�
 
 export const analyzeRecording = async (audioUri: string, knowledgeBase?: string): Promise<AnalysisResult> => {
   const rawTranscript = await transcribeAudio(audioUri);
-  const transcript = await correctTranscript(rawTranscript);
-  const analysis = await analyzeTranscript(transcript, knowledgeBase);
-  analysis.transcript = transcript;
+
+  // Ghi âm ngắn (<3000 ký tự): sửa lỗi trước, phân tích sau
+  // Ghi âm dài (>3000 ký tự): bỏ qua sửa lỗi, phân tích trực tiếp (tiết kiệm 30-60s)
+  let transcript: string;
+  if (rawTranscript.length < 3000) {
+    transcript = await correctTranscript(rawTranscript);
+  } else {
+    transcript = rawTranscript;
+  }
+
+  // Giới hạn transcript gửi Claude (tối đa 8000 ký tự ≈ 2000 tokens input)
+  const trimmedTranscript = transcript.length > 8000
+    ? transcript.slice(0, 4000) + '\n\n[... phần giữa được lược bỏ ...]\n\n' + transcript.slice(-4000)
+    : transcript;
+
+  const analysis = await analyzeTranscript(trimmedTranscript, knowledgeBase);
+  analysis.transcript = transcript; // Lưu full transcript, chỉ gửi AI bản rút gọn
   return analysis;
 };
 
