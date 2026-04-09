@@ -745,11 +745,11 @@ export default function CustomerDetailScreen() {
                   if (isVoiceNote) {
                     // Dừng ghi → transcribe
                     try {
-                      const uri = await stopRecording(voiceRecRef.current);
+                      const result = await stopRecording();
                       voiceRecRef.current = null;
                       setIsVoiceNote(false);
                       setIsTranscribing(true);
-                      const text = await transcribeAudio(uri);
+                      const text = await transcribeAudio(result.uri);
                       setNoteText(prev => prev ? prev + ' ' + text : text);
                     } catch {
                       showAlert({ title: 'Lỗi', message: 'Không thể chuyển giọng nói.', type: 'error' });
