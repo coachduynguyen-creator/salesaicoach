@@ -5,33 +5,8 @@ export interface RecordingResult {
   duration: number;
 }
 
-// Cấu hình ghi âm tối ưu cho speech recognition (file nhỏ, chất lượng đủ cho Whisper)
-const SPEECH_RECORDING_OPTIONS = {
-  isMeteringEnabled: true,
-  android: {
-    extension: '.m4a',
-    outputFormat: 3, // MPEG_4
-    audioEncoder: 3, // AAC
-    sampleRate: 16000, // 16kHz đủ cho speech
-    numberOfChannels: 1, // Mono
-    bitRate: 64000, // 64kbps (10 phút ≈ 5MB)
-  },
-  ios: {
-    extension: '.m4a',
-    outputFormat: 'aac' as any,
-    audioQuality: 0x40 as any, // medium quality
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 64000,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: {
-    mimeType: 'audio/webm',
-    bitsPerSecond: 64000,
-  },
-};
+// Dùng LOW_QUALITY preset (file nhỏ, tương thích mọi thiết bị)
+const SPEECH_RECORDING_OPTIONS = Audio.RecordingOptionsPresets.LOW_QUALITY;
 
 let recording: Audio.Recording | null = null;
 
