@@ -363,7 +363,7 @@ export default function HomeScreen() {
                   fontSize: 13, color: challengeProgress.tasksCompleted[i] ? C.TEXT_LIGHT : C.TEXT_SECONDARY,
                   textDecorationLine: challengeProgress.tasksCompleted[i] ? 'line-through' : 'none',
                   flex: 1, lineHeight: 20,
-                }}>{task}</Text>
+                }}>{typeof task === 'string' ? task : JSON.stringify(task)}</Text>
               </TouchableOpacity>
             ))}
           </View>
