@@ -150,10 +150,12 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
   }
 
   const formData = new FormData();
+  const ext = audioUri.split('.').pop()?.toLowerCase() || 'm4a';
+  const mimeType = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : ext === 'webm' ? 'audio/webm' : 'audio/mp4';
   formData.append('file', {
     uri: audioUri,
-    type: 'audio/m4a',
-    name: 'recording.m4a',
+    type: mimeType,
+    name: `recording.${ext}`,
   } as any);
   formData.append('model', 'whisper-1');
   formData.append('language', 'vi');

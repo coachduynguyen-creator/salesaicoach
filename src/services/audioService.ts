@@ -5,8 +5,30 @@ export interface RecordingResult {
   duration: number;
 }
 
-// Dùng LOW_QUALITY preset (file nhỏ, tương thích mọi thiết bị)
-const SPEECH_RECORDING_OPTIONS = Audio.RecordingOptionsPresets.LOW_QUALITY;
+// Ghi âm m4a tương thích Whisper API, file nhỏ cho ghi âm dài
+const SPEECH_RECORDING_OPTIONS: Audio.RecordingOptions = {
+  isMeteringEnabled: false,
+  android: {
+    extension: '.m4a',
+    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+    audioEncoder: Audio.AndroidAudioEncoder.AAC,
+    sampleRate: 22050,
+    numberOfChannels: 1,
+    bitRate: 64000,
+  },
+  ios: {
+    extension: '.m4a',
+    audioQuality: Audio.IOSAudioQuality.MEDIUM,
+    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+    sampleRate: 22050,
+    numberOfChannels: 1,
+    bitRate: 64000,
+  },
+  web: {
+    mimeType: 'audio/webm',
+    bitsPerSecond: 64000,
+  },
+};
 
 let recording: Audio.Recording | null = null;
 
