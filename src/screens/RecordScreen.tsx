@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,10 @@ import {
   Easing,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +23,7 @@ import { useColors } from '../contexts/ThemeContext';
 import { startRecording, stopRecording, pauseRecording, resumeRecording } from '../services/audioService';
 import { useAlert } from '../contexts/AlertContext';
 import * as DocumentPicker from 'expo-document-picker';
+import { loadCustomers, CustomerProfile } from '../services/storageService';
 
 type RecordingState = 'idle' | 'recording' | 'paused';
 
@@ -27,6 +31,12 @@ export default function RecordScreen() {
   const C = useColors();
   const navigation = useNavigation<any>();
   const { showAlert } = useAlert();
+  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    loadCustomers().then(setCustomers);
+  }, []));
   const [customerName, setCustomerName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
@@ -224,7 +234,12 @@ export default function RecordScreen() {
           <View style={styles.inputGroup}>
             <View style={[styles.inputWrap, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
               <Ionicons name="person-outline" size={18} color={C.TEXT_LIGHT} />
-              <TextInput style={[styles.input, { color: C.TEXT }]} placeholder="Tên khách hàng" placeholderTextColor={C.TEXT_LIGHT} value={customerName} onChangeText={setCustomerName} />
+              <TextInput style={[styles.input, { color: C.TEXT, flex: 1 }]} placeholder="Tên khách hàng" placeholderTextColor={C.TEXT_LIGHT} value={customerName} onChangeText={setCustomerName} />
+              {customers.length > 0 && (
+                <TouchableOpacity onPress={() => setShowCustomerPicker(true)} style={{ padding: 4 }}>
+                  <Ionicons name="people" size={20} color={C.PRIMARY} />
+                </TouchableOpacity>
+              )}
             </View>
             <View style={[styles.inputWrap, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
               <Ionicons name="business-outline" size={18} color={C.TEXT_LIGHT} />
@@ -381,6 +396,37 @@ export default function RecordScreen() {
         )}
       </View>
       </KeyboardAvoidingView>
+      {/* Customer Picker Modal */}
+      <Modal visible={showCustomerPicker} transparent animationType="fade">
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowCustomerPicker(false)}>
+          <View style={{ backgroundColor: C.CARD, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, maxHeight: '60%' }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: C.TEXT, marginBottom: 14 }}>Chọn khách hàng</Text>
+            <FlatList
+              data={customers}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.BORDER, gap: 10 }}
+                  onPress={() => {
+                    setCustomerName(item.name);
+                    setCompanyName(item.company || '');
+                    setShowCustomerPicker(false);
+                  }}
+                >
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.PRIMARY + '14', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: C.PRIMARY }}>{item.name.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: C.TEXT }}>{item.name}</Text>
+                    {item.company ? <Text style={{ fontSize: 12, color: C.TEXT_LIGHT }}>{item.company}</Text> : null}
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={<Text style={{ color: C.TEXT_LIGHT, textAlign: 'center', paddingVertical: 20 }}>Chưa có khách hàng</Text>}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }

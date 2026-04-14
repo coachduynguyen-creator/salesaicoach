@@ -224,12 +224,23 @@ export default function SessionDetailScreen() {
           <TouchableOpacity
             style={[styles.reanalyzeBtn, { backgroundColor: C.PRIMARY }]}
             onPress={() => {
-              navigation.navigate('ResultScreen', {
-                audioUri: session.audioUri,
-                duration: session.duration,
-                customerName: session.customerName,
-                companyName: session.companyName,
-              });
+              // Nếu có transcript cũ, dùng manual mode (không cần file audio)
+              if (analysis?.transcript) {
+                navigation.navigate('ResultScreen', {
+                  manualMode: true,
+                  customerName: session.customerName,
+                  companyName: session.companyName,
+                  duration: session.duration,
+                });
+                // Sẽ paste transcript thủ công
+              } else {
+                navigation.navigate('ResultScreen', {
+                  audioUri: session.audioUri,
+                  duration: session.duration,
+                  customerName: session.customerName,
+                  companyName: session.companyName,
+                });
+              }
             }}
           >
             <Ionicons name="sparkles" size={18} color="#fff" />
@@ -238,16 +249,25 @@ export default function SessionDetailScreen() {
         )}
 
         {/* Nút phân tích lại khi đã có analysis (để cập nhật) */}
-        {session.audioUri && hasFullAnalysis && (
+        {(session.audioUri || analysis?.transcript) && hasFullAnalysis && (
           <TouchableOpacity
             style={[styles.reanalyzeBtnSmall, { borderColor: C.PRIMARY }]}
             onPress={() => {
-              navigation.navigate('ResultScreen', {
-                audioUri: session.audioUri,
-                duration: session.duration,
-                customerName: session.customerName,
-                companyName: session.companyName,
-              });
+              if (analysis?.transcript) {
+                navigation.navigate('ResultScreen', {
+                  manualMode: true,
+                  customerName: session.customerName,
+                  companyName: session.companyName,
+                  duration: session.duration,
+                });
+              } else {
+                navigation.navigate('ResultScreen', {
+                  audioUri: session.audioUri,
+                  duration: session.duration,
+                  customerName: session.customerName,
+                  companyName: session.companyName,
+                });
+              }
             }}
           >
             <Ionicons name="refresh" size={16} color={C.PRIMARY} />

@@ -23,6 +23,7 @@ interface BugReport {
     platform?: string;
     timestamp?: string;
     stack?: string;
+    status?: string;
   };
   created_at: string;
 }
@@ -143,6 +144,33 @@ export default function BugReportsScreen() {
             {meta.stack}
           </Text>
         ) : null}
+
+        {/* Admin status controls */}
+        <View style={styles.statusRow}>
+          {(['urgent', 'in_progress', 'resolved'] as const).map(status => {
+            const currentStatus = meta.status || '';
+            const isActive = currentStatus === status;
+            const statusInfo = {
+              urgent: { label: 'Ưu tiên', color: '#EF4444', icon: 'flag' },
+              in_progress: { label: 'Đang xử lý', color: '#F59E0B', icon: 'hourglass' },
+              resolved: { label: 'Đã xong', color: '#10B981', icon: 'checkmark-circle' },
+            }[status];
+            return (
+              <TouchableOpacity
+                key={status}
+                style={[styles.statusBtn, isActive && { backgroundColor: statusInfo.color + '18', borderColor: statusInfo.color }]}
+                onPress={async () => {
+                  const newMeta = { ...meta, status: isActive ? '' : status };
+                  await supabase.from('activity_logs').update({ metadata: newMeta }).eq('id', item.id);
+                  setReports(prev => prev.map(r => r.id === item.id ? { ...r, metadata: newMeta } : r));
+                }}
+              >
+                <Ionicons name={statusInfo.icon as any} size={12} color={isActive ? statusInfo.color : C.TEXT_LIGHT} />
+                <Text style={[styles.statusBtnText, { color: isActive ? statusInfo.color : C.TEXT_LIGHT }]}>{statusInfo.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
     );
   };
@@ -256,6 +284,9 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontSize: 11 },
   stack: { fontSize: 10, fontFamily: 'monospace', marginTop: 10, padding: 8, borderRadius: 8, lineHeight: 14 },
+  statusRow: { flexDirection: 'row', gap: 6, marginTop: 10 },
+  statusBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: COLORS.BORDER },
+  statusBtnText: { fontSize: 11, fontWeight: '600' },
   emptyState: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 17, fontWeight: '700', marginTop: 16, marginBottom: 8 },
   emptySub: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
