@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { reportCrash } from '../services/crashReportService';
+import { trackError } from '../services/errorTrackingService';
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     reportCrash(error, 'ErrorBoundary');
+    trackError(error, { screen: 'ErrorBoundary', componentStack: errorInfo.componentStack });
   }
 
   handleRetry = () => {
