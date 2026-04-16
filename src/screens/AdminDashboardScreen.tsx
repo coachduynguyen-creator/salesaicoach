@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions,
 } from 'react-native';
@@ -12,7 +12,7 @@ import { getTeamStats, getMemberStats, getAIUsageSummary } from '../services/dat
 import { TeamStats, MemberStats } from '../types/database';
 import { shareTeamReport } from '../services/reportService';
 
-function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) {
+function StatCard({ label, value, icon, color, styles }: { label: string; value: string | number; icon: string; color: string; styles: any }) {
   return (
     <View style={styles.statCard}>
       <View style={[styles.statIcon, { backgroundColor: color + '15' }]}>
@@ -24,7 +24,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: string 
   );
 }
 
-function MemberRow({ m, rank }: { m: MemberStats; rank: number }) {
+function MemberRow({ m, rank, styles }: { m: MemberStats; rank: number; styles: any }) {
   const winRate = (m.won + m.lost) > 0 ? Math.round((m.won / (m.won + m.lost)) * 100) : 0;
   const scoreColor = m.avg_score >= 7 ? '#10B981' : m.avg_score >= 5 ? '#F59E0B' : '#EF4444';
   return (
@@ -48,6 +48,7 @@ function MemberRow({ m, rank }: { m: MemberStats; rank: number }) {
 export default function AdminDashboardScreen() {
   const navigation = useNavigation();
   const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
   const { team } = useAuth();
   const [stats, setStats] = useState<TeamStats | null>(null);
   const [members, setMembers] = useState<MemberStats[]>([]);
@@ -99,7 +100,7 @@ export default function AdminDashboardScreen() {
           }}
           style={styles.backBtn}
         >
-          <Ionicons name="share-outline" size={20} color={COLORS.TEXT} />
+          <Ionicons name="share-outline" size={20} color={C.TEXT} />
         </TouchableOpacity>
       </View>
 
@@ -110,11 +111,11 @@ export default function AdminDashboardScreen() {
         {/* Overview Stats */}
         <Text style={styles.sectionTitle}>Tổng quan Team</Text>
         <View style={styles.statsGrid}>
-          <StatCard label="Thành viên" value={stats?.total_members || 0} icon="people" color="#3B82F6" />
-          <StatCard label="Buổi ghi" value={stats?.total_sessions || 0} icon="radio" color="#10B981" />
-          <StatCard label="Điểm TB" value={stats?.avg_score || 0} icon="star" color="#F59E0B" />
-          <StatCard label="Won" value={stats?.won_deals || 0} icon="trophy" color="#10B981" />
-          <StatCard label="Lost" value={stats?.lost_deals || 0} icon="close-circle" color="#EF4444" />
+          <StatCard label="Thành viên" value={stats?.total_members || 0} icon="people" color="#3B82F6" styles={styles} />
+          <StatCard label="Buổi ghi" value={stats?.total_sessions || 0} icon="radio" color="#10B981" styles={styles} />
+          <StatCard label="Điểm TB" value={stats?.avg_score || 0} icon="star" color="#F59E0B" styles={styles} />
+          <StatCard label="Won" value={stats?.won_deals || 0} icon="trophy" color="#10B981" styles={styles} />
+          <StatCard label="Lost" value={stats?.lost_deals || 0} icon="close-circle" color="#EF4444" styles={styles} />
           <StatCard
             label="Win Rate"
             value={((stats?.won_deals || 0) + (stats?.lost_deals || 0)) > 0
@@ -122,6 +123,7 @@ export default function AdminDashboardScreen() {
               : '0%'}
             icon="trending-up"
             color="#8B5CF6"
+            styles={styles}
           />
         </View>
 
@@ -190,8 +192,8 @@ export default function AdminDashboardScreen() {
                   const color = m.avg_score >= 7 ? '#10B981' : m.avg_score >= 5 ? '#F59E0B' : '#EF4444';
                   return (
                     <View key={m.user_id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: COLORS.TEXT_SECONDARY, width: 60 }} numberOfLines={1}>{(m.full_name || '?').slice(0, 8)}</Text>
-                      <View style={{ flex: 1, height: 20, backgroundColor: COLORS.SURFACE, borderRadius: 4, overflow: 'hidden' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: C.TEXT_SECONDARY, width: 60 }} numberOfLines={1}>{(m.full_name || '?').slice(0, 8)}</Text>
+                      <View style={{ flex: 1, height: 20, backgroundColor: C.SURFACE, borderRadius: 4, overflow: 'hidden' }}>
                         <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color + '40', borderRadius: 4, justifyContent: 'center', paddingLeft: 6 }}>
                           <Text style={{ fontSize: 10, fontWeight: '800', color }}>{m.avg_score}</Text>
                         </View>
@@ -221,8 +223,8 @@ export default function AdminDashboardScreen() {
                 {data.map(d => (
                   <View key={d.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: d.color }} />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.TEXT_SECONDARY, width: 55 }}>{d.label}</Text>
-                    <View style={{ flex: 1, height: 22, backgroundColor: COLORS.SURFACE, borderRadius: 4, overflow: 'hidden' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: C.TEXT_SECONDARY, width: 55 }}>{d.label}</Text>
+                    <View style={{ flex: 1, height: 22, backgroundColor: C.SURFACE, borderRadius: 4, overflow: 'hidden' }}>
                       <View style={{ width: `${(d.count / maxDeal) * 100}%`, height: '100%', backgroundColor: d.color + '35', borderRadius: 4, justifyContent: 'center', paddingLeft: 8 }}>
                         <Text style={{ fontSize: 11, fontWeight: '800', color: d.color }}>{d.count}</Text>
                       </View>
@@ -242,7 +244,7 @@ export default function AdminDashboardScreen() {
           ) : (
             members
               .sort((a, b) => b.avg_score - a.avg_score)
-              .map((m, idx) => <MemberRow key={m.user_id} m={m} rank={idx + 1} />)
+              .map((m, idx) => <MemberRow key={m.user_id} m={m} rank={idx + 1} styles={styles} />)
           )}
         </View>
 
@@ -267,6 +269,26 @@ export default function AdminDashboardScreen() {
           )}
         </View>
 
+        {/* Admin Subscription */}
+        <TouchableOpacity
+          style={[styles.bugReportBtn, { borderColor: '#3B82F6', marginTop: 12 }]}
+          onPress={() => (navigation as any).navigate('AdminSubscription')}
+        >
+          <Ionicons name="card" size={18} color="#3B82F6" />
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#3B82F6', flex: 1 }}>Kích hoạt Subscription</Text>
+          <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
+        </TouchableOpacity>
+
+        {/* Admin Config */}
+        <TouchableOpacity
+          style={[styles.bugReportBtn, { borderColor: '#10B981', marginTop: 8 }]}
+          onPress={() => (navigation as any).navigate('AdminConfig')}
+        >
+          <Ionicons name="settings" size={18} color="#10B981" />
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#10B981', flex: 1 }}>Cấu hình App & Giá</Text>
+          <Ionicons name="chevron-forward" size={16} color="#10B981" />
+        </TouchableOpacity>
+
         {/* Bug Reports */}
         <TouchableOpacity
           style={[styles.bugReportBtn, { borderColor: '#EF4444' }]}
@@ -283,61 +305,61 @@ export default function AdminDashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.BACKGROUND },
+const makeStyles = (C: any) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.BACKGROUND },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: COLORS.CARD, paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+    backgroundColor: C.CARD, paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: C.BORDER,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: COLORS.SURFACE },
-  topBarTitle: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT, flex: 1, textAlign: 'center' },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: C.SURFACE },
+  topBarTitle: { fontSize: 15, fontWeight: '600', color: C.TEXT, flex: 1, textAlign: 'center' },
   scroll: { padding: 16, paddingBottom: 40 },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.TEXT, marginBottom: 10, marginTop: 8 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: C.TEXT, marginBottom: 10, marginTop: 8 },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   statCard: {
-    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 14, alignItems: 'center',
+    backgroundColor: C.CARD, borderRadius: 14, padding: 14, alignItems: 'center',
     width: '31%', flexGrow: 1,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
   statIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  statValue: { fontSize: 20, fontWeight: '800', color: COLORS.TEXT },
-  statLabel: { fontSize: 10, color: COLORS.TEXT_LIGHT, marginTop: 2 },
+  statValue: { fontSize: 20, fontWeight: '800', color: C.TEXT },
+  statLabel: { fontSize: 10, color: C.TEXT_LIGHT, marginTop: 2 },
 
   card: {
-    backgroundColor: COLORS.CARD, borderRadius: 14, padding: 16, marginBottom: 14,
+    backgroundColor: C.CARD, borderRadius: 14, padding: 16, marginBottom: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
 
   aiRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
-  aiLabel: { fontSize: 13, color: COLORS.TEXT_SECONDARY, flex: 1 },
-  aiValue: { fontSize: 14, fontWeight: '700', color: COLORS.TEXT },
-  subTitle: { fontSize: 13, fontWeight: '600', color: COLORS.TEXT, marginBottom: 4, marginTop: 4 },
-  divider: { height: 1, backgroundColor: COLORS.BORDER, marginVertical: 8 },
+  aiLabel: { fontSize: 13, color: C.TEXT_SECONDARY, flex: 1 },
+  aiValue: { fontSize: 14, fontWeight: '700', color: C.TEXT },
+  subTitle: { fontSize: 13, fontWeight: '600', color: C.TEXT, marginBottom: 4, marginTop: 4 },
+  divider: { height: 1, backgroundColor: C.BORDER, marginVertical: 8 },
 
   memberRow: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10,
-    borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+    borderBottomWidth: 1, borderBottomColor: C.BORDER,
   },
   rankBadge: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.SURFACE,
+    width: 28, height: 28, borderRadius: 14, backgroundColor: C.SURFACE,
     alignItems: 'center', justifyContent: 'center',
   },
-  rankText: { fontSize: 13, fontWeight: '700', color: COLORS.TEXT_SECONDARY },
-  memberName: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT },
-  memberMeta: { fontSize: 11, color: COLORS.TEXT_LIGHT, marginTop: 2 },
+  rankText: { fontSize: 13, fontWeight: '700', color: C.TEXT_SECONDARY },
+  memberName: { fontSize: 14, fontWeight: '600', color: C.TEXT },
+  memberMeta: { fontSize: 11, color: C.TEXT_LIGHT, marginTop: 2 },
   scoreBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   scoreText: { fontSize: 16, fontWeight: '800' },
 
   progressRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
-  progressName: { fontSize: 13, fontWeight: '500', color: COLORS.TEXT, width: 80 },
-  progressBarBg: { flex: 1, height: 8, backgroundColor: COLORS.SURFACE, borderRadius: 4, overflow: 'hidden' },
+  progressName: { fontSize: 13, fontWeight: '500', color: C.TEXT, width: 80 },
+  progressBarBg: { flex: 1, height: 8, backgroundColor: C.SURFACE, borderRadius: 4, overflow: 'hidden' },
   progressBarFill: { height: '100%', borderRadius: 4 },
-  progressPct: { fontSize: 12, fontWeight: '600', color: COLORS.TEXT_SECONDARY, width: 40, textAlign: 'right' },
+  progressPct: { fontSize: 12, fontWeight: '600', color: C.TEXT_SECONDARY, width: 40, textAlign: 'right' },
 
-  emptyText: { fontSize: 13, color: COLORS.TEXT_LIGHT, textAlign: 'center', paddingVertical: 20 },
+  emptyText: { fontSize: 13, color: C.TEXT_LIGHT, textAlign: 'center', paddingVertical: 20 },
   bugReportBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16,
     borderRadius: 16, borderWidth: 1.5, marginTop: 12,
