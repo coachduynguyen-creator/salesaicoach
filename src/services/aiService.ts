@@ -62,8 +62,9 @@ const callProxy = async (action: string, payload: any, _retried = false): Promis
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'apikey': SUPABASE_ANON_KEY,
+        'x-user-jwt': token,
       },
       body: JSON.stringify({ action, payload }),
       signal: controller.signal,
@@ -104,8 +105,9 @@ const callProxyStream = async (action: string, payload: any, _retried = false): 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
+      'x-user-jwt': token,
     },
     body: JSON.stringify({ action, payload }),
   });
@@ -190,7 +192,7 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
   try {
     const response = await fetch(`${EDGE_FUNCTION_URL}?action=transcribe_multipart`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY },
+      headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY, 'x-user-jwt': token },
       body: formData,
       signal: controller.signal,
     });

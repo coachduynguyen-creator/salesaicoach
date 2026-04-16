@@ -45,19 +45,20 @@ serve(async (req) => {
   }
 
   try {
-    // Verify auth — truyền JWT trực tiếp vào getUser() thay vì dựa vào header
-    // forwarding (không reliable across supabase-js versions)
+    // ── Auth: hỗ trợ cả header (legacy) và x-user-jwt header (ES256 bypass) ──
+    const userJwt = req.headers.get('x-user-jwt');
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+    const jwt = userJwt || (authHeader ? authHeader.replace(/^Bearer\s+/i, '').trim() : '');
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: 'No auth token provided' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const jwt = authHeader.replace(/^Bearer\s+/i, '').trim();
 
+    // Dùng service role để verify user JWT — không phụ thuộc vào algorithm
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: `Bearer ${jwt}` } } }
     );
 
