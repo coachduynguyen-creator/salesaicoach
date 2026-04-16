@@ -27,9 +27,7 @@ import ProjectPackListScreen from '../screens/ProjectPackListScreen';
 import ProjectPackEditScreen from '../screens/ProjectPackEditScreen';
 import BugReportsScreen from '../screens/BugReportsScreen';
 import PaywallScreen from '../screens/PaywallScreen';
-import ScriptGeneratorScreen from '../screens/ScriptGeneratorScreen';
 import AIToolsScreen from '../screens/AIToolsScreen';
-import GoalSettingScreen from '../screens/GoalSettingScreen';
 import UserGuideScreen from '../screens/UserGuideScreen';
 
 export type RootTabParamList = {
@@ -67,9 +65,7 @@ export type RootStackParamList = {
   ProjectPackEdit: { packId?: string };
   BugReports: undefined;
   Paywall: undefined;
-  ScriptGenerator: undefined;
   AITools: { tool: string };
-  GoalSetting: undefined;
   UserGuide: undefined;
   LichSu: undefined;
   AiCoachChat: {
@@ -215,9 +211,7 @@ export default function AppNavigator() {
         component={PaywallScreen}
         options={{ presentation: 'card' }}
       />
-      <Stack.Screen name="ScriptGenerator" component={ScriptGeneratorScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="AITools" component={AIToolsScreen} options={{ presentation: 'card' }} />
-      <Stack.Screen name="GoalSetting" component={GoalSettingScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="UserGuide" component={UserGuideScreen} options={{ presentation: 'card' }} />
       <Stack.Screen
         name="AdminDashboard"

@@ -463,6 +463,74 @@ Mang thêm giá trị, KHÔNG chỉ hỏi "có quyết định chưa?"
 9. **Níu kéo khi khách muốn dừng** — Với khách hàng cao cấp, bị níu kéo là trải nghiệm mất phẩm giá
 `;
 
+export const AI_TOOL_CHIPS = [
+  {
+    key: 'script',
+    label: 'Tạo kịch bản',
+    icon: 'document-text-outline',
+    color: '#E67E22',
+    placeholder: 'Tạo kịch bản tư vấn cho khách: ',
+    prompt: `Tạo kịch bản tư vấn theo phương pháp THE TRUSTED ADVISOR cho tình huống người dùng mô tả dưới đây.
+
+Yêu cầu:
+1. Viết kịch bản đối thoại cụ thể (Sales nói gì, dự đoán khách trả lời gì)
+2. Áp dụng 3 Điểm Chạm: Động Lực → Điểm Nghẽn → Con Đường
+3. Gợi ý 3-5 câu hỏi mở hay nhất cho tình huống này
+4. Cảnh báo lỗi thường gặp
+5. Đưa ra 2 phiên bản: ĐÚNG và SAI
+
+Thông tin từ người dùng:`,
+  },
+  {
+    key: 'precall',
+    label: 'Chuẩn bị gặp',
+    icon: 'clipboard-outline',
+    color: '#2563EB',
+    placeholder: 'Chuẩn bị gặp khách: ',
+    prompt: `Với vai trò Coach Duy Nguyễn, hãy tạo briefing chuẩn bị trước buổi tư vấn:
+
+1. Phân tích tâm lý khách (dựa trên info): dự đoán nỗi sợ, phong cách quyết định
+2. 5 câu hỏi mở cần hỏi (theo 3 Điểm Chạm)
+3. Kịch bản mở đầu 30 giây đầu tiên
+4. Cảnh báo lỗi cần tránh
+5. Quy trình Neo vững 5 phút trước buổi gặp
+
+Thông tin khách:`,
+  },
+  {
+    key: 'postcall',
+    label: 'Tóm tắt sau gặp',
+    icon: 'reader-outline',
+    color: '#059669',
+    placeholder: 'Tóm tắt buổi gặp: ',
+    prompt: `Hãy tóm tắt buổi tư vấn và tạo action plan:
+
+1. Tóm tắt 3-5 điểm chính
+2. Điểm Chạm nào đã hoàn thành, điểm nào chưa
+3. Nỗi sợ/rào cản khách đang có
+4. 3 việc cần làm tiếp theo cụ thể (ai làm gì, khi nào)
+5. Nội dung tin nhắn theo dõi sau 24 giờ
+
+Nội dung buổi tư vấn:`,
+  },
+  {
+    key: 'objection',
+    label: 'Xử lý từ chối',
+    icon: 'shield-checkmark-outline',
+    color: '#DC2626',
+    placeholder: 'Khách nói: "',
+    prompt: `Với vai trò Coach Duy Nguyễn, phân tích câu phản đối và đưa hướng xử lý theo REFLECT:
+
+1. Phân tích: nỗi sợ thật đằng sau câu nói này là gì?
+2. Điểm Chạm nào chưa hoàn tất?
+3. Cách phản chiếu đúng (câu nói cụ thể)
+4. Cách phản chiếu SAI (ví dụ thường gặp)
+5. Kịch bản đối thoại mẫu (3-4 lượt trao đổi)
+
+Câu phản đối:`,
+  },
+];
+
 export const QUICK_SUGGESTIONS = [
   'Viết tin nhắn tiếp cận khách hàng lạnh cho tôi',
   'Khách nói "giá cao quá" — phản chiếu như thế nào?',

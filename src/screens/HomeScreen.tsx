@@ -298,12 +298,7 @@ export default function HomeScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16, marginBottom: 16 }}>
           {[
-            { key: 'script', label: 'Tạo kịch bản', icon: 'document-text', color: '#E67E22', nav: 'ScriptGenerator' },
-            { key: 'precall', label: 'Chuẩn bị gặp', icon: 'clipboard', color: '#2563EB', nav: 'AITools', params: { tool: 'precall' } },
-            { key: 'postcall', label: 'Tóm tắt sau gặp', icon: 'reader', color: '#059669', nav: 'AITools', params: { tool: 'postcall' } },
             { key: 'roleplay', label: 'Luyện đối đáp', icon: 'chatbubbles', color: '#7C3AED', nav: 'AITools', params: { tool: 'roleplay' } },
-            { key: 'objection', label: 'Xử lý từ chối', icon: 'shield-checkmark', color: '#DC2626', nav: 'AITools', params: { tool: 'objection' } },
-            { key: 'goals', label: 'Mục tiêu', icon: 'flag', color: '#F59E0B', nav: 'GoalSetting' },
           ].map(tool => (
             <TouchableOpacity
               key={tool.key}

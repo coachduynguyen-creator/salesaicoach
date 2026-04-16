@@ -20,7 +20,7 @@ import { useColors } from '../contexts/ThemeContext';
 import { useAlert } from '../contexts/AlertContext';
 import { chatWithCoach, streamChatWithCoach, transcribeAudio, ChatMessage } from '../services/aiService';
 import { startRecording, stopRecording } from '../services/audioService';
-import { QUICK_SUGGESTIONS } from '../constants/knowledgeBase';
+import { QUICK_SUGGESTIONS, AI_TOOL_CHIPS } from '../constants/knowledgeBase';
 import { useKnowledge } from '../contexts/KnowledgeContext';
 import { useBusiness } from '../contexts/BusinessContext';
 import {
@@ -163,6 +163,8 @@ export default function AiCoachScreen() {
   const flatListRef = useRef<FlatList>(null);
   const streamingMsgId = useRef<string | null>(null);
   const isMountedRef = useRef(true);
+  const inputRef = useRef<TextInput>(null);
+  const pendingToolPrompt = useRef<string>('');
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -294,9 +296,21 @@ export default function AiCoachScreen() {
     await updateConversation(conversationId, toSave);
   }, [conversationId]);
 
+  const handleToolChip = useCallback((tool: typeof AI_TOOL_CHIPS[0]) => {
+    pendingToolPrompt.current = tool.prompt;
+    setInputText(tool.placeholder);
+    setShowSuggestions(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
+
+    // Nếu có tool prompt pending → prepend vào message gửi AI, nhưng chỉ hiện text user gõ
+    const toolPrefix = pendingToolPrompt.current;
+    pendingToolPrompt.current = '';
+    const aiMessage = toolPrefix ? `${toolPrefix}\n\n${trimmed}` : trimmed;
 
     setInputText('');
     setShowSuggestions(false);
@@ -319,7 +333,11 @@ export default function AiCoachScreen() {
       const history: ChatMessage[] = updatedWithUser
         .filter(m => m.id !== 'welcome')
         .slice(-10)
-        .map(m => ({ role: m.role, content: m.content }));
+        .map((m, i, arr) => ({
+          role: m.role,
+          // Message cuối (user vừa gửi) → dùng aiMessage (có thể chứa tool prompt prefix)
+          content: i === arr.length - 1 && m.role === 'user' && toolPrefix ? aiMessage : m.content,
+        }));
 
       // Thêm placeholder message cho AI để cập nhật dần khi stream
       setMessages([
@@ -486,8 +504,25 @@ export default function AiCoachScreen() {
 
         {/* Quick Suggestions */}
         {showSuggestions && (
-          <View style={styles.suggestionsWrap}>
-            <Text style={styles.suggestionsLabel}>Câu hỏi gợi ý:</Text>
+          <View style={[styles.suggestionsWrap, { backgroundColor: C.CARD, borderTopColor: C.BORDER }]}>
+            <Text style={[styles.suggestionsLabel, { color: C.TEXT_LIGHT }]}>Công cụ AI:</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.suggestionsScroll}
+            >
+              {AI_TOOL_CHIPS.map(tool => (
+                <TouchableOpacity
+                  key={tool.key}
+                  style={[styles.toolChip, { backgroundColor: tool.color + '10', borderColor: tool.color + '25' }]}
+                  onPress={() => handleToolChip(tool)}
+                >
+                  <Ionicons name={tool.icon as any} size={14} color={tool.color} />
+                  <Text style={[styles.toolChipText, { color: tool.color }]}>{tool.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <Text style={[styles.suggestionsLabel, { color: C.TEXT_LIGHT, marginTop: 10 }]}>Câu hỏi gợi ý:</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -538,6 +573,7 @@ export default function AiCoachScreen() {
               <Text style={styles.recordingHint}>Đang nghe... Nhấn nút đỏ để dừng</Text>
             ) : (
               <TextInput
+                ref={inputRef}
                 style={[styles.input, { color: C.TEXT }]}
                 placeholder="Nhắn tin hoặc nhấn mic để nói..."
                 placeholderTextColor={COLORS.TEXT_LIGHT}
@@ -746,6 +782,19 @@ const styles = StyleSheet.create({
   suggestionsScroll: {
     paddingHorizontal: 16,
     gap: 8,
+  },
+  toolChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderWidth: 1,
+  },
+  toolChipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   suggestionChip: {
     backgroundColor: COLORS.PRIMARY + '10',
