@@ -31,25 +31,22 @@ const checkQuota = async () => {
 /** Deprecated — keys now live server-side only */
 export const setApiKeys = (_openaiKey: string, _claudeKey: string) => {};
 
-/** Lấy auth token hiện tại — auto refresh nếu sắp hết hạn (< 5 phút) để đảm bảo edge function nhận được JWT hợp lệ */
+/** Lấy auth token hiện tại — dùng token có sẵn, chỉ refresh khi thật sự cần */
 const getAuthToken = async (forceRefresh = false): Promise<string> => {
+  // Bước 1: lấy session hiện tại
   let { data: { session } } = await supabase.auth.getSession();
 
-  const nowSec = Math.floor(Date.now() / 1000);
-  const expSec = session?.expires_at ?? 0;
-  // Buffer lớn hơn (5 phút) vì edge function xa hơn client, có thể có clock skew
-  const needsRefresh = forceRefresh || !session || (expSec > 0 && expSec - nowSec < 300);
-
-  if (needsRefresh) {
+  // Bước 2: chỉ refresh khi bắt buộc (force) hoặc không có session
+  if (forceRefresh || !session) {
     const { data, error } = await supabase.auth.refreshSession();
     if (error || !data.session) {
-      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+      throw new Error(`Không thể làm mới phiên. ${error?.message || 'Vui lòng đăng nhập lại.'}`);
     }
     session = data.session;
   }
 
   const token = session?.access_token;
-  if (!token) throw new Error('Vui lòng đăng nhập để sử dụng tính năng AI.');
+  if (!token) throw new Error('Chưa đăng nhập. Vui lòng đăng nhập để sử dụng AI.');
   return token;
 };
 
@@ -77,12 +74,13 @@ const callProxy = async (action: string, payload: any, _retried = false): Promis
       throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
     }
     if (response.status === 401) {
+      const errBody = await response.json().catch(() => ({}));
       // JWT cũ bị server reject — force refresh & retry 1 lần
       if (!_retried) {
         await getAuthToken(true).catch(() => null);
         return callProxy(action, payload, true);
       }
-      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+      throw new Error(`Xác thực thất bại (401): ${errBody.detail || errBody.message || 'Vui lòng đăng nhập lại.'}`);
     }
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: '' }));
@@ -115,13 +113,15 @@ const callProxyStream = async (action: string, payload: any, _retried = false): 
   if (!response.ok) {
     if (response.status === 429) throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
     if (response.status === 401) {
+      const errBody = await response.json().catch(() => ({}));
       if (!_retried) {
         await getAuthToken(true).catch(() => null);
         return callProxyStream(action, payload, true);
       }
-      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+      throw new Error(`Xác thực thất bại (401): ${errBody.detail || errBody.message || 'Vui lòng đăng nhập lại.'}`);
     }
-    throw new Error('Lỗi hệ thống. Vui lòng thử lại.');
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(errBody.error || `Lỗi hệ thống (${response.status}). Vui lòng thử lại.`);
   }
   return response;
 };
