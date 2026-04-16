@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '../services/supabaseClient';
 import { Profile, Team } from '../types/database';
 import { getProfile, getTeam } from '../services/authService';
+import { registerPushToken } from '../services/notificationService';
 
 interface AuthState {
   isLoading: boolean;
@@ -49,17 +50,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProfile().finally(() => setIsLoading(false));
+        registerPushToken(session.user.id).catch(() => {});
       } else {
         setIsLoading(false);
       }
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Listen for auth changes — bỏ qua INITIAL_SESSION (đã load ở trên)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') return;
       const newUser = session?.user ?? null;
       setUser(newUser);
       if (newUser) {
         loadProfile();
+        registerPushToken(newUser.id).catch(() => {});
       } else {
         setProfile(null);
         setTeam(null);
