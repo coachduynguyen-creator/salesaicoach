@@ -41,10 +41,105 @@ interface SavedSession {
   messages: Message[];
   feedback: string;
   turnCount: number;
+  gameId?: string;
+  score?: number;
 }
 
 const STORAGE_KEY = '@salescoach_roleplay_history';
+const SCORES_KEY = '@salescoach_game_scores';
 const MAX_SAVED = 20;
+
+// ─── Mini Game Challenges ───────────────────────────────────────────────────
+
+interface GameChallenge {
+  id: string;
+  title: string;
+  description: string;
+  scenario: string;
+  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
+  icon: string;
+  color: string;
+}
+
+const GAME_CHALLENGES: GameChallenge[] = [
+  {
+    id: 'cold_call',
+    title: 'Gọi lạnh',
+    description: 'Gọi điện cho khách chưa biết bạn là ai',
+    scenario: 'Khách hàng lạnh, chưa từng nghe về công ty bạn. Bạn gọi điện giới thiệu lần đầu. Khách đang bận và không muốn nghe sales gọi.',
+    difficulty: 'easy',
+    icon: 'call-outline',
+    color: '#2563EB',
+  },
+  {
+    id: 'objection_think',
+    title: 'Xử lý "Để suy nghĩ"',
+    description: 'Khách nói để suy nghĩ thêm sau khi nghe giá',
+    scenario: 'Khách đã nghe trình bày về sản phẩm và biết giá. Khách nói "để tôi suy nghĩ thêm đã". Thực ra khách đang phân vân vì chưa thấy giá trị rõ ràng.',
+    difficulty: 'medium',
+    icon: 'time-outline',
+    color: '#E67E22',
+  },
+  {
+    id: 'competitor',
+    title: 'Đối thủ rẻ hơn',
+    description: 'Khách so sánh giá với đối thủ cạnh tranh',
+    scenario: 'Khách đang dùng sản phẩm đối thủ hoặc đã nhận báo giá từ đối thủ rẻ hơn 30%. Khách hỏi tại sao bên bạn đắt hơn nhiều vậy.',
+    difficulty: 'medium',
+    icon: 'swap-horizontal-outline',
+    color: '#DC2626',
+  },
+  {
+    id: 'close_deal',
+    title: 'Chốt deal',
+    description: 'Khách quan tâm nhưng chưa quyết định mua',
+    scenario: 'Khách đã gặp 2 lần, rất quan tâm sản phẩm, hỏi nhiều câu chi tiết. Nhưng đến bước ký hợp đồng thì cứ lùi lại, nói cần hỏi ý kiến vợ/chồng.',
+    difficulty: 'hard',
+    icon: 'checkmark-circle-outline',
+    color: '#059669',
+  },
+  {
+    id: 'vip_tough',
+    title: 'Khách VIP khó tính',
+    description: 'Giám đốc bận rộn, từng bị sales làm phiền nhiều',
+    scenario: 'Khách là giám đốc công ty lớn, 50 tuổi, rất bận. Từng bị 10 nhân viên sales khác nhau gọi điện làm phiền nên rất ghét sales. Chỉ cho bạn đúng 2 phút.',
+    difficulty: 'expert',
+    icon: 'diamond-outline',
+    color: '#7C3AED',
+  },
+];
+
+const DIFFICULTY_LABELS: Record<string, { label: string; color: string }> = {
+  easy: { label: 'Dễ', color: '#059669' },
+  medium: { label: 'Trung bình', color: '#E67E22' },
+  hard: { label: 'Khó', color: '#DC2626' },
+  expert: { label: 'Chuyên gia', color: '#7C3AED' },
+};
+
+function getRankFromScore(score: number): { label: string; icon: string; color: string } {
+  if (score >= 10) return { label: 'Kim cương', icon: 'diamond', color: '#7C3AED' };
+  if (score >= 8) return { label: 'Vàng', icon: 'trophy', color: '#F59E0B' };
+  if (score >= 6) return { label: 'Bạc', icon: 'medal', color: '#94A3B8' };
+  if (score >= 4) return { label: 'Đồng', icon: 'medal-outline', color: '#B45309' };
+  return { label: 'Tập sự', icon: 'school-outline', color: '#6B7280' };
+}
+
+// Best scores storage
+async function loadBestScores(): Promise<Record<string, number>> {
+  try {
+    const raw = await AsyncStorage.getItem(SCORES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+async function saveBestScore(gameId: string, score: number): Promise<Record<string, number>> {
+  const scores = await loadBestScores();
+  if (!scores[gameId] || score > scores[gameId]) {
+    scores[gameId] = score;
+    await AsyncStorage.setItem(SCORES_KEY, JSON.stringify(scores));
+  }
+  return scores;
+}
 
 const PRESET_SCENARIOS = [
   'Khách nói "để suy nghĩ thêm" sau khi nghe giá',
@@ -181,6 +276,8 @@ export default function VoiceRoleplayScreen() {
   const [turnCount, setTurnCount] = useState(0);
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
   const [viewingSession, setViewingSession] = useState<SavedSession | null>(null);
+  const [activeGame, setActiveGame] = useState<GameChallenge | null>(null);
+  const [bestScores, setBestScores] = useState<Record<string, number>>({});
 
   // Loading states
   const [isRecording, setIsRecording] = useState(false);
@@ -198,6 +295,7 @@ export default function VoiceRoleplayScreen() {
   useEffect(() => {
     isMountedRef.current = true;
     loadSessions().then(s => setSavedSessions(s));
+    loadBestScores().then(s => setBestScores(s));
     return () => { isMountedRef.current = false; stopSpeaking(); };
   }, []);
 
@@ -208,6 +306,12 @@ export default function VoiceRoleplayScreen() {
   };
 
   // ─── Setup Phase ────────────────────────────────────────────────────────
+
+  const startGameChallenge = (game: GameChallenge) => {
+    setActiveGame(game);
+    setScenario(game.scenario);
+    setUserRole('sales'); // Games always user = sales
+  };
 
   const handleSetupVoice = async () => {
     if (isSetupRecording) {
@@ -378,6 +482,16 @@ export default function VoiceRoleplayScreen() {
       if (!isMountedRef.current) return;
       setFeedbackResult(reply);
 
+      // Extract score từ feedback (tìm pattern "X/10")
+      const scoreMatch = reply.match(/(\d+)\s*\/\s*10/);
+      const extractedScore = scoreMatch ? parseInt(scoreMatch[1], 10) : 0;
+
+      // Lưu best score cho game
+      if (activeGame && extractedScore > 0) {
+        const updatedScores = await saveBestScore(activeGame.id, extractedScore);
+        if (isMountedRef.current) setBestScores(updatedScores);
+      }
+
       // Lưu session
       const session: SavedSession = {
         id: Date.now().toString(),
@@ -387,6 +501,8 @@ export default function VoiceRoleplayScreen() {
         messages,
         feedback: reply,
         turnCount,
+        gameId: activeGame?.id,
+        score: extractedScore,
       };
       await saveSession(session);
       const updated = await loadSessions();
@@ -404,6 +520,7 @@ export default function VoiceRoleplayScreen() {
     setFeedbackResult('');
     setTurnCount(0);
     setViewingSession(null);
+    setActiveGame(null);
   };
 
   // ─── Render helpers ─────────────────────────────────────────────────────
@@ -525,7 +642,44 @@ export default function VoiceRoleplayScreen() {
       {/* ─── Setup Phase ─────────────────────────────────────────── */}
       {phase === 'setup' && !viewingSession && (
         <ScrollView contentContainerStyle={styles.setupScroll} keyboardShouldPersistTaps="handled">
-          <Text style={[styles.setupTitle, { color: C.TEXT }]}>Bạn muốn luyện tình huống gì?</Text>
+
+          {/* ── Thử thách Sales ── */}
+          <Text style={[styles.setupTitle, { color: C.TEXT }]}>Thử thách Sales</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4, marginBottom: 20 }}>
+            {GAME_CHALLENGES.map(game => {
+              const best = bestScores[game.id];
+              const rank = best ? getRankFromScore(best) : null;
+              const diff = DIFFICULTY_LABELS[game.difficulty];
+              return (
+                <TouchableOpacity
+                  key={game.id}
+                  style={[styles.gameCard, { backgroundColor: C.CARD, borderColor: C.BORDER }]}
+                  onPress={() => startGameChallenge(game)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.gameIconWrap, { backgroundColor: game.color + '15' }]}>
+                    <Ionicons name={game.icon as any} size={24} color={game.color} />
+                  </View>
+                  <Text style={[styles.gameTitle, { color: C.TEXT }]}>{game.title}</Text>
+                  <Text style={[styles.gameDesc, { color: C.TEXT_LIGHT }]} numberOfLines={2}>{game.description}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                    <View style={[styles.diffBadge, { backgroundColor: diff.color + '15' }]}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: diff.color }}>{diff.label}</Text>
+                    </View>
+                    {rank && (
+                      <View style={[styles.diffBadge, { backgroundColor: rank.color + '15' }]}>
+                        <Ionicons name={rank.icon as any} size={10} color={rank.color} />
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: rank.color }}>{best}/10</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* ── Luyện tập tự do ── */}
+          <Text style={[styles.setupTitle, { color: C.TEXT, marginTop: 4 }]}>Luyện tập tự do</Text>
 
           {/* Chọn vai trò */}
           <Text style={[styles.presetLabel, { color: C.TEXT_SECONDARY, marginBottom: 8 }]}>Bạn muốn đóng vai:</Text>
@@ -759,6 +913,21 @@ export default function VoiceRoleplayScreen() {
               <View style={[styles.feedbackCard, { backgroundColor: C.CARD }]}>
                 <Markdown style={mdStyles}>{feedbackResult}</Markdown>
               </View>
+              {/* Rank badge cho game */}
+              {activeGame && (() => {
+                const scoreMatch = feedbackResult.match(/(\d+)\s*\/\s*10/);
+                const sc = scoreMatch ? parseInt(scoreMatch[1], 10) : 0;
+                const rank = getRankFromScore(sc);
+                return (
+                  <View style={[styles.rankCard, { backgroundColor: rank.color + '12', borderColor: rank.color + '25' }]}>
+                    <Ionicons name={rank.icon as any} size={28} color={rank.color} />
+                    <View>
+                      <Text style={{ fontSize: 18, fontWeight: '800', color: rank.color }}>{sc}/10 — {rank.label}</Text>
+                      <Text style={{ fontSize: 12, color: rank.color + 'AA' }}>Thử thách: {activeGame.title}</Text>
+                    </View>
+                  </View>
+                );
+              })()}
               <View style={[styles.savedBadge, { backgroundColor: '#059669' + '15' }]}>
                 <Ionicons name="checkmark-circle" size={16} color="#059669" />
                 <Text style={{ color: '#059669', fontSize: 13, fontWeight: '600' }}>Đã lưu vào lịch sử luyện tập</Text>
@@ -820,6 +989,12 @@ const styles = StyleSheet.create({
   setupInput: { borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 16, flexDirection: 'row' },
   setupTextInput: { flex: 1, fontSize: 15, lineHeight: 22, minHeight: 70, textAlignVertical: 'top' },
   setupMicBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
+  gameCard: { width: 150, borderRadius: 16, padding: 14, borderWidth: 1 },
+  gameIconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  gameTitle: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  gameDesc: { fontSize: 12, lineHeight: 17 },
+  diffBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  rankCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 14, borderWidth: 1, marginBottom: 14 },
   presetLabel: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
   presetWrap: { gap: 8, marginBottom: 24 },
   presetChip: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
