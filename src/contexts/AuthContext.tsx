@@ -45,16 +45,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadProfile().finally(() => setIsLoading(false));
-        registerPushToken(session.user.id).catch(() => {});
-      } else {
+    let mounted = true;
+
+    // Timeout an toàn: nếu getSession/loadProfile treo quá 8s → coi như chưa login
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && isLoading) {
+        setUser(null);
+        setProfile(null);
+        setTeam(null);
         setIsLoading(false);
       }
-    });
+    }, 8000);
+
+    // Check initial session
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return;
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          loadProfile().finally(() => {
+            if (mounted) setIsLoading(false);
+          });
+          registerPushToken(session.user.id).catch(() => {});
+        } else {
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        // getSession lỗi (AsyncStorage corrupt, etc.) → về login
+        if (mounted) {
+          setUser(null);
+          setIsLoading(false);
+        }
+      });
 
     // Listen for auth changes — bỏ qua INITIAL_SESSION (đã load ở trên)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -70,7 +93,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(safetyTimeout);
+      subscription.unsubscribe();
+    };
   }, [loadProfile]);
 
   const refreshProfile = useCallback(async () => {
