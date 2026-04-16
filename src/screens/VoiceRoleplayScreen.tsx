@@ -24,7 +24,8 @@ import { useBusiness } from '../contexts/BusinessContext';
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type Phase = 'setup' | 'roleplay' | 'feedback' | 'history';
-type RoleplayRole = 'sales' | 'customer'; // user đóng vai sales hoặc khách
+type RoleplayRole = 'sales' | 'customer';
+type RoleplayMode = 'voice' | 'text';
 
 interface Message {
   id: string;
@@ -56,32 +57,41 @@ const PRESET_SCENARIOS = [
 
 const getPrompt = (scenario: string, userRole: RoleplayRole) => {
   if (userRole === 'sales') {
-    return `Bạn đang đóng vai KHÁCH HÀNG trong buổi luyện đối đáp bán hàng.
+    return `Bạn đang đóng vai KHÁCH HÀNG. Đây là buổi luyện đối đáp bán hàng.
 
 TÌNH HUỐNG: ${scenario}
 
-QUY TẮC BẮT BUỘC:
-- Bạn là KHÁCH HÀNG, KHÔNG phải coach. KHÔNG bao giờ dạy hay hướng dẫn.
-- Trả lời ngắn gọn, tự nhiên như người Việt nói chuyện thật (1-3 câu).
+QUY TẮC TUYỆT ĐỐI:
+- CHỈ viết LỜI THOẠI của khách hàng. KHÔNG viết gì khác.
+- KHÔNG viết heading (#), KHÔNG viết tiêu đề, KHÔNG viết ghi chú.
+- KHÔNG mô tả cử chỉ, hành động, suy nghĩ (ví dụ KHÔNG viết *nhìn lạnh lùng*, *gật đầu*).
+- KHÔNG viết hướng dẫn, phân tích, nhận xét, gợi ý cho sales.
+- KHÔNG dùng markdown (**, *, ---, #). Chỉ text thuần.
 - Xưng "tôi". Gọi sales là "em" hoặc "bạn".
-- Phản ứng THẬT: có thể từ chối, hỏi ngược, tỏ ra nghi ngờ.
-- Nếu sales hỏi đúng câu theo phương pháp 3 Điểm Chạm → mở lòng dần.
-- Nếu sales bán hàng truyền thống → phòng thủ hơn.
-- KHÔNG dùng emoji. KHÔNG viết dài. 100% tiếng Việt tự nhiên.`;
+- Trả lời 1-2 câu ngắn gọn, tự nhiên như người thật nói.
+- Phản ứng thật: có thể từ chối, hỏi ngược, tỏ ra nghi ngờ.
+- Nếu sales hỏi đúng theo 3 Điểm Chạm → mở lòng dần.
+- Nếu sales ép mua, liệt kê tính năng → phòng thủ hơn.
+
+VÍ DỤ ĐÚNG: "Ừ, tôi có nghe qua rồi. Nhưng tôi chưa hiểu nó khác gì Vũ Yên?"
+VÍ DỤ SAI: "# Cuộc hội thoại bắt đầu\\n*Khách nhìn sales*\\nTôi có nghe..."`;
   }
-  // User đóng vai khách → AI đóng vai Sales mẫu theo TTA
-  return `Bạn đang đóng vai NHÂN VIÊN TƯ VẤN BÁN HÀNG mẫu, áp dụng phương pháp THE TRUSTED ADVISOR.
+  return `Bạn đang đóng vai NHÂN VIÊN TƯ VẤN BÁN HÀNG mẫu theo phương pháp THE TRUSTED ADVISOR.
 
 TÌNH HUỐNG: ${scenario}
 
-QUY TẮC BẮT BUỘC:
-- Bạn là SALES chuyên nghiệp, tư vấn theo phương pháp 3 Điểm Chạm.
+QUY TẮC TUYỆT ĐỐI:
+- CHỈ viết LỜI THOẠI của sales. KHÔNG viết gì khác.
+- KHÔNG viết heading (#), tiêu đề, ghi chú, phân tích, hướng dẫn.
+- KHÔNG mô tả cử chỉ, hành động (KHÔNG viết *mỉm cười*, *gật đầu*).
+- KHÔNG dùng markdown. Chỉ text thuần.
 - Xưng "em". Gọi khách là "anh" hoặc "chị".
-- Trả lời ngắn gọn, tự nhiên (1-3 câu). Đặt câu hỏi mở, lắng nghe.
-- KHÔNG ép mua, KHÔNG liệt kê tính năng. Tập trung khám phá nỗi sợ và động lực.
-- Áp dụng công thức Trust: T = (Uy tín + Tin cậy + Kết nối cảm xúc) / Tập trung bản thân.
-- KHÔNG dùng emoji. 100% tiếng Việt tự nhiên.
-- Thể hiện phong cách tư vấn bán hàng ĐÚNG để người luyện tập học hỏi.`;
+- Trả lời 1-2 câu ngắn gọn, tự nhiên. Đặt câu hỏi mở, lắng nghe.
+- KHÔNG ép mua, KHÔNG liệt kê tính năng. Khám phá nỗi sợ và động lực.
+- Thể hiện phong cách tư vấn ĐÚNG theo 3 Điểm Chạm.
+
+VÍ DỤ ĐÚNG: "Dạ em chào anh. Em được biết anh đang tìm hiểu về Hạ Long Xanh, anh có thể chia sẻ thêm về mong muốn của anh không ạ?"
+VÍ DỤ SAI: "## Lời mở đầu\\n*Sales mỉm cười*\\nEm chào anh..."`;
 };
 
 const getFeedbackPrompt = (scenario: string, userRole: RoleplayRole) => {
@@ -144,6 +154,7 @@ export default function VoiceRoleplayScreen() {
   const [phase, setPhase] = useState<Phase>('setup');
   const [scenario, setScenario] = useState('');
   const [userRole, setUserRole] = useState<RoleplayRole>('sales');
+  const [mode, setMode] = useState<RoleplayMode>('voice');
   const [voice, setVoiceState] = useState<VoiceOption>(getSelectedVoice());
   const [messages, setMessages] = useState<Message[]>([]);
   const [feedbackResult, setFeedbackResult] = useState('');
@@ -159,6 +170,7 @@ export default function VoiceRoleplayScreen() {
   const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
   const [isSetupRecording, setIsSetupRecording] = useState(false);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
+  const [textInput, setTextInput] = useState('');
 
   const flatListRef = useRef<FlatList>(null);
   const isMountedRef = useRef(true);
@@ -204,8 +216,8 @@ export default function VoiceRoleplayScreen() {
     setIsAIThinking(true);
     try {
       const startMsg = userRole === 'sales'
-        ? 'Bắt đầu cuộc hội thoại. Sales gọi điện hoặc gặp mặt.'
-        : 'Bắt đầu cuộc hội thoại. Nhân viên sales tiếp cận khách.';
+        ? 'Xin chào, em muốn giới thiệu với anh về dự án.'
+        : 'Tôi đang tìm hiểu về dự án này.';
       const reply = await chatWithCoach(
         [{ role: 'user', content: startMsg }],
         getPrompt(scenario, userRole) + '\n\n' + kb + '\n\n' + businessContext,
@@ -213,9 +225,11 @@ export default function VoiceRoleplayScreen() {
       if (!isMountedRef.current) return;
       const aiMsg: Message = { id: '1', role: 'assistant', content: reply };
       setMessages([aiMsg]);
-      setIsSpeakingState(true);
-      await speakVietnamese(reply);
-      if (isMountedRef.current) setIsSpeakingState(false);
+      if (mode === 'voice') {
+        setIsSpeakingState(true);
+        await speakVietnamese(reply);
+        if (isMountedRef.current) setIsSpeakingState(false);
+      }
     } catch {
       if (isMountedRef.current) {
         showAlert({ title: 'Lỗi', message: 'Không thể kết nối AI.', type: 'error' });
@@ -225,6 +239,31 @@ export default function VoiceRoleplayScreen() {
   }, [scenario, userRole, kb, businessContext, showAlert]);
 
   // ─── Roleplay Phase ─────────────────────────────────────────────────────
+
+  const sendTextMessage = async () => {
+    const trimmed = textInput.trim();
+    if (!trimmed || isAIThinking) return;
+    setTextInput('');
+
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: trimmed };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setTurnCount(prev => prev + 1);
+
+    setIsAIThinking(true);
+    try {
+      const history: ChatMessage[] = newMessages.map(m => ({ role: m.role, content: m.content }));
+      const reply = await chatWithCoach(
+        history,
+        getPrompt(scenario, userRole) + '\n\n' + kb + '\n\n' + businessContext,
+      );
+      if (!isMountedRef.current) return;
+      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: reply };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch {
+      if (isMountedRef.current) showAlert({ title: 'Lỗi', message: 'Có lỗi xảy ra.', type: 'error' });
+    } finally { if (isMountedRef.current) setIsAIThinking(false); }
+  };
 
   const handleMicPress = async () => {
     if (isRecording) {
@@ -253,10 +292,12 @@ export default function VoiceRoleplayScreen() {
         setMessages(prev => [...prev, aiMsg]);
         setIsAIThinking(false);
 
-        setIsSpeakingState(true);
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-        await speakVietnamese(reply);
-        if (isMountedRef.current) setIsSpeakingState(false);
+        if (mode === 'voice') {
+          setIsSpeakingState(true);
+          await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+          await speakVietnamese(reply);
+          if (isMountedRef.current) setIsSpeakingState(false);
+        }
       } catch {
         if (isMountedRef.current) {
           setIsTranscribing(false);
@@ -474,33 +515,56 @@ export default function VoiceRoleplayScreen() {
             ))}
           </View>
 
-          {/* Chọn giọng nói */}
-          <TouchableOpacity
-            style={[styles.voicePickerBtn, { backgroundColor: C.CARD, borderColor: C.BORDER }]}
-            onPress={() => setShowVoicePicker(!showVoicePicker)}
-          >
-            <Ionicons name="volume-medium-outline" size={18} color="#7C3AED" />
-            <Text style={[{ flex: 1, fontSize: 14, color: C.TEXT }]}>Giọng AI: {voice.label}</Text>
-            <Ionicons name={showVoicePicker ? 'chevron-up' : 'chevron-down'} size={16} color={C.TEXT_LIGHT} />
-          </TouchableOpacity>
-          {showVoicePicker && (
-            <View style={[styles.voiceList, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
-              {VOICE_OPTIONS.map(v => (
-                <TouchableOpacity
-                  key={v.id}
-                  style={[styles.voiceItem, voice.id === v.id && { backgroundColor: '#7C3AED10' }]}
-                  onPress={() => handleVoiceSelect(v)}
-                >
-                  <Ionicons
-                    name={voice.id === v.id ? 'radio-button-on' : 'radio-button-off'}
-                    size={18}
-                    color={voice.id === v.id ? '#7C3AED' : C.TEXT_LIGHT}
-                  />
-                  <Text style={[{ fontSize: 14, color: voice.id === v.id ? '#7C3AED' : C.TEXT }]}>{v.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+          {/* Chọn mode */}
+          <Text style={[styles.presetLabel, { color: C.TEXT_SECONDARY, marginBottom: 8 }]}>Hình thức luyện tập:</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 18 }}>
+            <TouchableOpacity
+              style={[styles.roleChip, { backgroundColor: C.CARD, borderColor: mode === 'voice' ? '#7C3AED' : C.BORDER }, mode === 'voice' && { borderWidth: 2 }]}
+              onPress={() => setMode('voice')}
+            >
+              <Ionicons name="mic-outline" size={20} color={mode === 'voice' ? '#7C3AED' : C.TEXT_LIGHT} />
+              <Text style={[styles.roleLabel, { color: mode === 'voice' ? '#7C3AED' : C.TEXT }]}>Giọng nói</Text>
+              <Text style={{ fontSize: 11, color: C.TEXT_LIGHT }}>AI nói, bạn nói</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.roleChip, { backgroundColor: C.CARD, borderColor: mode === 'text' ? '#7C3AED' : C.BORDER }, mode === 'text' && { borderWidth: 2 }]}
+              onPress={() => setMode('text')}
+            >
+              <Ionicons name="chatbox-outline" size={20} color={mode === 'text' ? '#7C3AED' : C.TEXT_LIGHT} />
+              <Text style={[styles.roleLabel, { color: mode === 'text' ? '#7C3AED' : C.TEXT }]}>Nhắn tin</Text>
+              <Text style={{ fontSize: 11, color: C.TEXT_LIGHT }}>Gõ text qua lại</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Chọn giọng nói (chỉ hiện khi mode voice) */}
+          {mode === 'voice' && (<>
+            <TouchableOpacity
+              style={[styles.voicePickerBtn, { backgroundColor: C.CARD, borderColor: C.BORDER }]}
+              onPress={() => setShowVoicePicker(!showVoicePicker)}
+            >
+              <Ionicons name="volume-medium-outline" size={18} color="#7C3AED" />
+              <Text style={[{ flex: 1, fontSize: 14, color: C.TEXT }]}>Giọng AI: {voice.label}</Text>
+              <Ionicons name={showVoicePicker ? 'chevron-up' : 'chevron-down'} size={16} color={C.TEXT_LIGHT} />
+            </TouchableOpacity>
+            {showVoicePicker && (
+              <View style={[styles.voiceList, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
+                {VOICE_OPTIONS.map(v => (
+                  <TouchableOpacity
+                    key={v.id}
+                    style={[styles.voiceItem, voice.id === v.id && { backgroundColor: '#7C3AED10' }]}
+                    onPress={() => handleVoiceSelect(v)}
+                  >
+                    <Ionicons
+                      name={voice.id === v.id ? 'radio-button-on' : 'radio-button-off'}
+                      size={18}
+                      color={voice.id === v.id ? '#7C3AED' : C.TEXT_LIGHT}
+                    />
+                    <Text style={[{ fontSize: 14, color: voice.id === v.id ? '#7C3AED' : C.TEXT }]}>{v.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>)}
 
           {/* Scenario input */}
           <View style={[styles.setupInput, { backgroundColor: C.CARD, borderColor: C.BORDER, marginTop: 16 }]}>
@@ -605,24 +669,45 @@ export default function VoiceRoleplayScreen() {
             </View>
           )}
 
-          <View style={[styles.micBar, { backgroundColor: C.CARD, borderTopColor: C.BORDER }]}>
-            <TouchableOpacity
-              style={[
-                styles.bigMicBtn,
-                isRecording ? { backgroundColor: '#DC2626' } : { backgroundColor: '#7C3AED' },
-                (isTranscribing || isAIThinking || isSpeakingState) && { opacity: 0.4 },
-              ]}
-              onPress={handleMicPress}
-              disabled={isTranscribing || isAIThinking || isSpeakingState}
-            >
-              <Ionicons name={isRecording ? 'stop' : 'mic'} size={32} color="#fff" />
-            </TouchableOpacity>
-            <Text style={[styles.micHint, { color: C.TEXT_LIGHT }]}>
-              {isRecording ? 'Đang nghe... Nhấn để dừng' :
-               isSpeakingState ? `Đợi ${aiRoleLabel.toLowerCase()} nói xong...` :
-               'Nhấn mic để trả lời'}
-            </Text>
-          </View>
+          {mode === 'voice' ? (
+            <View style={[styles.micBar, { backgroundColor: C.CARD, borderTopColor: C.BORDER }]}>
+              <TouchableOpacity
+                style={[
+                  styles.bigMicBtn,
+                  isRecording ? { backgroundColor: '#DC2626' } : { backgroundColor: '#7C3AED' },
+                  (isTranscribing || isAIThinking || isSpeakingState) && { opacity: 0.4 },
+                ]}
+                onPress={handleMicPress}
+                disabled={isTranscribing || isAIThinking || isSpeakingState}
+              >
+                <Ionicons name={isRecording ? 'stop' : 'mic'} size={32} color="#fff" />
+              </TouchableOpacity>
+              <Text style={[styles.micHint, { color: C.TEXT_LIGHT }]}>
+                {isRecording ? 'Đang nghe... Nhấn để dừng' :
+                 isSpeakingState ? `Đợi ${aiRoleLabel.toLowerCase()} nói xong...` :
+                 'Nhấn mic để trả lời'}
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.textBar, { backgroundColor: C.CARD, borderTopColor: C.BORDER }]}>
+              <TextInput
+                style={[styles.textBarInput, { backgroundColor: C.SURFACE, color: C.TEXT, borderColor: C.BORDER }]}
+                placeholder="Nhập câu trả lời..."
+                placeholderTextColor={C.TEXT_LIGHT}
+                value={textInput}
+                onChangeText={setTextInput}
+                multiline
+                maxLength={500}
+              />
+              <TouchableOpacity
+                style={[styles.textBarSend, { backgroundColor: '#7C3AED' }, (!textInput.trim() || isAIThinking) && { opacity: 0.4 }]}
+                onPress={sendTextMessage}
+                disabled={!textInput.trim() || isAIThinking}
+              >
+                <Ionicons name="send" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
 
@@ -719,6 +804,9 @@ const styles = StyleSheet.create({
   micBar: { alignItems: 'center', paddingVertical: 20, borderTopWidth: 1 },
   bigMicBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
   micHint: { fontSize: 13, marginTop: 10 },
+  textBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1 },
+  textBarInput: { flex: 1, borderWidth: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 100 },
+  textBarSend: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
 
   // Feedback
   feedbackScroll: { padding: 20, paddingBottom: 40 },

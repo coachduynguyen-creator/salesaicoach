@@ -121,7 +121,7 @@ export async function speakVietnamese(text: string): Promise<void> {
       sp.speak(clean, {
         language: 'vi-VN',
         voice: voiceId,
-        rate: 0.92,
+        rate: 1.15,
         onDone: () => { clearTimeout(timeout); resolve(); },
         onError: () => { clearTimeout(timeout); resolve(); },
         onStopped: () => { clearTimeout(timeout); resolve(); },
