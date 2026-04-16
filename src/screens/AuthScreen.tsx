@@ -95,7 +95,7 @@ export default function AuthScreen() {
                 <View style={[styles.inputWrap, { backgroundColor: C.SURFACE, borderColor: C.BORDER }]}>
                   <Ionicons name="person-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: C.TEXT }]}
                     placeholder="Họ và tên"
                     placeholderTextColor={C.TEXT_LIGHT}
                     value={fullName}
@@ -132,7 +132,7 @@ export default function AuthScreen() {
                 <View style={[styles.inputWrap, { backgroundColor: C.SURFACE, borderColor: C.BORDER }]}>
                   <Ionicons name="ticket-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: C.TEXT }]}
                     placeholder="Mã mời từ quản lý team"
                     placeholderTextColor={C.TEXT_LIGHT}
                     value={inviteCode}
@@ -145,7 +145,7 @@ export default function AuthScreen() {
                 <View style={[styles.inputWrap, { backgroundColor: C.SURFACE, borderColor: C.BORDER }]}>
                   <Ionicons name="gift-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: C.TEXT }]}
                     placeholder="Mã giới thiệu (không bắt buộc)"
                     placeholderTextColor={C.TEXT_LIGHT}
                     value={referralCode}
@@ -158,10 +158,10 @@ export default function AuthScreen() {
               </>
             )}
 
-            <View style={styles.inputWrap}>
+            <View style={[styles.inputWrap, { backgroundColor: C.SURFACE, borderColor: C.BORDER }]}>
               <Ionicons name="mail-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: C.TEXT }]}
                 placeholder="Email"
                 placeholderTextColor={C.TEXT_LIGHT}
                 value={email}
@@ -171,10 +171,10 @@ export default function AuthScreen() {
               />
             </View>
 
-            <View style={styles.inputWrap}>
+            <View style={[styles.inputWrap, { backgroundColor: C.SURFACE, borderColor: C.BORDER }]}>
               <Ionicons name="lock-closed-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, { flex: 1 }]}
+                style={[styles.input, { color: C.TEXT }]}
                 placeholder="Mật khẩu"
                 placeholderTextColor={C.TEXT_LIGHT}
                 value={password}
