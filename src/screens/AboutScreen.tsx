@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -39,6 +39,7 @@ const SOCIAL_LINKS = [
 
 export default function AboutScreen() {
   const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
   const navigation = useNavigation();
 
   const openLink = (url: string) => {
@@ -144,7 +145,7 @@ export default function AboutScreen() {
                 <Text style={styles.socialLabel}>{link.label}</Text>
                 <Text style={styles.socialHandle}>@coachduynguyen</Text>
               </View>
-              <Ionicons name="open-outline" size={16} color={COLORS.TEXT_LIGHT} />
+              <Ionicons name="open-outline" size={16} color={C.TEXT_LIGHT} />
             </TouchableOpacity>
           ))}
 
@@ -160,7 +161,7 @@ export default function AboutScreen() {
               <Text style={styles.socialLabel}>Email</Text>
               <Text style={styles.socialHandle}>coachduynguyen@gmail.com</Text>
             </View>
-            <Ionicons name="open-outline" size={16} color={COLORS.TEXT_LIGHT} />
+            <Ionicons name="open-outline" size={16} color={C.TEXT_LIGHT} />
           </TouchableOpacity>
         </View>
 
@@ -235,7 +236,7 @@ export default function AboutScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.socialLabel}>Chính sách Bảo mật</Text>
             </View>
-            <Ionicons name="open-outline" size={16} color={COLORS.TEXT_LIGHT} />
+            <Ionicons name="open-outline" size={16} color={C.TEXT_LIGHT} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.socialRow} onPress={() => openLink('https://coachduynguyen-creator.github.io/salesaicoach/terms.html')}>
             <View style={[styles.socialIcon, { backgroundColor: '#DBEAFE' }]}>
@@ -244,7 +245,7 @@ export default function AboutScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.socialLabel}>Điều khoản Sử dụng</Text>
             </View>
-            <Ionicons name="open-outline" size={16} color={COLORS.TEXT_LIGHT} />
+            <Ionicons name="open-outline" size={16} color={C.TEXT_LIGHT} />
           </TouchableOpacity>
         </View>
 
@@ -254,18 +255,18 @@ export default function AboutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.BACKGROUND },
+const makeStyles = (C: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.BACKGROUND },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: COLORS.CARD, paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+    backgroundColor: C.CARD, paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: C.BORDER,
   },
   backBtn: {
     width: 40, height: 40, alignItems: 'center', justifyContent: 'center',
-    borderRadius: 20, backgroundColor: COLORS.SURFACE,
+    borderRadius: 20, backgroundColor: C.SURFACE,
   },
-  topBarTitle: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT, flex: 1, textAlign: 'center' },
+  topBarTitle: { fontSize: 15, fontWeight: '600', color: C.TEXT, flex: 1, textAlign: 'center' },
   scroll: { padding: 20, paddingBottom: 40 },
 
   // Hero
@@ -279,24 +280,24 @@ const styles = StyleSheet.create({
     width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center',
   },
   authorName: {
-    fontSize: 22, fontWeight: '800', color: COLORS.TEXT,
+    fontSize: 22, fontWeight: '800', color: C.TEXT,
     letterSpacing: 0.5, marginBottom: 4,
   },
   authorTitle: {
-    fontSize: 14, fontWeight: '600', color: COLORS.TEXT_SECONDARY, marginBottom: 4,
+    fontSize: 14, fontWeight: '600', color: C.TEXT_SECONDARY, marginBottom: 4,
   },
   authorTagline: {
-    fontSize: 13, color: COLORS.TEXT_LIGHT, fontStyle: 'italic',
+    fontSize: 13, color: C.TEXT_LIGHT, fontStyle: 'italic',
   },
 
   // Card
   card: {
-    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 18, marginBottom: 14,
+    backgroundColor: C.CARD, borderRadius: 16, padding: 18, marginBottom: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
   cardTitle: {
-    fontSize: 16, fontWeight: '700', color: COLORS.TEXT, marginBottom: 14,
+    fontSize: 16, fontWeight: '700', color: C.TEXT, marginBottom: 14,
   },
 
   // Credentials
@@ -308,35 +309,35 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   credContent: { flex: 1, paddingTop: 2 },
-  credLabel: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT, lineHeight: 20 },
-  credSub: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginTop: 2, lineHeight: 17 },
+  credLabel: { fontSize: 14, fontWeight: '600', color: C.TEXT, lineHeight: 20 },
+  credSub: { fontSize: 12, color: C.TEXT_LIGHT, marginTop: 2, lineHeight: 17 },
 
   // Social
   socialRow: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+    borderBottomWidth: 1, borderBottomColor: C.BORDER,
   },
   socialIcon: {
     width: 40, height: 40, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  socialLabel: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT },
-  socialHandle: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginTop: 1 },
+  socialLabel: { fontSize: 14, fontWeight: '600', color: C.TEXT },
+  socialHandle: { fontSize: 12, color: C.TEXT_LIGHT, marginTop: 1 },
 
   // Body text
   bodyText: {
-    fontSize: 14, color: COLORS.TEXT, lineHeight: 22, marginBottom: 10,
+    fontSize: 14, color: C.TEXT, lineHeight: 22, marginBottom: 10,
   },
 
   // Legal
   legalHeading: {
-    fontSize: 14, fontWeight: '700', color: COLORS.TEXT, marginTop: 12, marginBottom: 6,
+    fontSize: 14, fontWeight: '700', color: C.TEXT, marginTop: 12, marginBottom: 6,
   },
   legalText: {
-    fontSize: 13, color: COLORS.TEXT_SECONDARY, lineHeight: 20, marginBottom: 8,
+    fontSize: 13, color: C.TEXT_SECONDARY, lineHeight: 20, marginBottom: 8,
   },
 
   // Version
   versionBox: { alignItems: 'center', paddingVertical: 16 },
-  versionText: { fontSize: 12, color: COLORS.TEXT_LIGHT, marginBottom: 2 },
+  versionText: { fontSize: 12, color: C.TEXT_LIGHT, marginBottom: 2 },
 });

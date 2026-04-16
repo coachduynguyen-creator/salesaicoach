@@ -21,6 +21,7 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [experience, setExperience] = useState<string>('');
   const [inviteCode, setInviteCode] = useState('');
+  const [referralCode, setReferralCode] = useState('');
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -43,7 +44,7 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       if (mode === 'signup') {
-        await signUp(email.trim(), password, fullName.trim(), inviteCode.trim());
+        await signUp(email.trim(), password, fullName.trim(), inviteCode.trim(), referralCode.trim() || undefined);
         showAlert({ title: 'Đăng ký thành công', message: 'Kiểm tra email để xác nhận tài khoản. Sau đó đăng nhập lại.', type: 'success' });
         setMode('login');
       } else {
@@ -138,6 +139,20 @@ export default function AuthScreen() {
                     onChangeText={setInviteCode}
                     autoCapitalize="none"
                     autoCorrect={false}
+                  />
+                </View>
+
+                <View style={[styles.inputWrap, { backgroundColor: C.SURFACE, borderColor: C.BORDER }]}>
+                  <Ionicons name="gift-outline" size={18} color={C.TEXT_LIGHT} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mã giới thiệu (không bắt buộc)"
+                    placeholderTextColor={C.TEXT_LIGHT}
+                    value={referralCode}
+                    onChangeText={t => setReferralCode(t.toUpperCase())}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={6}
                   />
                 </View>
               </>

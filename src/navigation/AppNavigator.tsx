@@ -16,18 +16,20 @@ import AiCoachScreen from '../screens/AiCoachScreen';
 import ConversationListScreen from '../screens/ConversationListScreen';
 import SessionDetailScreen from '../screens/SessionDetailScreen';
 import BusinessProfileScreen from '../screens/BusinessProfileScreen';
-import TeamDashboardScreen from '../screens/TeamDashboardScreen';
 import CustomerListScreen from '../screens/CustomerListScreen';
 import CustomerDetailScreen from '../screens/CustomerDetailScreen';
 import AboutScreen from '../screens/AboutScreen';
 import TeamManageScreen from '../screens/TeamManageScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import AdminConfigScreen from '../screens/AdminConfigScreen';
+import AdminSubscriptionScreen from '../screens/AdminSubscriptionScreen';
+import ProjectPackListScreen from '../screens/ProjectPackListScreen';
+import ProjectPackEditScreen from '../screens/ProjectPackEditScreen';
 import BugReportsScreen from '../screens/BugReportsScreen';
 import PaywallScreen from '../screens/PaywallScreen';
 import ScriptGeneratorScreen from '../screens/ScriptGeneratorScreen';
 import AIToolsScreen from '../screens/AIToolsScreen';
 import GoalSettingScreen from '../screens/GoalSettingScreen';
-import CommissionScreen from '../screens/CommissionScreen';
 import UserGuideScreen from '../screens/UserGuideScreen';
 
 export type RootTabParamList = {
@@ -55,17 +57,19 @@ export type RootStackParamList = {
     session: any;
   };
   BusinessProfile: undefined;
-  TeamDashboard: undefined;
   CustomerDetail: { customerId: string };
   About: undefined;
   TeamManage: undefined;
   AdminDashboard: undefined;
+  AdminConfig: undefined;
+  AdminSubscription: undefined;
+  ProjectPackList: undefined;
+  ProjectPackEdit: { packId?: string };
   BugReports: undefined;
   Paywall: undefined;
   ScriptGenerator: undefined;
   AITools: { tool: string };
   GoalSetting: undefined;
-  Commission: undefined;
   UserGuide: undefined;
   LichSu: undefined;
   AiCoachChat: {
@@ -187,11 +191,6 @@ export default function AppNavigator() {
         options={{ presentation: 'card' }}
       />
       <Stack.Screen
-        name="TeamDashboard"
-        component={TeamDashboardScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
         name="AiCoachChat"
         component={AiCoachScreen}
         options={{ presentation: 'card' }}
@@ -219,13 +218,16 @@ export default function AppNavigator() {
       <Stack.Screen name="ScriptGenerator" component={ScriptGeneratorScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="AITools" component={AIToolsScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="GoalSetting" component={GoalSettingScreen} options={{ presentation: 'card' }} />
-      <Stack.Screen name="Commission" component={CommissionScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="UserGuide" component={UserGuideScreen} options={{ presentation: 'card' }} />
       <Stack.Screen
         name="AdminDashboard"
         component={AdminDashboardScreen}
         options={{ presentation: 'card' }}
       />
+      <Stack.Screen name="AdminConfig" component={AdminConfigScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="AdminSubscription" component={AdminSubscriptionScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="ProjectPackList" component={ProjectPackListScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="ProjectPackEdit" component={ProjectPackEditScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="BugReports" component={BugReportsScreen} options={{ presentation: 'card' }} />
       <Stack.Screen
         name="LichSu"

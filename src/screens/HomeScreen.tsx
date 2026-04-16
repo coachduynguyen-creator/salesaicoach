@@ -138,7 +138,7 @@ export default function HomeScreen() {
                     color="#fff"
                   />
                   <Text style={styles.tierBadgeText}>
-                    {userTier === 'bds_pro' ? 'BĐS' : userTier === 'pro' || userTier === 'team' ? 'PRO' : 'FREE'}
+                    {userTier === 'bds_pro' ? 'BĐS' : userTier.startsWith('team') ? 'TEAM' : userTier === 'pro' ? 'PRO' : 'FREE'}
                   </Text>
                 </View>
               </View>
@@ -304,7 +304,6 @@ export default function HomeScreen() {
             { key: 'roleplay', label: 'Luyện đối đáp', icon: 'chatbubbles', color: '#7C3AED', nav: 'AITools', params: { tool: 'roleplay' } },
             { key: 'objection', label: 'Xử lý từ chối', icon: 'shield-checkmark', color: '#DC2626', nav: 'AITools', params: { tool: 'objection' } },
             { key: 'goals', label: 'Mục tiêu', icon: 'flag', color: '#F59E0B', nav: 'GoalSetting' },
-            { key: 'commission', label: 'Hoa hồng', icon: 'calculator', color: '#10B981', nav: 'Commission' },
           ].map(tool => (
             <TouchableOpacity
               key={tool.key}

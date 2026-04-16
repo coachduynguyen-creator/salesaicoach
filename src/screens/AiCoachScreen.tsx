@@ -17,7 +17,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Markdown from 'react-native-markdown-display';
 import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
-import { chatWithCoach, transcribeAudio, ChatMessage } from '../services/aiService';
+import { useAlert } from '../contexts/AlertContext';
+import { chatWithCoach, streamChatWithCoach, transcribeAudio, ChatMessage } from '../services/aiService';
 import { startRecording, stopRecording } from '../services/audioService';
 import { QUICK_SUGGESTIONS } from '../constants/knowledgeBase';
 import { useKnowledge } from '../contexts/KnowledgeContext';
@@ -141,6 +142,7 @@ const makeWelcome = (): Message => ({
 
 export default function AiCoachScreen() {
   const C = useColors();
+  const { showAlert } = useAlert();
   const { knowledgeBase, isFromCloud } = useKnowledge();
   const { businessContext } = useBusiness();
   const navigation = useNavigation<any>();
@@ -160,6 +162,12 @@ export default function AiCoachScreen() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const streamingMsgId = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   // Load customer profile nếu có
   useEffect(() => {
@@ -194,7 +202,6 @@ export default function AiCoachScreen() {
     };
 
     resolveCustomer().then(async (customer) => {
-      if (!customer) return;
       if (!customer) return;
 
       const parts: string[] = [
@@ -255,6 +262,8 @@ export default function AiCoachScreen() {
         content: `Duy đã xem hồ sơ của **${customer.name}**${customer.company ? ` (${customer.company})` : ''}.\n\n${customer.stage ? `Khách đang ở giai đoạn: **${customer.stage}**.\n` : ''}${customer.needs ? `Nhu cầu chính: ${customer.needs}\n` : ''}${customer.concerns ? `Lo ngại: ${customer.concerns}\n` : ''}\nBạn muốn trao đổi gì về khách này? Duy sẽ tư vấn dựa trên toàn bộ dữ liệu đã có.`,
         timestamp: new Date(),
       }]);
+    }).catch(() => {
+      // Không load được customer → tiếp tục chat mà không có context
     });
   }, [customerId, conversationId, conversationTitle]);
 
@@ -312,7 +321,39 @@ export default function AiCoachScreen() {
         .slice(-10)
         .map(m => ({ role: m.role, content: m.content }));
 
-      const reply = await chatWithCoach(history, knowledgeBase + businessContext + customerContext);
+      // Thêm placeholder message cho AI để cập nhật dần khi stream
+      setMessages([
+        ...updatedWithUser,
+        { id: aiMsgId, role: 'assistant', content: '', timestamp: new Date() },
+      ]);
+      streamingMsgId.current = aiMsgId;
+      setIsStreaming(true);
+
+      // Debounce cập nhật để tránh re-render flicker với FlatList
+      let pendingText = '';
+      let rafPending = false;
+      const flush = () => {
+        rafPending = false;
+        if (!isMountedRef.current) return;
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: pendingText } : m));
+      };
+      const onChunk = (textSoFar: string) => {
+        pendingText = textSoFar;
+        if (!rafPending) {
+          rafPending = true;
+          setTimeout(flush, 40); // ~25fps, đủ mượt mà không nghẽn
+        }
+      };
+
+      let reply: string;
+      try {
+        reply = await streamChatWithCoach(history, knowledgeBase + businessContext + customerContext, onChunk);
+      } catch {
+        // Fallback non-stream — stream đã count quota rồi, skip để không double-count
+        reply = await chatWithCoach(history, knowledgeBase + businessContext + customerContext, undefined, { skipQuota: true });
+      }
+
+      if (!isMountedRef.current) return;
 
       const finalAiMsg: Message = {
         id: aiMsgId,
@@ -321,10 +362,15 @@ export default function AiCoachScreen() {
         timestamp: new Date(),
       };
 
-      const finalMessages = [...updatedWithUser, finalAiMsg];
+      // Cap at 200 messages để tránh memory leak trong conversation dài
+      let finalMessages = [...updatedWithUser, finalAiMsg];
+      if (finalMessages.length > 200) {
+        finalMessages = finalMessages.slice(-200);
+      }
       setMessages(finalMessages);
       await saveMessages(finalMessages);
     } catch (err: any) {
+      if (!isMountedRef.current) return;
       const errorDetail = err?.message || 'Không rõ lỗi';
       const errMsg: Message = {
         id: aiMsgId,
@@ -334,6 +380,7 @@ export default function AiCoachScreen() {
       };
       setMessages(prev => [...prev, errMsg]);
     } finally {
+      if (!isMountedRef.current) return;
       setIsTyping(false);
       setIsStreaming(false);
       streamingMsgId.current = null;
@@ -347,26 +394,36 @@ export default function AiCoachScreen() {
 
   const handleVoice = async () => {
     if (isRecording) {
-      // Dừng ghi âm → chuyển thành text
       try {
         setIsRecording(false);
         setIsTranscribing(true);
         const result = await stopRecording();
+        if (!result?.uri) {
+          setIsTranscribing(false);
+          showAlert({ title: 'Lỗi', message: 'Không lưu được ghi âm. Thử lại.', type: 'error' });
+          return;
+        }
         const text = await transcribeAudio(result.uri);
         setIsTranscribing(false);
         if (text && text.trim()) {
           sendMessage(text.trim());
+        } else {
+          showAlert({ title: 'Không nhận được âm thanh', message: 'Vui lòng thử lại và nói to hơn.', type: 'warning' });
         }
-      } catch {
+      } catch (err: any) {
         setIsTranscribing(false);
+        showAlert({ title: 'Lỗi chuyển giọng nói', message: err?.message || 'Thử lại sau.', type: 'error' });
       }
     } else {
-      // Bắt đầu ghi âm
       try {
         await startRecording();
         setIsRecording(true);
-      } catch {
-        // Permission denied hoặc lỗi khác
+      } catch (err: any) {
+        showAlert({
+          title: 'Không thể ghi âm',
+          message: err?.message || 'Vui lòng kiểm tra quyền microphone trong Cài Đặt.',
+          type: 'error',
+        });
       }
     }
   };

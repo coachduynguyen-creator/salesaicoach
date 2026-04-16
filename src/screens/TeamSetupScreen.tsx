@@ -126,6 +126,26 @@ export default function TeamSetupScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Skip — dùng solo (tự tạo team cá nhân) */}
+        <TouchableOpacity
+          style={styles.soloLink}
+          onPress={async () => {
+            setLoading(true);
+            try {
+              await createTeam(`${profile?.full_name || 'Cá nhân'}'s Team`);
+              await refreshProfile();
+            } catch (err: any) {
+              showAlert({ title: 'Lỗi', message: err.message || 'Không thể tạo team.', type: 'error' });
+            } finally {
+              setLoading(false);
+            }
+          }}
+          disabled={loading}
+        >
+          <Text style={styles.soloLinkText}>Dùng cá nhân (không cần team)</Text>
+          <Ionicons name="arrow-forward" size={14} color="#1A7F64" />
+        </TouchableOpacity>
+
         {/* Tạo team (ẩn, dành cho quản lý) */}
         {!showCreateForm ? (
           <TouchableOpacity style={styles.createLink} onPress={() => setShowCreateForm(true)}>
@@ -193,4 +213,6 @@ const styles = StyleSheet.create({
   acceptBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   createLink: { alignItems: 'center', paddingVertical: 16 },
   createLinkText: { fontSize: 13, color: COLORS.TEXT_LIGHT, textDecorationLine: 'underline' },
+  soloLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14, marginTop: 4 },
+  soloLinkText: { fontSize: 15, color: '#1A7F64', fontWeight: '700' },
 });

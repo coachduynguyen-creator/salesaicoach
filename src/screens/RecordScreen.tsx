@@ -22,8 +22,10 @@ import { COLORS } from '../constants/colors';
 import { useColors } from '../contexts/ThemeContext';
 import { startRecording, stopRecording, pauseRecording, resumeRecording } from '../services/audioService';
 import { useAlert } from '../contexts/AlertContext';
+import { useAuth } from '../contexts/AuthContext';
 import * as DocumentPicker from 'expo-document-picker';
 import { loadCustomers, CustomerProfile } from '../services/storageService';
+import { checkRecordingQuota } from '../services/databaseService';
 
 type RecordingState = 'idle' | 'recording' | 'paused';
 
@@ -90,13 +92,58 @@ export default function RecordScreen() {
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-  const handleStart = async () => {
+  const { profile } = useAuth();
+
+  const actuallyStart = async () => {
     try {
+      if (profile?.id) {
+        const quota = await checkRecordingQuota(profile.id);
+        if (!quota.allowed) {
+          showAlert({
+            title: 'Hết lượt ghi âm',
+            message: `Bạn đã sử dụng ${quota.used}/${quota.limit} lượt ghi âm tháng này. Nâng cấp Pro để ghi âm không giới hạn.`,
+            type: 'warning',
+            buttons: [
+              { text: 'Để sau', style: 'cancel' },
+              { text: 'Nâng cấp Pro', onPress: () => (navigation as any).navigate('Paywall') },
+            ],
+          });
+          return;
+        }
+      }
       await startRecording();
       setRecordingState('recording');
       setElapsed(0);
       startTimer();
       startPulse();
+    } catch {
+      showAlert({ title: 'Lỗi', message: 'Không thể bắt đầu ghi âm. Vui lòng kiểm tra quyền microphone.', type: 'error' });
+    }
+  };
+
+  const handleStart = async () => {
+    try {
+      // Consent check — lần đầu ghi âm cần đồng ý
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const consented = await AsyncStorage.getItem('@salescoach_recording_consent');
+      if (!consented) {
+        showAlert({
+          title: 'Thông báo quan trọng',
+          message: 'Bạn nên thông báo cho khách hàng việc ghi âm để đảm bảo tuân thủ pháp luật. File ghi âm sẽ được gửi tới máy chủ AI để phân tích.\n\nBấm "Đồng ý" để bật ghi âm (không hỏi lại).',
+          type: 'info',
+          buttons: [
+            { text: 'Hủy', style: 'cancel' },
+            {
+              text: 'Đồng ý', onPress: async () => {
+                await AsyncStorage.setItem('@salescoach_recording_consent', 'true');
+                actuallyStart();
+              },
+            },
+          ],
+        });
+        return;
+      }
+      await actuallyStart();
     } catch {
       showAlert({ title: 'Lỗi', message: 'Không thể bắt đầu ghi âm. Vui lòng kiểm tra quyền microphone.', type: 'error' });
     }
@@ -114,6 +161,11 @@ export default function RecordScreen() {
     try {
       const result = await stopRecording();
       setRecordingState('idle'); stopTimer(); stopPulse();
+      if (!result?.uri) {
+        setElapsed(0);
+        showAlert({ title: 'Lỗi', message: 'Không lưu được file ghi âm. Vui lòng thử lại.', type: 'error' });
+        return;
+      }
       const finalElapsed = elapsed;
       setRecordedDuration(finalElapsed);
       setAudioUri(result.uri);

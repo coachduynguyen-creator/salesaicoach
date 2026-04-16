@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal,
   RefreshControl, Share, ActivityIndicator,
@@ -20,6 +20,7 @@ import { TeamStats, MemberStats } from '../types/database';
 export default function TeamManageScreen() {
   const navigation = useNavigation();
   const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
   const { profile, team, refreshProfile } = useAuth();
   const { showAlert } = useAlert();
 
@@ -214,7 +215,7 @@ export default function TeamManageScreen() {
                     onPress={() => handleChangeRole(m.user_id, m.role === 'member' ? 'manager' : 'member')}
                     style={{ padding: 6 }}
                   >
-                    <Ionicons name="swap-horizontal" size={16} color={COLORS.TEXT_LIGHT} />
+                    <Ionicons name="swap-horizontal" size={16} color={C.TEXT_LIGHT} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleRemoveMember({ id: m.user_id, full_name: m.full_name })}
@@ -257,14 +258,14 @@ export default function TeamManageScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Email người được mời"
-              placeholderTextColor={COLORS.TEXT_LIGHT}
+              placeholderTextColor={C.TEXT_LIGHT}
               value={inviteEmail}
               onChangeText={setInviteEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               autoFocus
             />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.TEXT_SECONDARY, marginBottom: 8 }}>Vai trò:</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: C.TEXT_SECONDARY, marginBottom: 8 }}>Vai trò:</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
               {(['member', 'manager'] as const).map(r => (
                 <TouchableOpacity
@@ -293,24 +294,24 @@ export default function TeamManageScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.BACKGROUND },
+const makeStyles = (C: any) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.BACKGROUND },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: COLORS.CARD, paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+    backgroundColor: C.CARD, paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: C.BORDER,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: COLORS.SURFACE },
-  topBarTitle: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT, flex: 1, textAlign: 'center' },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: C.SURFACE },
+  topBarTitle: { fontSize: 15, fontWeight: '600', color: C.TEXT, flex: 1, textAlign: 'center' },
   scroll: { padding: 16, paddingBottom: 40 },
   card: {
-    backgroundColor: COLORS.CARD, borderRadius: 16, padding: 16, marginBottom: 14,
+    backgroundColor: C.CARD, borderRadius: 16, padding: 16, marginBottom: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  teamName: { fontSize: 20, fontWeight: '800', color: COLORS.TEXT, marginBottom: 8 },
+  teamName: { fontSize: 20, fontWeight: '800', color: C.TEXT, marginBottom: 8 },
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  codeLabel: { fontSize: 13, color: COLORS.TEXT_LIGHT },
-  codeValue: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT, letterSpacing: 2 },
+  codeLabel: { fontSize: 13, color: C.TEXT_LIGHT },
+  codeValue: { fontSize: 18, fontWeight: '700', color: C.TEXT, letterSpacing: 2 },
   shareBtn: { padding: 6 },
   statsStrip: { borderRadius: 14, flexDirection: 'row', paddingVertical: 16, marginBottom: 14 },
   statItem: { flex: 1, alignItems: 'center' },
@@ -318,34 +319,34 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.TEXT },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: C.TEXT },
   memberRow: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12,
-    borderBottomWidth: 1, borderBottomColor: COLORS.BORDER,
+    borderBottomWidth: 1, borderBottomColor: C.BORDER,
   },
   memberAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   memberInitial: { fontSize: 16, fontWeight: '700' },
-  memberName: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT },
-  memberMeta: { fontSize: 11, color: COLORS.TEXT_LIGHT, marginTop: 2 },
+  memberName: { fontSize: 14, fontWeight: '600', color: C.TEXT },
+  memberMeta: { fontSize: 11, color: C.TEXT_LIGHT, marginTop: 2 },
   roleBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
   roleText: { fontSize: 10, fontWeight: '700' },
-  inviteRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.BORDER },
-  inviteEmail: { fontSize: 14, color: COLORS.TEXT },
-  inviteRole: { fontSize: 11, color: COLORS.TEXT_LIGHT, marginTop: 1 },
+  inviteRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.BORDER },
+  inviteEmail: { fontSize: 14, color: C.TEXT },
+  inviteRole: { fontSize: 11, color: C.TEXT_LIGHT, marginTop: 1 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalContent: { backgroundColor: COLORS.CARD, borderRadius: 16, padding: 24 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.TEXT, marginBottom: 16 },
+  modalContent: { backgroundColor: C.CARD, borderRadius: 16, padding: 24 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: C.TEXT, marginBottom: 16 },
   modalInput: {
-    backgroundColor: COLORS.BACKGROUND, borderRadius: 10, padding: 14,
-    fontSize: 15, color: COLORS.TEXT, borderWidth: 1, borderColor: COLORS.BORDER, marginBottom: 12,
+    backgroundColor: C.BACKGROUND, borderRadius: 10, padding: 14,
+    fontSize: 15, color: C.TEXT, borderWidth: 1, borderColor: C.BORDER, marginBottom: 12,
   },
   roleOption: {
     flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center',
-    borderWidth: 1, borderColor: COLORS.BORDER,
+    borderWidth: 1, borderColor: C.BORDER,
   },
-  roleOptionText: { fontSize: 14, fontWeight: '600', color: COLORS.TEXT },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, borderColor: COLORS.BORDER, alignItems: 'center' },
-  cancelText: { fontSize: 15, fontWeight: '600', color: COLORS.TEXT_LIGHT },
+  roleOptionText: { fontSize: 14, fontWeight: '600', color: C.TEXT },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, borderColor: C.BORDER, alignItems: 'center' },
+  cancelText: { fontSize: 15, fontWeight: '600', color: C.TEXT_LIGHT },
   submitBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   submitText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

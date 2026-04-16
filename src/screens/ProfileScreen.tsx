@@ -287,34 +287,44 @@ export default function ProfileScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Admin: Switch AI Tier */}
+        {/* Admin: Switch Plan Tier */}
         {authProfile?.role === 'admin' && (
           <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
             <View style={styles.sectionTitleRow}>
               <Ionicons name="flask-outline" size={18} color="#E67E22" />
-              <Text style={[styles.sectionTitle, { color: C.TEXT }]}>AI Tier (Admin)</Text>
+              <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Gói (Admin)</Text>
             </View>
-            <Text style={[styles.sectionDesc, { color: C.TEXT_LIGHT }]}>Chuyển tier để test AI. Hiện tại: {getTierLabel(currentTier === 'team' ? 'pro' : currentTier === 'bds_pro' ? 'bds_pro' : currentTier as any)}</Text>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              {([['free', 'Free'], ['pro', 'Pro'], ['bds_pro', 'BĐS Pro']] as const).map(([t, label]) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[{
-                    flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
-                    borderWidth: 1, borderColor: currentTier === t ? C.PRIMARY : COLORS.BORDER,
-                    backgroundColor: currentTier === t ? C.PRIMARY : 'transparent',
-                  }]}
-                  onPress={async () => {
-                    await adminSetTier(t);
-                    setCurrentTier(t);
-                    showAlert({ title: 'Đã chuyển', message: `AI tier: ${label}. Tất cả AI call sẽ dùng prompt ${label}.`, type: 'success' });
-                  }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: currentTier === t ? '#fff' : C.TEXT_SECONDARY }}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <Text style={[styles.sectionDesc, { color: C.TEXT_LIGHT }]}>Chuyển gói để test. Hiện tại: {currentTier.toUpperCase()}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {([
+                ['free', 'Free', '#94A3B8'],
+                ['pro', 'Pro', '#3B82F6'],
+                ['bds_pro', 'BĐS Pro', '#8B5CF6'],
+                ['team_s', 'Team S', '#10B981'],
+                ['team_m', 'Team M', '#F59E0B'],
+                ['team_l', 'Team L', '#EF4444'],
+              ] as const).map(([t, label, color]) => {
+                const isActive = currentTier === t;
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={{
+                      minWidth: '30%', flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+                      borderWidth: 1.5, borderColor: isActive ? color : COLORS.BORDER,
+                      backgroundColor: isActive ? color : 'transparent',
+                    }}
+                    onPress={async () => {
+                      await adminSetTier(t as any);
+                      setCurrentTier(t);
+                      showAlert({ title: 'Đã chuyển', message: `Gói: ${label}`, type: 'success' });
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? '#fff' : C.TEXT_SECONDARY }}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -335,6 +345,21 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Project Packs — Dự án đang làm */}
+        <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="business-outline" size={18} color="#3B82F6" />
+            <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Dự án của tôi</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Thêm thông tin dự án đang làm để AI trả lời đúng với sản phẩm của bạn
+          </Text>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#3B82F6' }]} onPress={() => navigation.navigate('ProjectPackList')}>
+            <Ionicons name="folder-open" size={18} color="#FFFFFF" />
+            <Text style={styles.saveButtonText}>Quản lý Dự án</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Team Management */}
         <View style={[styles.sectionCard, { backgroundColor: C.CARD }]}>
