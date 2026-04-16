@@ -33,14 +33,14 @@ export const setApiKeys = (_openaiKey: string, _claudeKey: string) => {};
 
 /** Lấy auth token hiện tại — dùng token có sẵn, chỉ refresh khi thật sự cần */
 const getAuthToken = async (forceRefresh = false): Promise<string> => {
-  // Bước 1: lấy session hiện tại
   let { data: { session } } = await supabase.auth.getSession();
 
-  // Bước 2: chỉ refresh khi bắt buộc (force) hoặc không có session
   if (forceRefresh || !session) {
     const { data, error } = await supabase.auth.refreshSession();
     if (error || !data.session) {
-      throw new Error(`Không thể làm mới phiên. ${error?.message || 'Vui lòng đăng nhập lại.'}`);
+      // Session cũ hỏng hoàn toàn → sign out để user đăng nhập lại với token mới
+      await supabase.auth.signOut().catch(() => {});
+      throw new Error('Phiên đăng nhập không hợp lệ. App sẽ chuyển về đăng nhập.');
     }
     session = data.session;
   }
