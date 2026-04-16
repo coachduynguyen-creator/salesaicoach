@@ -1,16 +1,15 @@
 // ─── Config ─────────────────────────────────────────────────────────────────
 import { Platform } from 'react-native';
-import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from '../config/defaultKeys';
-import { logAIUsage, checkAIQuota } from './databaseService';
+import { checkAIQuota } from './databaseService';
+// Usage logging is now handled server-side by the Edge Function
 import { supabase } from './supabaseClient';
 import { AITier, getAnalysisPrompt, getCoachPrompt, getMaxTokens } from '../config/systemPrompts';
 import { getAITier } from './subscriptionService';
+import { getActivePack, packToContext } from './projectPackService';
+import { searchScenarios, scenariosToContext } from './scenarioService';
 
 const EDGE_FUNCTION_URL = 'https://zylhbymktdtmitxsunqv.supabase.co/functions/v1/ai-proxy';
-
-let OPENAI_API_KEY = DEFAULT_OPENAI_KEY;    // Fallback khi chưa login
-let CLAUDE_API_KEY = DEFAULT_CLAUDE_KEY;    // Fallback khi chưa login
-let USE_PROXY = false;                       // Dùng Edge Function proxy khi có auth
+const SUPABASE_ANON_KEY = 'sb_publishable_bAPWC5uJXV_3Iu_C0TJS1w_TGsGS6qQ';
 
 // Sync context cho AI usage logging
 let _aiUserId: string | null = null;
@@ -19,7 +18,6 @@ let _aiTeamId: string | null = null;
 export const setAISyncContext = (userId: string | null, teamId: string | null) => {
   _aiUserId = userId;
   _aiTeamId = teamId;
-  USE_PROXY = !!userId; // Dùng proxy khi đã login (bảo mật API key)
 };
 
 const checkQuota = async () => {
@@ -30,68 +28,102 @@ const checkQuota = async () => {
   }
 };
 
-const logUsage = (action: string, model: string, durationMs: number, inputTokens = 0, outputTokens = 0) => {
-  if (!_aiUserId) return;
-  logAIUsage({
-    user_id: _aiUserId,
-    team_id: _aiTeamId,
-    action: action as any,
-    model,
-    input_tokens: inputTokens,
-    output_tokens: outputTokens,
-    duration_ms: durationMs,
-  }).catch(() => {});
+/** Deprecated — keys now live server-side only */
+export const setApiKeys = (_openaiKey: string, _claudeKey: string) => {};
+
+/** Lấy auth token hiện tại — auto refresh nếu sắp hết hạn (< 5 phút) để đảm bảo edge function nhận được JWT hợp lệ */
+const getAuthToken = async (forceRefresh = false): Promise<string> => {
+  let { data: { session } } = await supabase.auth.getSession();
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const expSec = session?.expires_at ?? 0;
+  // Buffer lớn hơn (5 phút) vì edge function xa hơn client, có thể có clock skew
+  const needsRefresh = forceRefresh || !session || (expSec > 0 && expSec - nowSec < 300);
+
+  if (needsRefresh) {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error || !data.session) {
+      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+    }
+    session = data.session;
+  }
+
+  const token = session?.access_token;
+  if (!token) throw new Error('Vui lòng đăng nhập để sử dụng tính năng AI.');
+  return token;
 };
 
-/** Gọi Claude qua Edge Function proxy (bảo mật, key trên server) */
-const callClaudeProxy = async (payload: any): Promise<any> => {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error('Chưa đăng nhập');
+/** Gọi Edge Function proxy — TẤT CẢ AI call đều đi qua đây */
+const callProxy = async (action: string, payload: any, _retried = false): Promise<any> => {
+  const token = await getAuthToken();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 180000); // 3 min
+
+  try {
+    const response = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ action, payload }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (response.status === 429) {
+      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
+    }
+    if (response.status === 401) {
+      // JWT cũ bị server reject — force refresh & retry 1 lần
+      if (!_retried) {
+        await getAuthToken(true).catch(() => null);
+        return callProxy(action, payload, true);
+      }
+      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+    }
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: '' }));
+      throw new Error(err.error || `Lỗi hệ thống (${response.status}). Vui lòng thử lại.`);
+    }
+    return response.json();
+  } catch (err: any) {
+    clearTimeout(timeout);
+    if (err?.name === 'AbortError') {
+      throw new Error('Xử lý quá lâu. Thử ghi âm ngắn hơn hoặc kiểm tra kết nối mạng.');
+    }
+    throw err;
+  }
+};
+
+/** Gọi Edge Function proxy — streaming (trả về Response để đọc stream) */
+const callProxyStream = async (action: string, payload: any, _retried = false): Promise<Response> => {
+  const token = await getAuthToken();
 
   const response = await fetch(EDGE_FUNCTION_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ action: payload.action || 'chat', payload: payload.body }),
+    body: JSON.stringify({ action, payload }),
   });
 
   if (!response.ok) {
-    const err = await response.text().catch(() => '');
-    throw new Error(`Proxy error ${response.status}: ${err}`);
-  }
-  return response.json();
-};
-
-const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 2): Promise<Response> => {
-  for (let i = 0; i <= maxRetries; i++) {
-    try {
-      // Timeout 3 phút cho mỗi request (ghi âm dài cần thời gian)
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 180000);
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeout);
-      if (response.status === 429 && i < maxRetries) {
-        await new Promise(r => setTimeout(r, Math.pow(2, i) * 1500));
-        continue;
+    if (response.status === 429) throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
+    if (response.status === 401) {
+      if (!_retried) {
+        await getAuthToken(true).catch(() => null);
+        return callProxyStream(action, payload, true);
       }
-      return response;
-    } catch (err: any) {
-      if (err?.name === 'AbortError') {
-        throw new Error('Xử lý quá lâu. Thử ghi âm ngắn hơn hoặc kiểm tra kết nối mạng.');
-      }
-      if (i === maxRetries) throw err;
-      await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
     }
+    throw new Error('Lỗi hệ thống. Vui lòng thử lại.');
   }
-  throw new Error('Không thể kết nối. Kiểm tra kết nối mạng.');
-};
-
-export const setApiKeys = (openaiKey: string, claudeKey: string) => {
-  OPENAI_API_KEY = openaiKey || DEFAULT_OPENAI_KEY;
-  CLAUDE_API_KEY = claudeKey || DEFAULT_CLAUDE_KEY;
+  return response;
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -121,9 +153,6 @@ export interface AnalysisResult {
 
 export const transcribeAudio = async (audioUri: string): Promise<string> => {
   await checkQuota();
-  if (!OPENAI_API_KEY) {
-    throw new Error('Chưa cấu hình OpenAI API key. Vui lòng liên hệ admin.');
-  }
 
   if (Platform.OS === 'web') {
     throw new Error('Tính năng ghi âm không hỗ trợ trên trình duyệt web. Vui lòng dùng app trên điện thoại.');
@@ -133,69 +162,54 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
     throw new Error('Không có file ghi âm. Vui lòng thử ghi âm lại.');
   }
 
-  // Kiểm tra file tồn tại
+  // Kiểm tra file tồn tại + size
+  const { getInfoAsync, readAsStringAsync, EncodingType } = require('expo-file-system/legacy');
   try {
-    const { getInfoAsync } = require('expo-file-system/legacy');
     const fileInfo = await getInfoAsync(audioUri);
     if (!fileInfo.exists) {
       throw new Error('File ghi âm không còn tồn tại (có thể đã bị xóa khi cài lại app). Vui lòng ghi âm mới.');
     }
-    // Kiểm tra file size
     if (fileInfo.size && fileInfo.size > 25 * 1024 * 1024) {
       throw new Error(`File ghi âm quá lớn (${Math.round(fileInfo.size / 1024 / 1024)}MB, tối đa 25MB). Thử ghi âm ngắn hơn.`);
     }
   } catch (e: any) {
     if (e.message.includes('không còn tồn tại') || e.message.includes('quá lớn')) throw e;
-    // Nếu không check được file, tiếp tục thử upload
   }
 
-  const formData = new FormData();
+  // Gửi file qua FormData (không load toàn bộ vào RAM - tránh OOM với file dài)
   const ext = audioUri.split('.').pop()?.toLowerCase() || 'm4a';
   const mimeType = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : ext === 'webm' ? 'audio/webm' : 'audio/mp4';
-  formData.append('file', {
-    uri: audioUri,
-    type: mimeType,
-    name: `recording.${ext}`,
-  } as any);
-  formData.append('model', 'whisper-1');
-  formData.append('language', 'vi');
 
-  // Timeout dài hơn cho file lớn (5 phút)
+  const token = await getAuthToken();
+  const formData = new FormData();
+  formData.append('file', { uri: audioUri, type: mimeType, name: `recording.${ext}` } as any);
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300000);
+  const timeout = setTimeout(() => controller.abort(), 300000); // 5 phút cho file lớn
 
   try {
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    const response = await fetch(`${EDGE_FUNCTION_URL}?action=transcribe_multipart`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
+      headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY },
       body: formData,
       signal: controller.signal,
     });
-    clearTimeout(timeoutId);
+    clearTimeout(timeout);
 
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
-    }
-    if (response.status === 401) {
-      throw new Error('OpenAI API key không hợp lệ. Vui lòng liên hệ admin.');
-    }
-    if (response.status === 413) {
-      throw new Error('File ghi âm quá lớn (tối đa 25MB). Thử ghi âm ngắn hơn hoặc tải file nhỏ hơn.');
-    }
-    const err = await response.text();
-    throw new Error(`Lỗi chuyển giọng nói (${response.status}). Vui lòng thử lại.`);
-  }
+    if (response.status === 429) throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
+    if (response.status === 401) throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+    if (response.status === 413) throw new Error('File ghi âm quá lớn (tối đa 25MB). Thử ghi âm ngắn hơn.');
 
-  const data = await response.json();
-  logUsage('transcribe', 'whisper-1', 0);
-  return data.text as string;
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: '' }));
+      throw new Error(err.error || `Lỗi chuyển giọng nói (${response.status}).`);
+    }
 
+    const data = await response.json();
+    return data.text as string;
   } catch (err: any) {
-    clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
+    clearTimeout(timeout);
+    if (err?.name === 'AbortError') {
       throw new Error('Ghi âm quá dài, hệ thống hết thời gian xử lý. Thử ghi âm ngắn hơn (dưới 10 phút).');
     }
     throw err;
@@ -205,13 +219,13 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
 // ─── Step 2: Claude Haiku — phân tích transcript ─────────────────────────────
 
 export const analyzeTranscript = async (transcript: string, knowledgeBase?: string, tier?: AITier): Promise<AnalysisResult> => {
-  if (!CLAUDE_API_KEY) {
-    throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
-  }
-
   // Lấy tier từ subscription nếu không truyền vào
   const effectiveTier = tier || await getAITier();
-  const systemPrompt = getAnalysisPrompt(effectiveTier, knowledgeBase ? trimKnowledge(knowledgeBase) : undefined);
+  const pack = await getActivePack().catch(() => null);
+  const packContext = packToContext(pack);
+  const baseKb = knowledgeBase ? trimKnowledge(knowledgeBase) : '';
+  const kbWithPack = baseKb + (packContext ? '\n' + packContext : '');
+  const systemPrompt = getAnalysisPrompt(effectiveTier, kbWithPack || undefined);
   const maxTokens = getMaxTokens(effectiveTier, 'analysis');
 
   const userPrompt = `Phân tích buổi tư vấn sau và trả về JSON:
@@ -242,80 +256,45 @@ JSON (chỉ JSON, không giải thích):
   "strategies": [<2 chiến lược cho buổi gặp tiếp theo, theo phương pháp 3 Điểm Chạm>]
 }`;
 
-  // Thử proxy trước
-  if (USE_PROXY) {
-    try {
-      const data = await callClaudeProxy({
-        action: 'analyze',
-        body: { model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }, { role: 'assistant', content: '{' }] },
-      });
-      logUsage('analyze', 'claude-haiku-4-5-20251001', 0);
-      const rawText = '{' + (data.content[0].text as string);
-      const cleaned = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
-      const start = cleaned.indexOf('{'); const end = cleaned.lastIndexOf('}');
-      if (start !== -1 && end !== -1 && end > start) {
-        const result = JSON.parse(cleaned.slice(start, end + 1)) as AnalysisResult;
-        if (!result.score) result.score = 5;
-        if (!result.summary) result.summary = [];
-        if (!result.strengths) result.strengths = [];
-        if (!result.improvements) result.improvements = [];
-        if (!result.strategies) result.strategies = [];
-        return result;
-      }
-    } catch { /* fallback to direct */ }
-  }
-
-  const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': CLAUDE_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [
-        { role: 'user', content: userPrompt },
-        { role: 'assistant', content: '{' },
-      ],
-    }),
+  const callAnalyze = (tokens: number) => callProxy('analyze', {
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: tokens,
+    system: [
+      { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+    ],
+    messages: [
+      { role: 'user', content: userPrompt },
+      { role: 'assistant', content: '{' },
+    ],
   });
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Claude API key không hợp lệ. Vui lòng liên hệ admin.');
-    }
-    throw new Error('Lỗi phân tích. Vui lòng thử lại.');
+  let data = await callAnalyze(maxTokens);
+  // Retry 1 lần với max_tokens cao hơn nếu bị truncate
+  if (data.stop_reason === 'max_tokens' && maxTokens < 8000) {
+    try { data = await callAnalyze(Math.min(8000, Math.floor(maxTokens * 1.5))); } catch { /* giữ data cũ */ }
   }
 
-  const data = await response.json();
   const rawText = '{' + (data.content[0].text as string);
 
   try {
-    const cleaned = rawText
-      .replace(/```(?:json)?\s*/gi, '')
-      .replace(/```/g, '')
-      .trim();
-
+    const cleaned = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
-
-    // Thử parse JSON hoàn chỉnh
     if (start !== -1 && end !== -1 && end > start) {
-      return JSON.parse(cleaned.slice(start, end + 1)) as AnalysisResult;
+      const result = JSON.parse(cleaned.slice(start, end + 1)) as AnalysisResult;
+      if (!result.score) result.score = 5;
+      if (!result.summary) result.summary = [];
+      if (!result.strengths) result.strengths = [];
+      if (!result.improvements) result.improvements = [];
+      if (!result.strategies) result.strategies = [];
+      return result;
     }
-
-    // JSON bị cắt — cố gắng recovery
     return recoverTruncatedJSON(cleaned);
-  } catch (e) {
-    // Nếu parse fail, thử recovery
+  } catch {
     try {
       return recoverTruncatedJSON(rawText);
     } catch {
-      throw new Error(`Lỗi phân tích. AI trả về không đủ dữ liệu. Vui lòng thử lại.`);
+      throw new Error('Lỗi phân tích. AI trả về không đủ dữ liệu. Vui lòng thử lại.');
     }
   }
 };
@@ -352,7 +331,6 @@ function recoverTruncatedJSON(text: string): AnalysisResult {
   if (!result.improvements) result.improvements = [];
   if (!result.strategies) result.strategies = [];
 
-  logUsage('analyze', 'claude-haiku-4-5-20251001', 0);
   return result;
 }
 
@@ -363,10 +341,36 @@ export interface ChatMessage {
   content: string;
 }
 
-// Giới hạn knowledge base tối đa ~120K chars (~30K tokens) để không vượt context window
+// Giới hạn knowledge base tối đa ~120K chars (~30K tokens) để không vượt context window.
+// Cắt tại boundary (\n\n hoặc câu) trong 10K chars cuối để không xé từ tiếng Việt giữa chừng.
+// Cache theo content signature; cap 8 entries để không leak khi KB thay đổi (admin update).
+const _trimCache = new Map<string, string>();
+const TRIM_CACHE_MAX = 8;
 const trimKnowledge = (kb: string, maxChars = 120000): string => {
   if (kb.length <= maxChars) return kb;
-  return kb.slice(0, maxChars) + '\n\n[... kiến thức đã được rút gọn để phù hợp giới hạn AI ...]';
+  // Signature: length + first 32 chars + last 32 chars — đủ unique, rẻ tính
+  const cacheKey = `${kb.length}:${maxChars}:${kb.slice(0, 32)}:${kb.slice(-32)}`;
+  const cached = _trimCache.get(cacheKey);
+  if (cached) return cached;
+
+  // Chỉ tìm boundary trong 10K chars cuối để tránh scan toàn bộ 120K
+  const tailStart = Math.max(0, maxChars - 10000);
+  const tail = kb.slice(tailStart, maxChars);
+  const offset = Math.max(
+    tail.lastIndexOf('\n\n'),
+    tail.lastIndexOf('. '),
+    tail.lastIndexOf('! '),
+    tail.lastIndexOf('? '),
+  );
+  const cutAt = offset > 0 ? tailStart + offset : maxChars;
+  const result = kb.slice(0, cutAt) + '\n\n[... kiến thức đã được rút gọn để phù hợp giới hạn AI ...]';
+  // LRU-ish: evict oldest khi cap
+  if (_trimCache.size >= TRIM_CACHE_MAX) {
+    const firstKey = _trimCache.keys().next().value;
+    if (firstKey !== undefined) _trimCache.delete(firstKey);
+  }
+  _trimCache.set(cacheKey, result);
+  return result;
 };
 
 const COACH_SYSTEM = (knowledgeBase: string) => `${trimKnowledge(knowledgeBase)}
@@ -410,59 +414,39 @@ TRÌNH BÀY: Dùng markdown nhẹ: **in đậm** cho ý chính, xuống dòng ch
 export const chatWithCoach = async (
   messages: ChatMessage[],
   knowledgeBase: string,
-  tier?: AITier
+  tier?: AITier,
+  opts?: { skipQuota?: boolean },
 ): Promise<string> => {
+  if (!opts?.skipQuota) await checkQuota();
   const effectiveTier = tier || await getAITier();
-  const coachSystemPrompt = getCoachPrompt(effectiveTier, trimKnowledge(knowledgeBase));
+  const pack = await getActivePack().catch(() => null);
+  const packContext = packToContext(pack);
+
+  // RAG: lấy câu hỏi cuối cùng của user để search scenarios
+  // Enable cho cả Pro và BĐS Pro (top-K=2 cho Pro, 3 cho BĐS Pro để tiết kiệm context)
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content || '';
+  const topK = effectiveTier === 'bds_pro' ? 3 : effectiveTier === 'pro' ? 2 : 0;
+  const scenarios = topK > 0
+    ? await searchScenarios(lastUserMsg, topK).catch(e => { console.warn('[RAG] searchScenarios failed:', e?.message); return []; })
+    : [];
+  const scenariosContext = scenariosToContext(scenarios, pack?.data || null);
+
+  // Tách system thành 2 block: STATIC (prompt + KB + pack) được cache, DYNAMIC (scenarios) không cache.
+  const staticSystem = getCoachPrompt(effectiveTier, trimKnowledge(knowledgeBase) + (packContext ? '\n' + packContext : ''));
   const chatMaxTokens = getMaxTokens(effectiveTier, 'chat');
 
-  // Thử proxy trước (bảo mật), fallback sang direct
-  if (USE_PROXY) {
-    try {
-      const data = await callClaudeProxy({
-        action: 'chat',
-        body: {
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: chatMaxTokens,
-          system: coachSystemPrompt,
-          messages: messages.map(m => ({ role: m.role, content: m.content })),
-        },
-      });
-      logUsage('chat', 'claude-haiku-4-5-20251001', 0, data.usage?.input_tokens || 0, data.usage?.output_tokens || 0);
-      return data.content[0].text as string;
-    } catch {
-      // Fallback sang direct nếu proxy lỗi
-    }
-  }
+  const systemBlocks: any[] = [
+    { type: 'text', text: staticSystem, cache_control: { type: 'ephemeral' } },
+  ];
+  if (scenariosContext) systemBlocks.push({ type: 'text', text: scenariosContext });
 
-  if (!CLAUDE_API_KEY) {
-    throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
-  }
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': CLAUDE_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: chatMaxTokens,
-      system: coachSystemPrompt,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
-    }),
+  const data = await callProxy('chat', {
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: chatMaxTokens,
+    system: systemBlocks,
+    messages: messages.map(m => ({ role: m.role, content: m.content })),
   });
 
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '');
-    console.error('Claude API error:', response.status, errText);
-    throw new Error(`Lỗi API (${response.status}). Vui lòng thử lại.`);
-  }
-
-  const data = await response.json();
-  logUsage('chat', 'claude-haiku-4-5-20251001', 0, data.usage?.input_tokens || 0, data.usage?.output_tokens || 0);
   return data.content[0].text as string;
 };
 
@@ -472,42 +456,38 @@ export const streamChatWithCoach = async (
   messages: ChatMessage[],
   knowledgeBase: string,
   onChunk: (textSoFar: string) => void,
+  tier?: AITier,
 ): Promise<string> => {
-  if (!CLAUDE_API_KEY) {
-    throw new Error('Chưa cấu hình Claude API key. Vui lòng liên hệ admin.');
-  }
+  await checkQuota();
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': CLAUDE_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      stream: true,
-      system: COACH_SYSTEM(knowledgeBase),
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
-    }),
+  const effectiveTier = tier || await getAITier();
+  const pack = await getActivePack().catch(() => null);
+  const packContext = packToContext(pack);
+
+  // RAG cho Pro & BĐS Pro
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content || '';
+  const topK = effectiveTier === 'bds_pro' ? 3 : effectiveTier === 'pro' ? 2 : 0;
+  const scenarios = topK > 0
+    ? await searchScenarios(lastUserMsg, topK).catch(e => { console.warn('[RAG] searchScenarios failed:', e?.message); return []; })
+    : [];
+  const scenariosContext = scenariosToContext(scenarios, pack?.data || null);
+
+  const staticSystem = getCoachPrompt(effectiveTier, trimKnowledge(knowledgeBase) + (packContext ? '\n' + packContext : ''));
+  const systemBlocks: any[] = [
+    { type: 'text', text: staticSystem, cache_control: { type: 'ephemeral' } },
+  ];
+  if (scenariosContext) systemBlocks.push({ type: 'text', text: scenariosContext });
+
+  const response = await callProxyStream('stream_chat', {
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: getMaxTokens(effectiveTier, 'chat'),
+    system: systemBlocks,
+    messages: messages.map(m => ({ role: m.role, content: m.content })),
   });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Claude API key không hợp lệ. Vui lòng liên hệ admin.');
-    }
-    if (response.status === 429) {
-      throw new Error('Hệ thống đang quá tải. Vui lòng thử lại sau vài phút.');
-    }
-    throw new Error('Lỗi phân tích. Vui lòng thử lại.');
-  }
 
   // Thử streaming qua ReadableStream
   const reader = response.body?.getReader();
   if (!reader) {
-    // Fallback: đọc toàn bộ response nếu không hỗ trợ stream
     const text = await response.text();
     let fullText = '';
     const lines = text.split('\n');
@@ -520,7 +500,7 @@ export const streamChatWithCoach = async (
         if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
           fullText += parsed.delta.text;
         }
-      } catch {}
+      } catch { /* skip malformed SSE */ }
     }
     onChunk(fullText);
     return fullText;
@@ -548,11 +528,10 @@ export const streamChatWithCoach = async (
           fullText += parsed.delta.text;
           onChunk(fullText);
         }
-      } catch {}
+      } catch { /* skip malformed SSE */ }
     }
   }
 
-  logUsage('chat', 'claude-haiku-4-5-20251001', 0);
   return fullText;
 };
 
@@ -570,30 +549,17 @@ const getMockChatResponse = (userMessage: string): string => {
 // ─── Step 1.5: Sửa lỗi chính tả transcript tiếng Việt ──────────────────────
 
 export const correctTranscript = async (rawTranscript: string): Promise<string> => {
-  if (!CLAUDE_API_KEY || rawTranscript.length < 20) return rawTranscript;
+  if (rawTranscript.length < 20) return rawTranscript;
 
   try {
-    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
-        system: `Bạn là công cụ sửa lỗi chính tả tiếng Việt cho transcript từ Whisper.
+    const data = await callProxy('correct', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      system: `Bạn là công cụ sửa lỗi chính tả tiếng Việt cho transcript từ Whisper.
 CHỈ sửa lỗi chính tả, dấu thanh, từ nghe nhầm. KHÔNG thay đổi nội dung, ý nghĩa, hoặc cách nói.
 Giữ nguyên xưng hô, giọng văn, câu cú. Trả về transcript đã sửa, không giải thích.`,
-        messages: [{ role: 'user', content: rawTranscript }],
-      }),
+      messages: [{ role: 'user', content: rawTranscript }],
     });
-
-    if (!response.ok) return rawTranscript;
-
-    const data = await response.json();
     return data.content[0].text as string;
   } catch {
     return rawTranscript;
@@ -642,25 +608,15 @@ const EMPTY_EXTRACTED: ExtractedCustomerInfo = {
 };
 
 export const extractCustomerInfo = async (transcript: string): Promise<ExtractedCustomerInfo> => {
-  if (!CLAUDE_API_KEY) return EMPTY_EXTRACTED;
-
   try {
-    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
-        system: `Trích xuất chân dung khách hàng (ICP) từ transcript cuộc gọi sales.
+    const data = await callProxy('extract', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      system: `Trích xuất chân dung khách hàng (ICP) từ transcript cuộc gọi sales.
 Điền tất cả thông tin có thể suy ra được. Nếu không có dữ liệu thì để "".
 100% tiếng Việt, ngắn gọn 1-2 câu mỗi field. CHỈ trả về JSON.`,
-        messages: [
-          { role: 'user', content: `Transcript:\n${transcript}\n\nJSON:
+      messages: [
+        { role: 'user', content: `Transcript:\n${transcript}\n\nJSON:
 {
   "needs":"<nhu cầu chính>",
   "budget":"<ngân sách đề cập>",
@@ -688,23 +644,17 @@ export const extractCustomerInfo = async (transcript: string): Promise<Extracted
   },
   "decisionMaker":{"name":"<tên người QĐ nếu đề cập>","role":"<vai trò>","attitude":"<ủng hộ/trung lập/phản đối>"}
 }` },
-          { role: 'assistant', content: '{' },
-        ],
-      }),
+        { role: 'assistant', content: '{' },
+      ],
     });
 
-    if (!response.ok) return EMPTY_EXTRACTED;
-
-    const data = await response.json();
     const rawText = '{' + (data.content[0].text as string);
     const cleaned = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end !== -1 && end > start) {
-      logUsage('extract_customer', 'claude-haiku-4-5-20251001', 0);
       return JSON.parse(cleaned.slice(start, end + 1)) as ExtractedCustomerInfo;
     }
-    logUsage('extract_customer', 'claude-haiku-4-5-20251001', 0);
     return recoverTruncatedJSON(cleaned) as any;
   } catch {
     return EMPTY_EXTRACTED;
@@ -722,28 +672,18 @@ export interface AIScoreResult {
 }
 
 export const scoreCustomerWithAI = async (profileSummary: string, knowledgeBase?: string): Promise<AIScoreResult | null> => {
-  if (!CLAUDE_API_KEY) return null;
-
   try {
     const knowledgePrefix = knowledgeBase ? trimKnowledge(knowledgeBase) + '\n\n---\n' : '';
-    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
-        system: `${knowledgePrefix}Bạn là chuyên gia đánh giá khách hàng tiềm năng theo phương pháp "Bán bằng Vị thế" — THE TRUSTED ADVISOR.
+    const data = await callProxy('score', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      system: `${knowledgePrefix}Bạn là chuyên gia đánh giá khách hàng tiềm năng theo phương pháp "Bán bằng Vị thế" — THE TRUSTED ADVISOR.
 Chấm điểm 4 tiêu chí (0-20 mỗi tiêu chí) dựa trên thông tin hồ sơ khách hàng và kiến thức TTA.
 Mỗi tiêu chí có 4 mức: 0-5 (Chưa rõ), 6-10 (Thấp), 11-15 (Trung bình), 16-20 (Cao).
 Đưa ra đề xuất hành động cụ thể theo phương pháp 3 Điểm Chạm (2-3 câu, tiếng Việt tự nhiên).
 CHỈ trả về JSON.`,
-        messages: [
-          { role: 'user', content: `Hồ sơ khách hàng:\n${profileSummary}\n\nJSON:
+      messages: [
+        { role: 'user', content: `Hồ sơ khách hàng:\n${profileSummary}\n\nJSON:
 {
   "productFit":{"score":<0-20>,"level":"<Rất phù hợp/Phù hợp/Chưa rõ/Không phù hợp>","detail":"<1 câu giải thích>"},
   "financialFit":{"score":<0-20>,"level":"<Đủ ngân sách/Có thể/Hạn chế/Chưa rõ>","detail":"<1 câu>"},
@@ -751,20 +691,15 @@ CHỈ trả về JSON.`,
   "timeline":{"score":<0-20>,"level":"<Gấp/1-3 tháng/3-6 tháng/Chưa rõ>","detail":"<1 câu>"},
   "recommendation":"<2-3 câu: phân tích tổng quan + đề xuất hành động cụ thể tiếp theo>"
 }` },
-          { role: 'assistant', content: '{' },
-        ],
-      }),
+        { role: 'assistant', content: '{' },
+      ],
     });
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
     const rawText = '{' + (data.content[0].text as string);
     const cleaned = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end !== -1) {
-      logUsage('score_customer', 'claude-haiku-4-5-20251001', 0);
       return JSON.parse(cleaned.slice(start, end + 1)) as AIScoreResult;
     }
     return null;
@@ -779,21 +714,11 @@ export const generateDetailedRecommendation = async (
   customerSummary: string,
   knowledgeBase: string,
 ): Promise<string> => {
-  if (!CLAUDE_API_KEY) return '';
-
   try {
-    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        system: `${trimKnowledge(knowledgeBase)}
+    const data = await callProxy('recommend', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      system: `${trimKnowledge(knowledgeBase)}
 
 ---
 Bạn là Trợ lý AI của Coach Duy Nguyễn — người sáng lập phương pháp "Bán bằng vị thế" / THE TRUSTED ADVISOR.
@@ -866,14 +791,10 @@ Dựa trên lịch sử tương tác, chỉ ra sai lầm cần tránh.
 Cụ thể, có thời gian, có thể làm ngay.
 
 QUAN TRỌNG: Sử dụng thông tin THỰC TẾ về khách hàng và sản phẩm được cung cấp. Không generic.`,
-        messages: [
-          { role: 'user', content: customerSummary },
-        ],
-      }),
+      messages: [
+        { role: 'user', content: customerSummary },
+      ],
     });
-
-    if (!response.ok) return '';
-    const data = await response.json();
     return data.content[0].text as string;
   } catch {
     return '';

@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Profile, Team } from '../types/database';
+import { applyReferralCode } from './referralService';
 
 export async function verifyInviteCode(code: string): Promise<boolean> {
   const { data } = await supabase
@@ -10,7 +11,13 @@ export async function verifyInviteCode(code: string): Promise<boolean> {
   return !!data;
 }
 
-export async function signUp(email: string, password: string, fullName: string, inviteCode?: string) {
+export async function signUp(
+  email: string,
+  password: string,
+  fullName: string,
+  inviteCode?: string,
+  referralCode?: string,
+) {
   // Invite-only: phải có mã mời hợp lệ
   if (!inviteCode?.trim()) {
     throw new Error('Cần có mã mời để đăng ký. Liên hệ quản lý team để nhận mã.');
@@ -26,6 +33,12 @@ export async function signUp(email: string, password: string, fullName: string, 
     options: { data: { full_name: fullName, invite_code: inviteCode.trim().toLowerCase() } },
   });
   if (error) throw error;
+
+  // Gán mã giới thiệu nếu có — không chặn signup nếu lỗi
+  if (data.user && referralCode?.trim()) {
+    await applyReferralCode(data.user.id, referralCode).catch(() => {});
+  }
+
   return data;
 }
 
@@ -36,6 +49,18 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signOut() {
+  // Xoá push token với timeout 3s — nếu offline, không chặn signOut local
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { clearPushToken } = await import('./notificationService');
+      await Promise.race([
+        clearPushToken(user.id),
+        new Promise(resolve => setTimeout(resolve, 3000)),
+      ]);
+    }
+  } catch { /* không chặn signOut */ }
+
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
@@ -79,6 +104,10 @@ export async function createTeam(name: string): Promise<Team> {
   return team as Team;
 }
 
+const TIER_MEMBER_LIMITS: Record<string, number> = {
+  free: 1, pro: 1, bds_pro: 1, team_s: 5, team_m: 10, team_l: 20,
+};
+
 export async function joinTeamByCode(code: string): Promise<Team> {
   const { data: team, error } = await supabase
     .from('teams')
@@ -88,7 +117,28 @@ export async function joinTeamByCode(code: string): Promise<Team> {
   if (error || !team) throw new Error('Mã mời không hợp lệ');
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  if (!user) throw new Error('Chưa đăng nhập');
+
+  // Kiểm tra member limit dựa trên subscription của owner
+  const { data: ownerSub } = await supabase
+    .from('subscriptions')
+    .select('tier, expires_at')
+    .eq('user_id', team.owner_id)
+    .maybeSingle();
+
+  const ownerTier = ownerSub && (!ownerSub.expires_at || new Date(ownerSub.expires_at) > new Date())
+    ? ownerSub.tier : 'free';
+  const limit = TIER_MEMBER_LIMITS[ownerTier] || 1;
+
+  // Đếm số thành viên hiện tại
+  const { count } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('team_id', team.id);
+
+  if ((count || 0) >= limit) {
+    throw new Error(`Team đã đầy (${count}/${limit} người). Yêu cầu quản lý nâng cấp gói lớn hơn.`);
+  }
 
   const { error: profileError } = await supabase
     .from('profiles')

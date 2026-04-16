@@ -13,13 +13,13 @@ import { BusinessProvider } from './src/contexts/BusinessContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { AlertProvider } from './src/contexts/AlertContext';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
-import { loadApiKeys, setSyncContext } from './src/services/storageService';
-import { setApiKeys, setAISyncContext } from './src/services/aiService';
-import { DEFAULT_CLAUDE_KEY, DEFAULT_OPENAI_KEY } from './src/config/defaultKeys';
+import { setSyncContext } from './src/services/storageService';
+import { setAISyncContext } from './src/services/aiService';
 import { migrateLocalToCloud } from './src/services/syncService';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import OfflineBanner from './src/components/OfflineBanner';
 import FloatingBugReport from './src/components/FloatingBugReport';
+import { initErrorTracking } from './src/services/errorTrackingService';
 import FirstExperienceScreen, { shouldShowFirstExperience } from './src/screens/FirstExperienceScreen';
 
 const ONBOARDING_KEY = '@salescoach_onboarding_done';
@@ -30,11 +30,8 @@ function AppContent() {
   const [showFirstExp, setShowFirstExp] = useState(false);
 
   useEffect(() => {
-    loadApiKeys().then(({ claudeKey, openaiKey }) => {
-      const finalClaude = claudeKey || DEFAULT_CLAUDE_KEY;
-      const finalOpenai = openaiKey || DEFAULT_OPENAI_KEY;
-      setApiKeys(finalOpenai, finalClaude);
-    });
+    // API keys now live server-side only (Edge Function)
+    initErrorTracking();
     AsyncStorage.getItem(ONBOARDING_KEY).then(val => {
       setShowOnboarding(val !== 'true');
     });
@@ -62,6 +59,10 @@ function AppContent() {
   const handleOnboardingComplete = () => {
     AsyncStorage.setItem(ONBOARDING_KEY, 'true');
     setShowOnboarding(false);
+    // Hỏi quyền notification sau khi onboarding xong
+    import('./src/services/notificationService')
+      .then(({ enableDailyReminders }) => enableDailyReminders())
+      .catch(() => {});
   };
 
   if (showOnboarding === null || isLoading) {

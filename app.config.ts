@@ -7,7 +7,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
-  userInterfaceStyle: 'light',
+  userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   scheme: 'salescoach',
   splash: {
@@ -18,10 +18,58 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.coachduynguyen.salescoach',
+    buildNumber: '1',
     infoPlist: {
       NSMicrophoneUsageDescription: 'Sales Coach cần quyền ghi âm để ghi lại buổi tư vấn bán hàng và phân tích bằng AI.',
       NSCameraUsageDescription: 'Sales Coach cần quyền camera để chụp ảnh đại diện và ảnh khách hàng.',
       NSPhotoLibraryUsageDescription: 'Sales Coach cần quyền thư viện ảnh để chọn ảnh đại diện và ảnh khách hàng.',
+      ITSAppUsesNonExemptEncryption: false,
+    },
+    privacyManifests: {
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+          NSPrivacyAccessedAPITypeReasons: ['C617.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+          NSPrivacyAccessedAPITypeReasons: ['35F9.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+          NSPrivacyAccessedAPITypeReasons: ['E174.1'],
+        },
+      ],
+      NSPrivacyCollectedDataTypes: [
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeEmailAddress',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeName',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeAudioData',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCustomerSupport',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+      ],
     },
   },
   android: {

@@ -35,6 +35,56 @@ export async function getTeamMembers(teamId: string) {
 }
 
 export async function removeTeamMember(userId: string) {
+  // Kiểm tra nếu user này là owner — transfer ownership trước
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('team_id, role')
+    .eq('id', userId)
+    .single();
+
+  if (profile?.team_id) {
+    const { data: team } = await supabase
+      .from('teams')
+      .select('owner_id')
+      .eq('id', profile.team_id)
+      .single();
+
+    if (team?.owner_id === userId) {
+      // Tìm admin/manager khác trong team
+      const { data: nextOwner } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('team_id', profile.team_id)
+        .neq('id', userId)
+        .in('role', ['admin', 'manager'])
+        .limit(1)
+        .maybeSingle();
+
+      if (nextOwner) {
+        // Transfer ownership + promote to admin
+        await supabase.from('teams').update({ owner_id: nextOwner.id }).eq('id', profile.team_id);
+        await supabase.from('profiles').update({ role: 'admin' }).eq('id', nextOwner.id);
+      } else {
+        // Không còn ai → tìm thành viên bất kỳ
+        const { data: anyMember } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('team_id', profile.team_id)
+          .neq('id', userId)
+          .limit(1)
+          .maybeSingle();
+
+        if (anyMember) {
+          await supabase.from('teams').update({ owner_id: anyMember.id }).eq('id', profile.team_id);
+          await supabase.from('profiles').update({ role: 'admin' }).eq('id', anyMember.id);
+        } else {
+          // Team trống → xóa team
+          await supabase.from('teams').delete().eq('id', profile.team_id);
+        }
+      }
+    }
+  }
+
   await supabase.from('profiles').update({ team_id: null, role: 'member' }).eq('id', userId);
 }
 
@@ -136,23 +186,71 @@ export async function syncLessonProgressUp(lessonIds: string[], userId: string) 
   }
 }
 
-// ── AI Quota Check ───────────────────────────────────────────
-const DEFAULT_MONTHLY_QUOTA = 500; // lượt gọi AI / người / tháng
+// ── AI Quota Check (dựa trên subscription tier) ──────────────
+const TIER_AI_LIMITS: Record<string, number> = {
+  free: 10,
+  pro: 999,
+  bds_pro: 999,
+  team_s: 999,
+  team_m: 999,
+  team_l: 999,
+};
 
-export async function checkAIQuota(userId: string, teamId: string): Promise<{ allowed: boolean; used: number; limit: number }> {
+const TIER_RECORDING_LIMITS: Record<string, number> = {
+  free: 3,
+  pro: 999,
+  bds_pro: 999,
+  team_s: 999,
+  team_m: 999,
+  team_l: 999,
+};
+
+async function getUserTier(userId: string): Promise<string> {
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('tier, expires_at')
+    .eq('user_id', userId)
+    .single();
+
+  if (!data) return 'free';
+  if (data.expires_at && new Date(data.expires_at) < new Date()) return 'free';
+  return data.tier || 'free';
+}
+
+export async function checkAIQuota(userId: string, _teamId: string): Promise<{ allowed: boolean; used: number; limit: number }> {
+  const tier = await getUserTier(userId);
+  const limit = TIER_AI_LIMITS[tier] || 10;
+
   const since = new Date();
-  since.setDate(1); // đầu tháng
+  since.setDate(1);
   since.setHours(0, 0, 0, 0);
 
   const { count } = await supabase
     .from('ai_usage_logs')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .eq('team_id', teamId)
     .gte('created_at', since.toISOString());
 
   const used = count || 0;
-  return { allowed: used < DEFAULT_MONTHLY_QUOTA, used, limit: DEFAULT_MONTHLY_QUOTA };
+  return { allowed: used < limit, used, limit };
+}
+
+export async function checkRecordingQuota(userId: string): Promise<{ allowed: boolean; used: number; limit: number }> {
+  const tier = await getUserTier(userId);
+  const limit = TIER_RECORDING_LIMITS[tier] || 3;
+
+  const since = new Date();
+  since.setDate(1);
+  since.setHours(0, 0, 0, 0);
+
+  const { count } = await supabase
+    .from('sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', since.toISOString());
+
+  const used = count || 0;
+  return { allowed: used < limit, used, limit };
 }
 
 // ── AI Usage Summary (admin) ─────────────────────────────────

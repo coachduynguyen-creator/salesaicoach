@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabaseClient';
+import { trackError } from './errorTrackingService';
 import {
   loadSessions, loadCustomers, loadConversations, loadLessonProgress,
   loadBusinessProfile, loadCustomerStatuses, Session, CustomerProfile, Conversation,
@@ -143,19 +144,36 @@ export async function pushSession(session: Session, userId: string, teamId: stri
       outcome: session.outcome || null,
       analysis: session.analysis || {},
     });
-  } catch {}
+  } catch (e) {
+    trackError(e, { action: 'pushSession', sessionId: session.id });
+  }
 }
 
 /** Sync customer mới/cập nhật lên cloud */
 export async function pushCustomer(customer: CustomerProfile, userId: string, teamId: string) {
   try {
-    // Tìm trên cloud bằng tên (vì local ID khác cloud ID)
-    const { data: existing } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('team_id', teamId)
-      .eq('name', customer.name)
-      .limit(1);
+    // Tìm trên cloud bằng cloudId nếu có, fallback bằng tên+phone để tránh conflict tên trùng
+    let existing: any[] | null = null;
+    if ((customer as any).cloudId) {
+      const { data } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('id', (customer as any).cloudId)
+        .limit(1);
+      existing = data;
+    }
+    if (!existing || existing.length === 0) {
+      // Fallback: match by name + phone (chính xác hơn name-only)
+      const phoneFilter = customer.phone ? { phone: customer.phone } : {};
+      const query = supabase
+        .from('customers')
+        .select('id')
+        .eq('team_id', teamId)
+        .eq('name', customer.name);
+      if (customer.phone) query.eq('phone', customer.phone);
+      const { data } = await query.limit(1);
+      existing = data;
+    }
 
     const row = {
       team_id: teamId,
@@ -187,7 +205,9 @@ export async function pushCustomer(customer: CustomerProfile, userId: string, te
     } else {
       await supabase.from('customers').insert(row);
     }
-  } catch {}
+  } catch (e) {
+    trackError(e, { action: 'pushCustomer', customerName: customer.name });
+  }
 }
 
 /** Sync conversation lên cloud */
@@ -202,7 +222,9 @@ export async function pushConversation(conv: Conversation, userId: string, teamI
       messages: conv.messages || [],
       customer_id: (conv as any).customerId || null,
     });
-  } catch {}
+  } catch (e) {
+    trackError(e, { action: 'pushConversation', convId: conv.id });
+  }
 }
 
 /** Sync lesson progress lên cloud */
@@ -212,7 +234,9 @@ export async function pushLessonProgress(lessonId: string, userId: string) {
       { user_id: userId, lesson_id: lessonId },
       { onConflict: 'user_id,lesson_id' }
     );
-  } catch {}
+  } catch (e) {
+    trackError(e, { action: 'pushLessonProgress', lessonId });
+  }
 }
 
 /** Sync session outcome update */

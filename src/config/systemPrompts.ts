@@ -140,9 +140,9 @@ export function getCoachPrompt(tier: AITier, knowledgeBase: string): string {
 export function getMaxTokens(tier: AITier, type: 'analysis' | 'chat'): number {
   if (type === 'analysis') {
     switch (tier) {
-      case 'bds_pro': return 4096;
-      case 'pro': return 2048;
-      default: return 1024; // JSON cần tối thiểu ~800 tokens
+      case 'bds_pro': return 5000; // 5-7 kịch bản mẫu + trustOpportunities
+      case 'pro': return 3000;     // full JSON với 2 kịch bản mẫu
+      default: return 1536;        // Free: JSON tối thiểu
     }
   }
   // chat
