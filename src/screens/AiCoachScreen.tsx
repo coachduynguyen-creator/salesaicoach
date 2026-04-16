@@ -378,7 +378,7 @@ export default function AiCoachScreen() {
         content: `Không thể kết nối AI. Lỗi: ${errorDetail}\n\nVui lòng kiểm tra kết nối mạng rồi thử lại.`,
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errMsg]);
+      setMessages(prev => prev.map(m => m.id === aiMsgId ? errMsg : m));
     } finally {
       if (!isMountedRef.current) return;
       setIsTyping(false);
@@ -481,7 +481,7 @@ export default function AiCoachScreen() {
           contentContainerStyle={styles.messageList}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          ListFooterComponent={isTyping ? <TypingIndicator /> : null}
+          ListFooterComponent={isTyping && !isStreaming ? <TypingIndicator /> : null}
         />
 
         {/* Quick Suggestions */}
