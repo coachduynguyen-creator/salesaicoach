@@ -108,6 +108,7 @@ serve(async (req) => {
       openaiForm.append('file', file);
       openaiForm.append('model', 'whisper-1');
       openaiForm.append('language', 'vi');
+      openaiForm.append('prompt', 'Đây là buổi tư vấn bán hàng bất động sản tại Việt Nam. Nhân viên sales đang nói chuyện với khách hàng.');
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
@@ -144,6 +145,7 @@ serve(async (req) => {
       formData.append('file', blob, fileName || 'recording.m4a');
       formData.append('model', 'whisper-1');
       formData.append('language', 'vi');
+      formData.append('prompt', 'Đây là buổi tư vấn bán hàng bất động sản tại Việt Nam. Nhân viên sales đang nói chuyện với khách hàng.');
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',

@@ -208,7 +208,23 @@ export const transcribeAudio = async (audioUri: string): Promise<string> => {
     }
 
     const data = await response.json();
-    return data.text as string;
+    const text = (data.text as string || '').trim();
+
+    // Lọc Whisper hallucination — khi audio ngắn/im lặng, Whisper bịa câu quen thuộc
+    const HALLUCINATION_PATTERNS = [
+      /cảm ơn.*theo dõi/i,
+      /hẹn gặp.*video/i,
+      /subscribe.*channel/i,
+      /like.*share/i,
+      /đăng ký.*kênh/i,
+      /^\.+$/,  // chỉ có dấu chấm
+      /^,+$/,   // chỉ có dấu phẩy
+    ];
+    if (!text || HALLUCINATION_PATTERNS.some(p => p.test(text))) {
+      return '';
+    }
+
+    return text;
   } catch (err: any) {
     clearTimeout(timeout);
     if (err?.name === 'AbortError') {
