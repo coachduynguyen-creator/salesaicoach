@@ -371,8 +371,6 @@ export default function AiCoachScreen() {
       await saveMessages(finalMessages);
     } catch (err: any) {
       if (!isMountedRef.current) return;
-      // Lỗi auth → signOut đã được gọi trong aiService, AuthContext sẽ redirect về login
-      if (err?.isAuthError) return;
       const errorDetail = err?.message || 'Không rõ lỗi';
       const errMsg: Message = {
         id: aiMsgId,

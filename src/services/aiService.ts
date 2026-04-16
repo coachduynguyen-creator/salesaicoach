@@ -43,21 +43,13 @@ const getAuthToken = async (forceRefresh = false): Promise<string> => {
   if (needsRefresh) {
     const { data, error } = await supabase.auth.refreshSession();
     if (error || !data.session) {
-      // Session hết hạn hoàn toàn → sign out để AuthContext redirect về login
-      await supabase.auth.signOut().catch(() => {});
-      const authError = new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-      (authError as any).isAuthError = true;
-      throw authError;
+      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
     }
     session = data.session;
   }
 
   const token = session?.access_token;
-  if (!token) {
-    const authError = new Error('Vui lòng đăng nhập để sử dụng tính năng AI.');
-    (authError as any).isAuthError = true;
-    throw authError;
-  }
+  if (!token) throw new Error('Vui lòng đăng nhập để sử dụng tính năng AI.');
   return token;
 };
 
@@ -90,10 +82,7 @@ const callProxy = async (action: string, payload: any, _retried = false): Promis
         await getAuthToken(true).catch(() => null);
         return callProxy(action, payload, true);
       }
-      await supabase.auth.signOut().catch(() => {});
-      const authError = new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-      (authError as any).isAuthError = true;
-      throw authError;
+      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
     }
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: '' }));
@@ -130,10 +119,7 @@ const callProxyStream = async (action: string, payload: any, _retried = false): 
         await getAuthToken(true).catch(() => null);
         return callProxyStream(action, payload, true);
       }
-      await supabase.auth.signOut().catch(() => {});
-      const authError = new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-      (authError as any).isAuthError = true;
-      throw authError;
+      throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
     }
     throw new Error('Lỗi hệ thống. Vui lòng thử lại.');
   }
