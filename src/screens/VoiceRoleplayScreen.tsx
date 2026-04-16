@@ -57,41 +57,46 @@ const PRESET_SCENARIOS = [
 
 const getPrompt = (scenario: string, userRole: RoleplayRole) => {
   if (userRole === 'sales') {
-    return `Bạn đang đóng vai KHÁCH HÀNG. Đây là buổi luyện đối đáp bán hàng.
+    return `Bạn đóng vai KHÁCH HÀNG VIỆT NAM trong buổi luyện đối đáp bán hàng.
 
 TÌNH HUỐNG: ${scenario}
 
-QUY TẮC TUYỆT ĐỐI:
-- CHỈ viết LỜI THOẠI của khách hàng. KHÔNG viết gì khác.
-- KHÔNG viết heading (#), KHÔNG viết tiêu đề, KHÔNG viết ghi chú.
-- KHÔNG mô tả cử chỉ, hành động, suy nghĩ (ví dụ KHÔNG viết *nhìn lạnh lùng*, *gật đầu*).
-- KHÔNG viết hướng dẫn, phân tích, nhận xét, gợi ý cho sales.
-- KHÔNG dùng markdown (**, *, ---, #). Chỉ text thuần.
-- Xưng "tôi". Gọi sales là "em" hoặc "bạn".
-- Trả lời 1-2 câu ngắn gọn, tự nhiên như người thật nói.
-- Phản ứng thật: có thể từ chối, hỏi ngược, tỏ ra nghi ngờ.
-- Nếu sales hỏi đúng theo 3 Điểm Chạm → mở lòng dần.
-- Nếu sales ép mua, liệt kê tính năng → phòng thủ hơn.
+CÁCH NÓI — BẮT BUỘC:
+- CHỈ viết lời nói của khách. KHÔNG viết gì khác. KHÔNG heading, ghi chú, markdown.
+- Nói đúng giọng người Việt thật — ngắn, tự nhiên, đời thường.
+- Xưng "tôi" hoặc "anh" (nếu là nam) / "chị" (nếu là nữ). Gọi sales là "em".
+- Tối đa 1-2 câu. Người thật không nói nhiều khi mới gặp sales.
+- KHÔNG nói lịch sự quá mức. Khách Việt thật thường thẳng, hơi cộc, bận rộn.
 
-VÍ DỤ ĐÚNG: "Ừ, tôi có nghe qua rồi. Nhưng tôi chưa hiểu nó khác gì Vũ Yên?"
-VÍ DỤ SAI: "# Cuộc hội thoại bắt đầu\\n*Khách nhìn sales*\\nTôi có nghe..."`;
+CÁCH PHẢN ỨNG:
+- Lần đầu: hơi lạnh, dè chừng, hỏi ngắn ("Dự án nào?", "Sao em biết số tôi?")
+- Nếu sales hỏi hay → bắt đầu mở lòng, kể thêm
+- Nếu sales nói dài, liệt kê → ngắt lời hoặc nói "thôi để tôi suy nghĩ"
+
+VÍ DỤ GIỌNG ĐÚNG:
+- "Ừ, tôi có nghe qua. Nhưng giờ tôi chưa quan tâm lắm."
+- "Sao em biết tôi mua Vũ Yên?"
+- "Nói ngắn gọn thôi, tôi đang bận."
+- "Giá bao nhiêu? Nói thẳng đi."
+
+VÍ DỤ SAI (KHÔNG ĐƯỢC NÓI KIỂU NÀY):
+- "Hiểu rồi. Vâng, tôi đang ở Vũ Yên. Em là chuyên viên của VinHomes à? Có gì em có thể giúp tôi không?" ← quá lịch sự, quá dài, không tự nhiên`;
   }
-  return `Bạn đang đóng vai NHÂN VIÊN TƯ VẤN BÁN HÀNG mẫu theo phương pháp THE TRUSTED ADVISOR.
+  return `Bạn đóng vai NHÂN VIÊN TƯ VẤN BÁN HÀNG mẫu, theo phương pháp THE TRUSTED ADVISOR.
 
 TÌNH HUỐNG: ${scenario}
 
-QUY TẮC TUYỆT ĐỐI:
-- CHỈ viết LỜI THOẠI của sales. KHÔNG viết gì khác.
-- KHÔNG viết heading (#), tiêu đề, ghi chú, phân tích, hướng dẫn.
-- KHÔNG mô tả cử chỉ, hành động (KHÔNG viết *mỉm cười*, *gật đầu*).
-- KHÔNG dùng markdown. Chỉ text thuần.
+CÁCH NÓI — BẮT BUỘC:
+- CHỈ viết lời nói của sales. KHÔNG viết gì khác. KHÔNG heading, ghi chú, markdown.
+- Nói đúng giọng sales Việt Nam chuyên nghiệp — lịch sự, ngắn gọn, tự tin.
 - Xưng "em". Gọi khách là "anh" hoặc "chị".
-- Trả lời 1-2 câu ngắn gọn, tự nhiên. Đặt câu hỏi mở, lắng nghe.
+- Tối đa 2 câu. Ưu tiên đặt câu hỏi mở, lắng nghe.
 - KHÔNG ép mua, KHÔNG liệt kê tính năng. Khám phá nỗi sợ và động lực.
-- Thể hiện phong cách tư vấn ĐÚNG theo 3 Điểm Chạm.
 
-VÍ DỤ ĐÚNG: "Dạ em chào anh. Em được biết anh đang tìm hiểu về Hạ Long Xanh, anh có thể chia sẻ thêm về mong muốn của anh không ạ?"
-VÍ DỤ SAI: "## Lời mở đầu\\n*Sales mỉm cười*\\nEm chào anh..."`;
+VÍ DỤ GIỌNG ĐÚNG:
+- "Dạ anh, em Duy bên dự án. Anh đang tìm hiểu đầu tư hay để ở ạ?"
+- "Em hiểu ạ. Anh thấy điều gì quan trọng nhất khi chọn dự án?"
+- "Dạ anh cứ suy nghĩ ạ. Nhưng cho em hỏi, anh đang lo ngại điều gì nhất?"`;
 };
 
 const getFeedbackPrompt = (scenario: string, userRole: RoleplayRole) => {
@@ -739,6 +744,10 @@ export default function VoiceRoleplayScreen() {
               <View style={[styles.feedbackCard, { backgroundColor: C.CARD }]}>
                 <Markdown style={mdStyles}>{feedbackResult}</Markdown>
               </View>
+              <View style={[styles.savedBadge, { backgroundColor: '#059669' + '15' }]}>
+                <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                <Text style={{ color: '#059669', fontSize: 13, fontWeight: '600' }}>Đã lưu vào lịch sử luyện tập</Text>
+              </View>
               <View style={styles.feedbackActions}>
                 <TouchableOpacity style={[styles.feedbackBtn, { backgroundColor: '#7C3AED' }]} onPress={resetAll}>
                   <Ionicons name="refresh" size={18} color="#fff" />
@@ -750,6 +759,13 @@ export default function VoiceRoleplayScreen() {
                 >
                   <Ionicons name="share-outline" size={18} color={C.TEXT} />
                   <Text style={[styles.feedbackBtnText, { color: C.TEXT }]}>Chia sẻ</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.feedbackBtn, { backgroundColor: C.CARD, borderWidth: 1, borderColor: C.BORDER }]}
+                  onPress={() => { setPhase('history'); setViewingSession(null); }}
+                >
+                  <Ionicons name="time-outline" size={18} color={C.TEXT} />
+                  <Text style={[styles.feedbackBtnText, { color: C.TEXT }]}>Xem lịch sử luyện tập</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -828,6 +844,7 @@ const styles = StyleSheet.create({
   feedbackLoading: { alignItems: 'center', paddingTop: 60, gap: 16 },
   feedbackLoadingText: { fontSize: 15, fontStyle: 'italic' },
   feedbackCard: { borderRadius: 16, padding: 20, marginBottom: 16 },
+  savedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, marginBottom: 14 },
   feedbackActions: { gap: 10 },
   feedbackBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 14 },
   feedbackBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
