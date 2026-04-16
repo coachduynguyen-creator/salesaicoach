@@ -13,7 +13,80 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
-/** Lazy load expo-speech — trả null nếu native module chưa có (APK cũ) */
+// ─── Voice config ──────────────────────────────────────────────────────────
+
+export interface VoiceOption {
+  id: string;
+  label: string;
+  gender: 'male' | 'female';
+  region: 'bac' | 'nam';
+}
+
+export const VOICE_OPTIONS: VoiceOption[] = [
+  { id: 'vi-female-bac', label: 'Nữ - Giọng Bắc', gender: 'female', region: 'bac' },
+  { id: 'vi-female-nam', label: 'Nữ - Giọng Nam', gender: 'female', region: 'nam' },
+  { id: 'vi-male-bac', label: 'Nam - Giọng Bắc', gender: 'male', region: 'bac' },
+  { id: 'vi-male-nam', label: 'Nam - Giọng Nam', gender: 'male', region: 'nam' },
+];
+
+let selectedVoiceOption: VoiceOption = VOICE_OPTIONS[0];
+let resolvedVoiceId: string | undefined;
+let voiceResolved = false;
+
+export function setVoice(option: VoiceOption) {
+  selectedVoiceOption = option;
+  resolvedVoiceId = undefined;
+  voiceResolved = false;
+}
+
+export function getSelectedVoice(): VoiceOption {
+  return selectedVoiceOption;
+}
+
+/** Tìm voice ID phù hợp nhất trên thiết bị */
+async function resolveVoiceId(): Promise<string | undefined> {
+  if (voiceResolved) return resolvedVoiceId;
+  voiceResolved = true;
+
+  const sp = getSpeech();
+  if (!sp) return undefined;
+
+  try {
+    const voices: Array<{ identifier: string; name: string; language: string; quality: string }> =
+      await sp.getAvailableVoicesAsync();
+
+    const viVoices = voices.filter(
+      (v: any) => v.language?.startsWith('vi') || v.identifier?.includes('vi')
+    );
+
+    if (viVoices.length === 0) return undefined;
+
+    // Tìm voice match gender + region
+    const { gender, region } = selectedVoiceOption;
+    const genderKeywords = gender === 'female' ? ['female', 'nữ', 'woman'] : ['male', 'nam', 'man'];
+    const regionKeywords = region === 'bac' ? ['hanoi', 'ha noi', 'bac', 'north'] : ['saigon', 'sai gon', 'nam', 'south', 'hcm'];
+
+    // Scoring: gender match = 2, region match = 1
+    let best = viVoices[0];
+    let bestScore = 0;
+
+    for (const v of viVoices) {
+      const id = (v.identifier + ' ' + v.name).toLowerCase();
+      let score = 0;
+      if (genderKeywords.some(k => id.includes(k))) score += 2;
+      if (regionKeywords.some(k => id.includes(k))) score += 1;
+      if (score > bestScore) { bestScore = score; best = v; }
+    }
+
+    resolvedVoiceId = best.identifier;
+    return resolvedVoiceId;
+  } catch {
+    return undefined;
+  }
+}
+
+// ─── Lazy load expo-speech ─────────────────────────────────────────────────
+
 let Speech: any = null;
 let speechLoaded = false;
 
@@ -29,20 +102,25 @@ function getSpeech() {
   return Speech;
 }
 
-/** Đọc text bằng giọng Việt — trả về Promise resolve khi đọc xong. Nếu TTS không có → resolve ngay */
-export function speakVietnamese(text: string): Promise<void> {
+// ─── Public API ────────────────────────────────────────────────────────────
+
+/** Đọc text bằng giọng Việt — trả về Promise resolve khi đọc xong */
+export async function speakVietnamese(text: string): Promise<void> {
+  const sp = getSpeech();
+  if (!sp) return;
+
+  const clean = stripMarkdown(text);
+  if (!clean) return;
+
+  const voiceId = await resolveVoiceId();
+
   return new Promise((resolve) => {
-    const sp = getSpeech();
-    if (!sp) { resolve(); return; }
-
-    const clean = stripMarkdown(text);
-    if (!clean) { resolve(); return; }
-
     const timeout = setTimeout(() => resolve(), Math.max(clean.length * 80, 5000));
 
     try {
       sp.speak(clean, {
         language: 'vi-VN',
+        voice: voiceId,
         rate: 0.92,
         onDone: () => { clearTimeout(timeout); resolve(); },
         onError: () => { clearTimeout(timeout); resolve(); },
@@ -65,7 +143,7 @@ export async function isSpeaking(): Promise<boolean> {
   try { return await getSpeech()?.isSpeakingAsync() ?? false; } catch { return false; }
 }
 
-/** Kiểm tra TTS có khả dụng không (native module đã có trong build) */
+/** Kiểm tra TTS có khả dụng không */
 export function isTTSAvailable(): boolean {
   return !!getSpeech();
 }
