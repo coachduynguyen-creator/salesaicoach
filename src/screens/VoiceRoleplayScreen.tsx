@@ -215,16 +215,31 @@ export default function VoiceRoleplayScreen() {
 
     setIsAIThinking(true);
     try {
-      const startMsg = userRole === 'sales'
-        ? 'Xin chào, em muốn giới thiệu với anh về dự án.'
-        : 'Tôi đang tìm hiểu về dự án này.';
+      // Gửi assistant message giả để AI hiểu nó đang đóng vai, rồi user bắt đầu
+      const initMessages: ChatMessage[] = userRole === 'sales'
+        ? [
+            { role: 'user', content: '[Hệ thống] Bắt đầu roleplay. Bạn là khách hàng. Sales sẽ gọi cho bạn. Hãy trả lời câu đầu tiên khi sales chào.' },
+            { role: 'assistant', content: 'OK, tôi sẵn sàng đóng vai khách hàng.' },
+            { role: 'user', content: 'Xin chào anh, em gọi để giới thiệu về dự án ạ.' },
+          ]
+        : [
+            { role: 'user', content: '[Hệ thống] Bắt đầu roleplay. Bạn là sales mẫu. Khách hàng sẽ hỏi. Hãy tư vấn theo phương pháp TTA.' },
+            { role: 'assistant', content: 'OK, tôi sẵn sàng đóng vai sales.' },
+            { role: 'user', content: 'Tôi đang tìm hiểu về dự án này, cho tôi biết thêm đi.' },
+          ];
       const reply = await chatWithCoach(
-        [{ role: 'user', content: startMsg }],
-        getPrompt(scenario, userRole) + '\n\n' + kb + '\n\n' + businessContext,
+        initMessages,
+        getPrompt(scenario, userRole),
       );
       if (!isMountedRef.current) return;
+      // Hiện cả lời mở đầu của user + phản hồi AI
+      const firstUserContent = userRole === 'sales'
+        ? 'Xin chào anh, em gọi để giới thiệu về dự án ạ.'
+        : 'Tôi đang tìm hiểu về dự án này, cho tôi biết thêm đi.';
+      const userMsg: Message = { id: '0', role: 'user', content: firstUserContent };
       const aiMsg: Message = { id: '1', role: 'assistant', content: reply };
-      setMessages([aiMsg]);
+      setMessages([userMsg, aiMsg]);
+      setTurnCount(1);
       if (mode === 'voice') {
         setIsSpeakingState(true);
         await speakVietnamese(reply);
@@ -255,7 +270,7 @@ export default function VoiceRoleplayScreen() {
       const history: ChatMessage[] = newMessages.map(m => ({ role: m.role, content: m.content }));
       const reply = await chatWithCoach(
         history,
-        getPrompt(scenario, userRole) + '\n\n' + kb + '\n\n' + businessContext,
+        getPrompt(scenario, userRole),
       );
       if (!isMountedRef.current) return;
       const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: reply };
@@ -284,7 +299,7 @@ export default function VoiceRoleplayScreen() {
         const history: ChatMessage[] = newMessages.map(m => ({ role: m.role, content: m.content }));
         const reply = await chatWithCoach(
           history,
-          getPrompt(scenario, userRole) + '\n\n' + kb + '\n\n' + businessContext,
+          getPrompt(scenario, userRole),
         );
         if (!isMountedRef.current) return;
 
