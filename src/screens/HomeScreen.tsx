@@ -279,7 +279,7 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={[styles.actionCard, { backgroundColor: C.CARD }]}
-            onPress={() => navigation.navigate('KhachHang')}
+            onPress={() => navigation.navigate('CustomerList' as any)}
           >
             <LinearGradient
               colors={['#2563EB', '#60A5FA']}
@@ -291,28 +291,6 @@ export default function HomeScreen() {
             <Text style={[styles.actionText, { color: C.TEXT_SECONDARY }]}>Khách hàng</Text>
           </TouchableOpacity>
         </View>
-
-        {/* AI Tools */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.TEXT }]}>Công cụ AI</Text>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16, marginBottom: 16 }}>
-          {[
-            { key: 'roleplay', label: 'Luyện đối đáp', icon: 'chatbubbles', color: '#7C3AED', nav: 'AITools', params: { tool: 'roleplay' } },
-          ].map(tool => (
-            <TouchableOpacity
-              key={tool.key}
-              style={[styles.toolCard, { backgroundColor: C.CARD }]}
-              onPress={() => navigation.navigate(tool.nav as any, (tool as any).params)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.toolIcon, { backgroundColor: tool.color + '12' }]}>
-                <Ionicons name={tool.icon as any} size={20} color={tool.color} />
-              </View>
-              <Text style={[styles.toolLabel, { color: C.TEXT }]} numberOfLines={1}>{tool.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
 
         {/* Daily Insight */}
         {dailyInsight && (

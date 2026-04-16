@@ -14,6 +14,7 @@ import TrainingCenterScreen from '../screens/TrainingCenterScreen';
 import LessonDetailScreen from '../screens/LessonDetailScreen';
 import AiCoachScreen from '../screens/AiCoachScreen';
 import ConversationListScreen from '../screens/ConversationListScreen';
+import VoiceRoleplayScreen from '../screens/VoiceRoleplayScreen';
 import SessionDetailScreen from '../screens/SessionDetailScreen';
 import BusinessProfileScreen from '../screens/BusinessProfileScreen';
 import CustomerListScreen from '../screens/CustomerListScreen';
@@ -27,13 +28,12 @@ import ProjectPackListScreen from '../screens/ProjectPackListScreen';
 import ProjectPackEditScreen from '../screens/ProjectPackEditScreen';
 import BugReportsScreen from '../screens/BugReportsScreen';
 import PaywallScreen from '../screens/PaywallScreen';
-import AIToolsScreen from '../screens/AIToolsScreen';
 import UserGuideScreen from '../screens/UserGuideScreen';
 
 export type RootTabParamList = {
   TrangChu: undefined;
+  LuyenTap: undefined;
   GhiAm: undefined;
-  KhachHang: undefined;
   AiCoach: undefined;
   DaoTao: undefined;
   CaiDat: undefined;
@@ -48,14 +48,11 @@ export type RootStackParamList = {
     customerName?: string;
     companyName?: string;
   };
-  LessonDetail: {
-    lesson: any;
-  };
-  SessionDetail: {
-    session: any;
-  };
+  LessonDetail: { lesson: any };
+  SessionDetail: { session: any };
   BusinessProfile: undefined;
   CustomerDetail: { customerId: string };
+  CustomerList: undefined;
   About: undefined;
   TeamManage: undefined;
   AdminDashboard: undefined;
@@ -65,7 +62,6 @@ export type RootStackParamList = {
   ProjectPackEdit: { packId?: string };
   BugReports: undefined;
   Paywall: undefined;
-  AITools: { tool: string };
   UserGuide: undefined;
   LichSu: undefined;
   AiCoachChat: {
@@ -103,7 +99,7 @@ function MainTabs() {
           elevation: 10,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: '600',
           marginTop: 2,
         },
@@ -112,10 +108,10 @@ function MainTabs() {
 
           if (route.name === 'TrangChu') {
             iconName = focused ? 'grid' : 'grid-outline';
+          } else if (route.name === 'LuyenTap') {
+            iconName = focused ? 'mic-circle' : 'mic-circle-outline';
           } else if (route.name === 'GhiAm') {
             iconName = focused ? 'radio' : 'radio-outline';
-          } else if (route.name === 'KhachHang') {
-            iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'AiCoach') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'DaoTao') {
@@ -134,14 +130,14 @@ function MainTabs() {
         options={{ tabBarLabel: 'Trang Chủ', tabBarAccessibilityLabel: 'Trang chủ' }}
       />
       <Tab.Screen
+        name="LuyenTap"
+        component={VoiceRoleplayScreen}
+        options={{ tabBarLabel: 'Luyện Tập', tabBarAccessibilityLabel: 'Luyện đối đáp bằng giọng nói' }}
+      />
+      <Tab.Screen
         name="GhiAm"
         component={RecordScreen}
         options={{ tabBarLabel: 'Ghi Âm', tabBarAccessibilityLabel: 'Ghi âm buổi tư vấn' }}
-      />
-      <Tab.Screen
-        name="KhachHang"
-        component={CustomerListScreen}
-        options={{ tabBarLabel: 'Khách Hàng', tabBarAccessibilityLabel: 'Danh sách khách hàng' }}
       />
       <Tab.Screen
         name="AiCoach"
@@ -166,68 +162,24 @@ export default function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={MainTabs} />
-      <Stack.Screen
-        name="ResultScreen"
-        component={ResultScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
-        name="LessonDetail"
-        component={LessonDetailScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
-        name="SessionDetail"
-        component={SessionDetailScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
-        name="BusinessProfile"
-        component={BusinessProfileScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
-        name="AiCoachChat"
-        component={AiCoachScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
-        name="CustomerDetail"
-        component={CustomerDetailScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
-        name="About"
-        component={AboutScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
-        name="TeamManage"
-        component={TeamManageScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen
-        name="Paywall"
-        component={PaywallScreen}
-        options={{ presentation: 'card' }}
-      />
-      <Stack.Screen name="AITools" component={AIToolsScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="ResultScreen" component={ResultScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="LessonDetail" component={LessonDetailScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="BusinessProfile" component={BusinessProfileScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="AiCoachChat" component={AiCoachScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="CustomerDetail" component={CustomerDetailScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="CustomerList" component={CustomerListScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="About" component={AboutScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="TeamManage" component={TeamManageScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="UserGuide" component={UserGuideScreen} options={{ presentation: 'card' }} />
-      <Stack.Screen
-        name="AdminDashboard"
-        component={AdminDashboardScreen}
-        options={{ presentation: 'card' }}
-      />
+      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="AdminConfig" component={AdminConfigScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="AdminSubscription" component={AdminSubscriptionScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="ProjectPackList" component={ProjectPackListScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="ProjectPackEdit" component={ProjectPackEditScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="BugReports" component={BugReportsScreen} options={{ presentation: 'card' }} />
-      <Stack.Screen
-        name="LichSu"
-        component={HistoryScreen}
-        options={{ presentation: 'card' }}
-      />
+      <Stack.Screen name="LichSu" component={HistoryScreen} options={{ presentation: 'card' }} />
     </Stack.Navigator>
   );
 }
