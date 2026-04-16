@@ -307,10 +307,14 @@ export default function VoiceRoleplayScreen() {
 
   // ─── Setup Phase ────────────────────────────────────────────────────────
 
+  // Auto-start khi activeGame được set
+  const pendingGameRef = useRef<GameChallenge | null>(null);
+
   const startGameChallenge = (game: GameChallenge) => {
     setActiveGame(game);
     setScenario(game.scenario);
-    setUserRole('sales'); // Games always user = sales
+    setUserRole('sales');
+    pendingGameRef.current = game;
   };
 
   const handleSetupVoice = async () => {
@@ -375,7 +379,15 @@ export default function VoiceRoleplayScreen() {
         setPhase('setup');
       }
     } finally { if (isMountedRef.current) setIsAIThinking(false); }
-  }, [scenario, userRole, kb, businessContext, showAlert]);
+  }, [scenario, userRole, kb, businessContext, showAlert, mode]);
+
+  // Auto-start game challenge khi scenario sẵn sàng
+  useEffect(() => {
+    if (pendingGameRef.current && scenario === pendingGameRef.current.scenario && phase === 'setup') {
+      pendingGameRef.current = null;
+      startRoleplay();
+    }
+  }, [scenario, phase, startRoleplay]);
 
   // ─── Roleplay Phase ─────────────────────────────────────────────────────
 
